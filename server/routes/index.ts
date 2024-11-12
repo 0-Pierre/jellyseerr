@@ -7,7 +7,6 @@ import type {
 } from '@server/api/themoviedb/interfaces';
 import { getRepository } from '@server/datasource';
 import DiscoverSlider from '@server/entity/DiscoverSlider';
-import type { StatusResponse } from '@server/interfaces/api/settingsInterfaces';
 import { Permission } from '@server/lib/permissions';
 import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
@@ -22,10 +21,14 @@ import {
   appDataPermissions,
   appDataStatus,
 } from '@server/utils/appDataVolume';
-import { getAppVersion, getCommitTag } from '@server/utils/appVersion';
-import restartFlag from '@server/utils/restartFlag';
+import {
+  FORKED_FROM_VERSION,
+  getAppVersion,
+  getCommitTag,
+} from '@server/utils/appVersion';
 import { isPerson } from '@server/utils/typeHelpers';
 import { Router } from 'express';
+import semver from 'semver';
 import authRoutes from './auth';
 import blacklistRoutes from './blacklist';
 import collectionRoutes from './collection';
@@ -40,56 +43,32 @@ import searchRoutes from './search';
 import serviceRoutes from './service';
 import tvRoutes from './tv';
 import user from './user';
-
 const router = Router();
 
 router.use(checkUser);
 
-router.get<unknown, StatusResponse>('/status', async (req, res) => {
-  const githubApi = new GithubAPI();
+const githubApi = new GithubAPI();
 
+router.get('/status', async (req, res) => {
   const currentVersion = getAppVersion();
   const commitTag = getCommitTag();
-  let updateAvailable = false;
-  let commitsBehind = 0;
 
-  if (currentVersion.startsWith('develop-') && commitTag !== 'local') {
-    const commits = await githubApi.getOverseerrCommits();
+  // Get the latest release from GitHub
+  const releases = await githubApi.getOverseerrReleases();
+  const mainProjectVersion = releases?.[0]?.name.replace('v', '');
 
-    if (commits.length) {
-      const filteredCommits = commits.filter(
-        (commit) => !commit.commit.message.includes('[skip ci]')
-      );
-      if (filteredCommits[0].sha !== commitTag) {
-        updateAvailable = true;
-      }
-
-      const commitIndex = filteredCommits.findIndex(
-        (commit) => commit.sha === commitTag
-      );
-
-      if (updateAvailable) {
-        commitsBehind = commitIndex;
-      }
-    }
-  } else if (commitTag !== 'local') {
-    const releases = await githubApi.getOverseerrReleases();
-
-    if (releases.length) {
-      const latestVersion = releases[0];
-
-      if (!latestVersion.name.includes(currentVersion)) {
-        updateAvailable = true;
-      }
-    }
-  }
+  // Compare against fork base version for update check
+  const updateAvailable =
+    mainProjectVersion && semver.gt(mainProjectVersion, FORKED_FROM_VERSION);
 
   return res.status(200).json({
-    version: getAppVersion(),
-    commitTag: getCommitTag(),
+    version: currentVersion,
+    commitTag,
     updateAvailable,
-    commitsBehind,
-    restartRequired: restartFlag.isSet(),
+    commitsBehind: updateAvailable ? -1 : 0,
+    restartRequired: false,
+    forkedFromVersion: FORKED_FROM_VERSION,
+    mainProjectVersion,
   });
 });
 

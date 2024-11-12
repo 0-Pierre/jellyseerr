@@ -1,21 +1,24 @@
 import type { MainSettings } from '@server/lib/settings';
-import { getSettings } from '@server/lib/settings';
+import * as semver from 'semver';
 
 class RestartFlag {
   private settings: MainSettings;
+  private mainProjectVersion?: string;
+  private forkedFromVersion?: string;
 
   public initializeSettings(settings: MainSettings): void {
     this.settings = { ...settings };
   }
 
   public isSet(): boolean {
-    const settings = getSettings().main;
+    return false;
+  }
 
-    return (
-      this.settings.csrfProtection !== settings.csrfProtection ||
-      this.settings.trustProxy !== settings.trustProxy ||
-      this.settings.proxy.enabled !== settings.proxy.enabled
-    );
+  isUpdateAvailable() {
+    if (this.mainProjectVersion && this.forkedFromVersion) {
+      return semver.gt(this.mainProjectVersion, this.forkedFromVersion);
+    }
+    return false;
   }
 }
 

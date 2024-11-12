@@ -34,6 +34,15 @@ It is a fork of [Overseerr](https://github.com/sct/overseerr) built to bring sup
 
 With more features on the way! Check out our [issue tracker](https://github.com/fallenbagel/jellyseerr/issues) to see the features which have already been requested.
 
+## Custom Features
+
+- Create an user directly on Jellyfin from Jellyseerr and import it immediatly : OK
+- Delete a "Jellyfin User" will delete it from Jellyseerr and Jellyfin at the same time : OK
+- Remove popup "Jellyseerr Updated" but keep tracking of main version release : OK
+- Customize welcome mail for new users
+- Add subscription system with killing
+- During the user import create naming schema
+
 ## Getting Started
 
 Check out our documentation for instructions on how to install and run Jellyseerr:

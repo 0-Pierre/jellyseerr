@@ -365,60 +365,67 @@ router.delete<{ id: string }>(
   async (req, res, next) => {
     try {
       const userRepository = getRepository(User);
-
-      const user = await userRepository.findOne({
-        where: { id: Number(req.params.id) },
-        relations: { requests: true },
-      });
+      const settings = getSettings();
+      const user = await userRepository
+        .createQueryBuilder('user')
+        .leftJoinAndSelect('user.requests', 'requests')
+        .where('user.id = :id', { id: Number(req.params.id) })
+        .getOne();
 
       if (!user) {
         return next({ status: 404, message: 'User not found.' });
       }
 
-      if (user.id === 1) {
-        return next({
-          status: 405,
-          message: 'This account cannot be deleted.',
-        });
+      if (user.userType === UserType.JELLYFIN && user.jellyfinUserId) {
+        try {
+          const admin = await userRepository
+            .createQueryBuilder('admin')
+            .where('admin.id = :id', { id: 1 })
+            .select(['admin.jellyfinDeviceId'])
+            .getOne();
+
+          const jellyfinApi = new JellyfinAPI(
+            getHostname(),
+            settings.jellyfin.apiKey ?? '',
+            admin?.jellyfinDeviceId ?? ''
+          );
+
+          await jellyfinApi.deleteUser(user.jellyfinUserId);
+        } catch (e) {
+          logger.error('Failed to delete Jellyfin user', {
+            label: 'API',
+            errorMessage: e.message,
+            jellyfinUserId: user.jellyfinUserId,
+          });
+          return next({
+            status: 500,
+            message:
+              'Failed to delete user from Jellyfin. User not deleted from Jellyseerr.',
+          });
+        }
       }
 
-      if (user.hasPermission(Permission.ADMIN) && req.user?.id !== 1) {
-        return next({
-          status: 405,
-          message: 'You cannot delete users with administrative privileges.',
-        });
+      if (user.requests?.length > 0) {
+        await getRepository(MediaRequest)
+          .createQueryBuilder()
+          .delete()
+          .where('requestedById = :userId', { userId: user.id })
+          .execute();
       }
 
-      const requestRepository = getRepository(MediaRequest);
+      await userRepository
+        .createQueryBuilder()
+        .delete()
+        .where('id = :id', { id: user.id })
+        .execute();
 
-      /**
-       * Requests are usually deleted through a cascade constraint. Those however, do
-       * not trigger the removal event so listeners to not run and the parent Media
-       * will not be updated back to unknown for titles that were still pending. So
-       * we manually remove all requests from the user here so the parent media's
-       * properly reflect the change.
-       */
-      await requestRepository.remove(user.requests, {
-        /**
-         * Break-up into groups of 1000 requests to be removed at a time.
-         * Necessary for users with >1000 requests, else an SQLite 'Expression tree is too large' error occurs.
-         * https://typeorm.io/repository-api#additional-options
-         */
-        chunk: user.requests.length / 1000,
-      });
-
-      await userRepository.delete(user.id);
-      return res.status(200).json(user.filter());
+      return res.status(200).json({ success: true });
     } catch (e) {
-      logger.error('Something went wrong deleting a user', {
+      logger.error('Failed to delete user', {
         label: 'API',
-        userId: req.params.id,
         errorMessage: e.message,
       });
-      return next({
-        status: 500,
-        message: 'Something went wrong deleting the user',
-      });
+      next({ status: 500, message: 'Failed to delete user' });
     }
   }
 );
@@ -497,7 +504,7 @@ router.post(
     try {
       const settings = getSettings();
       const userRepository = getRepository(User);
-      const body = req.body as { jellyfinUserIds: string[] };
+      const body = req.body as { jellyfinUserIds: string[]; email?: string };
 
       // taken from auth.ts
       const admin = await userRepository.findOneOrFail({
@@ -537,7 +544,7 @@ router.post(
             jellyfinDeviceId: Buffer.from(
               `BOT_jellyseerr_${jellyfinUser?.Name ?? ''}`
             ).toString('base64'),
-            email: jellyfinUser?.Name,
+            email: body.email || jellyfinUser?.Name,
             permissions: settings.main.defaultPermissions,
             avatar: `/avatarproxy/${jellyfinUser?.Id}`,
             userType:
@@ -553,6 +560,50 @@ router.post(
       return res.status(201).json(User.filterMany(createdUsers));
     } catch (e) {
       next({ status: 500, message: e.message });
+    }
+  }
+);
+
+router.post(
+  '/jellyfinuser',
+  isAuthenticated(Permission.MANAGE_USERS),
+  async (req, res, next) => {
+    try {
+      if (!req.body.username) {
+        return next({
+          status: 400,
+          message: 'Username is required',
+        });
+      }
+
+      const settings = getSettings();
+      const userRepository = getRepository(User);
+      const admin = await userRepository.findOneOrFail({
+        where: { id: 1 },
+        select: ['id', 'jellyfinDeviceId', 'jellyfinUserId'],
+        order: { id: 'ASC' },
+      });
+
+      const jellyfinApi = new JellyfinAPI(
+        getHostname(),
+        settings.jellyfin.apiKey,
+        admin.jellyfinDeviceId ?? ''
+      );
+
+      // Create Jellyfin user
+      const jellyfinUser = await jellyfinApi.createUser({
+        Name: req.body.username,
+        Password: req.body.password || undefined,
+      });
+
+      return res.status(201).json(jellyfinUser);
+    } catch (error) {
+      logger.error('Failed to create Jellyfin user:', error);
+      next({
+        status: 500,
+        message: 'Failed to create Jellyfin user',
+        errors: error instanceof Error ? [error.message] : undefined,
+      });
     }
   }
 );

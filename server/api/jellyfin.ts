@@ -92,6 +92,18 @@ export interface JellyfinLibraryItemExtended extends JellyfinLibraryItem {
   DateCreated?: string;
 }
 
+export interface JellyfinUser {
+  Id: string;
+  Name: string;
+  ServerId: string;
+  HasPassword?: boolean;
+  HasConfiguredPassword?: boolean;
+  Policy?: {
+    IsAdministrator: boolean;
+    IsDisabled: boolean;
+  };
+}
+
 class JellyfinAPI extends ExternalAPI {
   private userId?: string;
 
@@ -109,6 +121,8 @@ class JellyfinAPI extends ExternalAPI {
       {
         headers: {
           'X-Emby-Authorization': authHeaderVal,
+          'X-Emby-Token': authToken,
+          'Content-Type': 'application/json',
         },
       }
     );
@@ -417,6 +431,40 @@ class JellyfinAPI extends ExternalAPI {
       throw new ApiError(e.response?.status, ApiErrorCode.InvalidAuthToken);
     }
   }
-}
 
+  public async createUser(options: {
+    Name: string;
+    Password?: string;
+  }): Promise<JellyfinUser> {
+    try {
+      const response = await this.post<JellyfinUser>('/Users/New', {
+        Name: options.Name,
+        Password: options.Password,
+      });
+
+      if (!response) {
+        throw new Error('No response from Jellyfin API');
+      }
+
+      return response;
+    } catch (e) {
+      logger.error(`Failed to create Jellyfin user: ${e.message}`, {
+        label: 'Jellyfin API',
+      });
+
+      throw new ApiError(e.response?.status, ApiErrorCode.InvalidJellyfinUser);
+    }
+  }
+
+  public async deleteUser(userId: string): Promise<void> {
+    try {
+      await this.delete<void>(`/Users/${userId}`);
+    } catch (e) {
+      logger.error(`Failed to delete user from Jellyfin: ${e.message}`, {
+        label: 'Jellyfin API',
+      });
+      throw new ApiError(e.response?.status, ApiErrorCode.InvalidJellyfinUser);
+    }
+  }
+}
 export default JellyfinAPI;

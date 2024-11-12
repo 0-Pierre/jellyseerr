@@ -58,6 +58,7 @@ const messages = defineMessages('components.UserList', {
     'Are you sure you want to delete this user? All of their request data will be permanently removed.',
   localuser: 'Local User',
   mediaServerUser: '{mediaServerName} User',
+  createjellyfinuser: 'Create Jellyfin User',
   createlocaluser: 'Create Local User',
   creating: 'Creating…',
   create: 'Create',
@@ -93,6 +94,9 @@ const UserList = () => {
   const { user: currentUser, hasPermission: currentHasPermission } = useUser();
   const [currentSort, setCurrentSort] = useState<Sort>('displayname');
   const [currentPageSize, setCurrentPageSize] = useState<number>(10);
+  const [createJellyfinModal, setCreateJellyfinModal] = useState({
+    isOpen: false,
+  });
 
   const page = router.query.page ? Number(router.query.page) : 1;
   const pageIndex = page - 1;
@@ -514,6 +518,219 @@ const UserList = () => {
         )}
       </Transition>
 
+      <Transition
+        as="div"
+        enter="transition-opacity duration-300"
+        enterFrom="opacity-0"
+        enterTo="opacity-100"
+        leave="transition-opacity duration-300"
+        leaveFrom="opacity-100"
+        leaveTo="opacity-0"
+        show={createJellyfinModal.isOpen}
+      >
+        <Formik
+          initialValues={{
+            username: '',
+            email: '',
+            password: '',
+            genpassword: true,
+          }}
+          validationSchema={CreateUserSchema}
+          onSubmit={async (values) => {
+            try {
+              const createJellyfinRes = await fetch(
+                '/api/v1/user/jellyfinuser',
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    username: values.username,
+                    email: values.email,
+                    password: values.genpassword ? null : values.password,
+                  }),
+                }
+              );
+
+              if (!createJellyfinRes.ok) {
+                throw new Error(createJellyfinRes.statusText, {
+                  cause: createJellyfinRes,
+                });
+              }
+
+              const jellyfinUser = await createJellyfinRes.json();
+              const importRes = await fetch(
+                '/api/v1/user/import-from-jellyfin',
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    jellyfinUserIds: [jellyfinUser.Id],
+                    email: values.email,
+                  }),
+                }
+              );
+
+              if (!importRes.ok) {
+                throw new Error(importRes.statusText, { cause: importRes });
+              }
+
+              addToast(intl.formatMessage(messages.usercreatedsuccess), {
+                appearance: 'success',
+                autoDismiss: true,
+              });
+              setCreateJellyfinModal({ isOpen: false });
+            } catch (e) {
+              let errorData;
+              try {
+                errorData = await e.cause?.text();
+                errorData = JSON.parse(errorData);
+              } catch {
+                /* empty */
+              }
+              addToast(
+                intl.formatMessage(
+                  errorData.errors?.includes('USER_EXISTS')
+                    ? messages.usercreatedfailedexisting
+                    : messages.usercreatedfailed
+                ),
+                {
+                  appearance: 'error',
+                  autoDismiss: true,
+                }
+              );
+            }
+          }}
+        >
+          {({
+            errors,
+            touched,
+            isSubmitting,
+            values,
+            isValid,
+            setFieldValue,
+            handleSubmit,
+          }) => {
+            return (
+              <Modal
+                title={intl.formatMessage(messages.createjellyfinuser)}
+                onOk={() => handleSubmit()}
+                okText={
+                  isSubmitting
+                    ? intl.formatMessage(messages.creating)
+                    : intl.formatMessage(messages.create)
+                }
+                okDisabled={isSubmitting || !isValid}
+                okButtonType="primary"
+                onCancel={() => setCreateJellyfinModal({ isOpen: false })}
+              >
+                {currentHasPermission(Permission.ADMIN) &&
+                  !passwordGenerationEnabled && (
+                    <Alert
+                      title={intl.formatMessage(
+                        messages.passwordinfodescription
+                      )}
+                      type="info"
+                    />
+                  )}
+                <Form className="section">
+                  <div className="form-row">
+                    <label htmlFor="username" className="text-label">
+                      {intl.formatMessage(messages.username)}
+                      <span className="label-required">*</span>
+                    </label>
+                    <div className="form-input-area">
+                      <div className="form-input-field">
+                        <Field id="username" name="username" type="text" />
+                      </div>
+                      {errors.username &&
+                        touched.username &&
+                        typeof errors.username === 'string' && (
+                          <div className="error">{errors.username}</div>
+                        )}
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <label htmlFor="email" className="text-label">
+                      {intl.formatMessage(messages.email)}
+                      <span className="label-required">*</span>
+                    </label>
+                    <div className="form-input-area">
+                      <div className="form-input-field">
+                        <Field
+                          id="email"
+                          name="email"
+                          type="text"
+                          inputMode="email"
+                        />
+                      </div>
+                      {errors.email &&
+                        touched.email &&
+                        typeof errors.email === 'string' && (
+                          <div className="error">{errors.email}</div>
+                        )}
+                    </div>
+                  </div>
+                  <div
+                    className={`form-row ${
+                      passwordGenerationEnabled ? '' : 'opacity-50'
+                    }`}
+                  >
+                    <label htmlFor="genpassword" className="checkbox-label">
+                      {intl.formatMessage(messages.autogeneratepassword)}
+                      <span className="label-tip">
+                        {intl.formatMessage(messages.autogeneratepasswordTip)}
+                      </span>
+                    </label>
+                    <div className="form-input-area">
+                      <Field
+                        type="checkbox"
+                        id="genpassword"
+                        name="genpassword"
+                        disabled={!passwordGenerationEnabled}
+                        onClick={() => setFieldValue('password', '')}
+                      />
+                    </div>
+                  </div>
+                  <div
+                    className={`form-row ${
+                      values.genpassword ? 'opacity-50' : ''
+                    }`}
+                  >
+                    <label htmlFor="password" className="text-label">
+                      {intl.formatMessage(messages.password)}
+                      {!values.genpassword && (
+                        <span className="label-required">*</span>
+                      )}
+                    </label>
+                    <div className="form-input-area">
+                      <div className="form-input-field">
+                        <SensitiveInput
+                          as="field"
+                          id="password"
+                          name="password"
+                          type="password"
+                          autoComplete="new-password"
+                          disabled={values.genpassword}
+                        />
+                      </div>
+                      {errors.password &&
+                        touched.password &&
+                        typeof errors.password === 'string' && (
+                          <div className="error">{errors.password}</div>
+                        )}
+                    </div>
+                  </div>
+                </Form>
+              </Modal>
+            );
+          }}
+        </Formik>
+      </Transition>
+
       <div className="flex flex-col justify-between lg:flex-row lg:items-end">
         <Header>{intl.formatMessage(messages.userlist)}</Header>
         <div className="mt-2 flex flex-grow flex-col lg:flex-grow-0 lg:flex-row">
@@ -525,6 +742,14 @@ const UserList = () => {
             >
               <UserPlusIcon />
               <span>{intl.formatMessage(messages.createlocaluser)}</span>
+            </Button>
+            <Button
+              className="flex-grow lg:mr-2"
+              buttonType="primary"
+              onClick={() => setCreateJellyfinModal({ isOpen: true })}
+            >
+              <UserPlusIcon />
+              <span>{intl.formatMessage(messages.createjellyfinuser)}</span>
             </Button>
             <Button
               className="flex-grow lg:mr-2"

@@ -18,6 +18,8 @@ export interface SettingsAboutResponse {
   totalMediaItems: number;
   tz?: string;
   appDataPath: string;
+  mainProjectVersion: string;
+  forkedFromVersion: string;
 }
 
 export interface PublicSettingsResponse {
@@ -67,4 +69,6 @@ export interface StatusResponse {
   updateAvailable: boolean;
   commitsBehind: number;
   restartRequired: boolean;
+  forkedFromVersion: string;
+  mainProjectVersion: string;
 }

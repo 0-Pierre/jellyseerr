@@ -142,6 +142,9 @@ const SettingsAbout = () => {
           <List.Item title={intl.formatMessage(messages.totalmedia)}>
             {intl.formatNumber(data.totalMediaItems)}
           </List.Item>
+          <List.Item title={intl.formatMessage(messages.totalmedia)}>
+            {intl.formatNumber(data.totalMediaItems)}
+          </List.Item>
           <List.Item title={intl.formatMessage(messages.totalrequests)}>
             {intl.formatNumber(data.totalRequests)}
           </List.Item>
