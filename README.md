@@ -40,9 +40,9 @@ With more features on the way! Check out our [issue tracker](https://github.com/
 - Delete a "Jellyfin User" will delete it from Jellyseerr and Jellyfin at the same time : OK
 - Remove popup "Jellyseerr Updated" but keep tracking of main version release : OK
 - Customize welcome mail for new users, add multilanguage support : NOT DONE
-- Add subscription system  : NOT DONE
+- Add subscription system : OK
   - Add kill switch : NOT DONE
-  - Add more information related to subscription for user : NOT DONE
+  - Add more information related to subscription for user : OK
 - During the user import create format schema for the display name (First LASTNAME) if user's username is first.last, and lock 'Display Name' field for the user : OK
 - Add username | mail on user profile and user popup menu.
 

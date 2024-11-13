@@ -24,52 +24,52 @@ import { useToasts } from 'react-toast-notifications';
 import useSWR from 'swr';
 import * as Yup from 'yup';
 
-const messages = defineMessages('components.UserProfile.UserSettings.UserGeneralSettings', {
-  general: 'General',
-  generalsettings: 'General Settings',
-  displayName: 'Display Name',
-  email: 'Email',
-  save: 'Save Changes',
-  saving: 'Saving…',
-  mediaServerUser: '{mediaServerName} User',
-  accounttype: 'Account Type',
-  plexuser: 'Plex User',
-  localuser: 'Local User',
-  role: 'Role',
-  owner: 'Owner',
-  admin: 'Admin',
-  user: 'User',
-  toastSettingsSuccess: 'Settings saved successfully!',
-  toastSettingsFailure: 'Something went wrong while saving settings.',
-  toastSettingsFailureEmail: 'This email is already taken!',
-  region: 'Discover Region',
-  regionTip: 'Filter content by regional availability',
-  originallanguage: 'Discover Language',
-  originallanguageTip: 'Filter content by original language',
-  movierequestlimit: 'Movie Request Limit',
-  seriesrequestlimit: 'Series Request Limit',
-  enableOverride: 'Override Global Limit',
-  applanguage: 'Display Language',
-  languageDefault: 'Default ({language})',
-  discordId: 'Discord User ID',
-  discordIdTip:
-    'The <FindDiscordIdLink>multi-digit ID number</FindDiscordIdLink> associated with your Discord user account',
-  validationemailrequired: 'Email required',
-  validationemailformat: 'Valid email required',
-  validationDiscordId: 'You must provide a valid Discord user ID',
-  plexwatchlistsyncmovies: 'Auto-Request Movies',
-  plexwatchlistsyncmoviestip:
-    'Automatically request movies on your <PlexWatchlistSupportLink>Plex Watchlist</PlexWatchlistSupportLink>',
-  plexwatchlistsyncseries: 'Auto-Request Series',
-  plexwatchlistsyncseriestip:
-    'Automatically request series on your <PlexWatchlistSupportLink>Plex Watchlist</PlexWatchlistSupportLink>',
-  subscription: 'Subscription',
-  enableSubscription: 'Enable Subscription',
-  subscriptionType: 'Subscription Type',
-  standard: 'Standard',
-  lifetime: 'Lifetime',
-  subscriptionTip: 'Manage user subscription status and type'
-});
+const messages = defineMessages(
+  'components.UserProfile.UserSettings.UserGeneralSettings',
+  {
+    general: 'General',
+    generalsettings: 'General Settings',
+    displayName: 'Display Name',
+    email: 'Email',
+    save: 'Save Changes',
+    saving: 'Saving…',
+    mediaServerUser: '{mediaServerName} User',
+    accounttype: 'Account Type',
+    plexuser: 'Plex User',
+    localuser: 'Local User',
+    role: 'Role',
+    owner: 'Owner',
+    admin: 'Admin',
+    user: 'User',
+    toastSettingsSuccess: 'Settings saved successfully!',
+    toastSettingsFailure: 'Something went wrong while saving settings.',
+    toastSettingsFailureEmail: 'This email is already taken!',
+    region: 'Discover Region',
+    regionTip: 'Filter content by regional availability',
+    originallanguage: 'Discover Language',
+    originallanguageTip: 'Filter content by original language',
+    movierequestlimit: 'Movie Request Limit',
+    seriesrequestlimit: 'Series Request Limit',
+    enableOverride: 'Override Global Limit',
+    applanguage: 'Display Language',
+    languageDefault: 'Default ({language})',
+    discordId: 'Discord User ID',
+    discordIdTip:
+      'The <FindDiscordIdLink>multi-digit ID number</FindDiscordIdLink> associated with your Discord user account',
+    validationemailrequired: 'Email required',
+    validationemailformat: 'Valid email required',
+    validationDiscordId: 'You must provide a valid Discord user ID',
+    plexwatchlistsyncmovies: 'Auto-Request Movies',
+    plexwatchlistsyncmoviestip:
+      'Automatically request movies on your <PlexWatchlistSupportLink>Plex Watchlist</PlexWatchlistSupportLink>',
+    plexwatchlistsyncseries: 'Auto-Request Series',
+    plexwatchlistsyncseriestip:
+      'Automatically request series on your <PlexWatchlistSupportLink>Plex Watchlist</PlexWatchlistSupportLink>',
+    subscription: 'Subscription',
+    subscriptionStandard: 'Standard',
+    subscriptionLifetime: 'Lifetime',
+  }
+);
 
 const UserGeneralSettings = () => {
   const intl = useIntl();
@@ -77,7 +77,6 @@ const UserGeneralSettings = () => {
   const { locale, setLocale } = useLocale();
   const [movieQuotaEnabled, setMovieQuotaEnabled] = useState(false);
   const [tvQuotaEnabled, setTvQuotaEnabled] = useState(false);
-  const [subscriptionEnabled, setSubscriptionEnabled] = useState(false);
   const router = useRouter();
   const {
     user,
@@ -108,8 +107,6 @@ const UserGeneralSettings = () => {
     discordId: Yup.string()
       .nullable()
       .matches(/^\d{17,19}$/, intl.formatMessage(messages.validationDiscordId)),
-    subscriptionStatus: Yup.string().nullable(),
-    subscriptionExpirationDate: Yup.string().nullable(),
   });
 
   useEffect(() => {
@@ -119,7 +116,6 @@ const UserGeneralSettings = () => {
     setTvQuotaEnabled(
       data?.tvQuotaLimit != undefined && data?.tvQuotaDays != undefined
     );
-    setSubscriptionEnabled(data?.subscriptionStatus === 'active' || data?.subscriptionStatus === 'lifetime');
   }, [data]);
 
   if (!data && !error) {
@@ -157,8 +153,12 @@ const UserGeneralSettings = () => {
           tvQuotaDays: data?.tvQuotaDays,
           watchlistSyncMovies: data?.watchlistSyncMovies,
           watchlistSyncTv: data?.watchlistSyncTv,
-          subscriptionStatus: data?.subscriptionStatus || '',
-          subscriptionExpirationDate: data?.subscriptionExpirationDate || null,
+          subscriptionEnabled: Boolean(
+            data?.subscriptionStatus === 'active' ||
+              data?.subscriptionStatus === 'lifetime'
+          ),
+          subscriptionType:
+            data?.subscriptionStatus === 'lifetime' ? 'lifetime' : 'standard',
         }}
         validationSchema={UserGeneralSettingsSchema}
         enableReinitialize
@@ -187,9 +187,9 @@ const UserGeneralSettings = () => {
                 tvQuotaDays: tvQuotaEnabled ? values.tvQuotaDays : null,
                 watchlistSyncMovies: values.watchlistSyncMovies,
                 watchlistSyncTv: values.watchlistSyncTv,
-                subscriptionStatus: subscriptionEnabled ? values.subscriptionStatus : null,
-                subscriptionExpirationDate: subscriptionEnabled ? values.subscriptionExpirationDate : null,
-              })
+                subscriptionEnabled: values.subscriptionEnabled,
+                subscriptionType: values.subscriptionType,
+              }),
             });
             if (!res.ok) throw new Error(res.statusText, { cause: res });
 
@@ -299,8 +299,6 @@ const UserGeneralSettings = () => {
                         user?.jellyfinUsername ||
                         user?.plexUsername
                       }
-                      disabled={!hasPermission(Permission.ADMIN)}
-                      className={!hasPermission(Permission.ADMIN) ? 'opacity-70' : ''}
                     />
                   </div>
                   {errors.displayName &&
@@ -518,69 +516,6 @@ const UserGeneralSettings = () => {
                     </div>
                   </>
                 )}
-              {currentHasPermission(Permission.MANAGE_USERS) && (
-                <div className="form-row">
-                  <label htmlFor="subscription" className="text-label">
-                    <span>{intl.formatMessage(messages.subscription)}</span>
-                    <span className="label-tip">
-                      {intl.formatMessage(messages.subscriptionTip)}
-                    </span>
-                  </label>
-                  <div className="form-input-area">
-                    <div className="flex flex-col">
-                      <div className="mb-4 flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={subscriptionEnabled}
-                          onChange={(e) => {
-                            setSubscriptionEnabled(e.target.checked);
-                            if (!e.target.checked) {
-                              setFieldValue('subscriptionStatus', '');
-                              setFieldValue('subscriptionExpirationDate', null);
-                            } else if (values.subscriptionStatus === '') {
-                              setFieldValue('subscriptionStatus', 'active');
-                              const nextYear = new Date();
-                              nextYear.setFullYear(nextYear.getFullYear() + 1);
-                              setFieldValue('subscriptionExpirationDate', nextYear.toISOString().split('T')[0]);
-                            }
-                          }}
-                        />
-                        <span className="ml-2 text-gray-300">
-                          {intl.formatMessage(messages.enableSubscription)}
-                        </span>
-                      </div>
-                      <div className="form-input-field">
-                        <select
-                          id="subscriptionStatus"
-                          name="subscriptionStatus"
-                          value={values.subscriptionStatus}
-                          onChange={(e) => {
-                            const newValue = e.target.value;
-                            setFieldValue('subscriptionStatus', newValue);
-                            if (newValue === 'active') {
-                              const nextYear = new Date();
-                              nextYear.setFullYear(nextYear.getFullYear() + 1);
-                              setFieldValue('subscriptionExpirationDate', nextYear.toISOString().split('T')[0]);
-                            } else if (newValue === 'lifetime') {
-                              setFieldValue('subscriptionExpirationDate', null);
-                            }
-                          }}
-                          className="rounded-md"
-                          disabled={!subscriptionEnabled}
-                        >
-                          <option value="">None</option>
-                          <option value="active">
-                            {intl.formatMessage(messages.standard)}
-                          </option>
-                          <option value="lifetime">
-                            {intl.formatMessage(messages.lifetime)}
-                          </option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
               {hasPermission(
                 [Permission.AUTO_REQUEST, Permission.AUTO_REQUEST_MOVIE],
                 { type: 'or' }
@@ -674,6 +609,43 @@ const UserGeneralSettings = () => {
                     </div>
                   </div>
                 )}
+              <div className="form-row">
+                <label htmlFor="subscription" className="text-label">
+                  {intl.formatMessage(messages.subscription)}
+                </label>
+                <div className="form-input-area">
+                  <div className="flex max-w-lg items-center">
+                    <Field
+                      type="checkbox"
+                      id="subscriptionEnabled"
+                      name="subscriptionEnabled"
+                      checked={values.subscriptionEnabled}
+                      onChange={() => {
+                        setFieldValue(
+                          'subscriptionEnabled',
+                          !values.subscriptionEnabled
+                        );
+                      }}
+                    />
+                    <div className="ml-4 flex-grow">
+                      <Field
+                        as="select"
+                        id="subscriptionType"
+                        name="subscriptionType"
+                        disabled={!values.subscriptionEnabled}
+                        className="inline"
+                      >
+                        <option value="standard">
+                          {intl.formatMessage(messages.subscriptionStandard)}
+                        </option>
+                        <option value="lifetime">
+                          {intl.formatMessage(messages.subscriptionLifetime)}
+                        </option>
+                      </Field>
+                    </div>
+                  </div>
+                </div>
+              </div>
               <div className="actions">
                 <div className="flex justify-end">
                   <span className="ml-3 inline-flex rounded-md shadow-sm">

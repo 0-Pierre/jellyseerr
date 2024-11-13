@@ -1,6 +1,9 @@
-import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
+import { TableColumn } from 'typeorm';
 
-export class AddSubscriptionFieldsToUser1727029130875 implements MigrationInterface {
+export class AddSubscriptionFieldsToUser1727029130875
+  implements MigrationInterface
+{
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.addColumns('user', [
       new TableColumn({
@@ -10,7 +13,7 @@ export class AddSubscriptionFieldsToUser1727029130875 implements MigrationInterf
       }),
       new TableColumn({
         name: 'subscriptionExpirationDate',
-        type: 'date',
+        type: 'datetime',
         isNullable: true,
       }),
       new TableColumn({

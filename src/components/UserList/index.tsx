@@ -253,13 +253,29 @@ const UserList = () => {
   const getStatusBadge = (status: string | null | undefined) => {
     switch (status) {
       case 'expired':
-        return <Badge className="bg-red-600">{intl.formatMessage(messages.expired)}</Badge>;
+        return (
+          <Badge badgeType="danger">
+            {intl.formatMessage(messages.expired)}
+          </Badge>
+        );
       case 'lifetime':
-        return <Badge className="bg-yellow-500">{intl.formatMessage(messages.lifetime)}</Badge>;
+        return (
+          <Badge badgeType="warning">
+            {intl.formatMessage(messages.lifetime)}
+          </Badge>
+        );
       case 'active':
-        return <Badge className="bg-blue-500">{intl.formatMessage(messages.active)}</Badge>;
+        return (
+          <Badge badgeType="default">
+            {intl.formatMessage(messages.active)}
+          </Badge>
+        );
       default:
-        return <Badge className="bg-gray-500">{intl.formatMessage(messages.never)}</Badge>;
+        return (
+          <Badge badgeType="default">
+            {intl.formatMessage(messages.never)}
+          </Badge>
+        );
     }
   };
 
@@ -855,9 +871,15 @@ const UserList = () => {
             <Table.TH>{intl.formatMessage(messages.accounttype)}</Table.TH>
             <Table.TH>{intl.formatMessage(messages.role)}</Table.TH>
             <Table.TH>{intl.formatMessage(messages.created)}</Table.TH>
-            <Table.TH>{intl.formatMessage(messages.subscriptionStatus)}</Table.TH>
-            <Table.TH>{intl.formatMessage(messages.subscriptionExpirationDate)}</Table.TH>
-            <Table.TH>{intl.formatMessage(messages.suspiciousActivity)}</Table.TH>
+            <Table.TH>
+              {intl.formatMessage(messages.subscriptionStatus)}
+            </Table.TH>
+            <Table.TH>
+              {intl.formatMessage(messages.subscriptionExpirationDate)}
+            </Table.TH>
+            <Table.TH>
+              {intl.formatMessage(messages.suspiciousActivity)}
+            </Table.TH>
             <Table.TH className="text-right">
               {(data.results ?? []).length > 1 && (
                 <Button

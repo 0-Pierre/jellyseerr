@@ -17,8 +17,10 @@ export interface UserSettingsGeneralResponse {
   globalTvQuotaDays?: number;
   watchlistSyncMovies?: boolean;
   watchlistSyncTv?: boolean;
-  subscriptionStatus?: 'active' | 'lifetime' | null;
-  subscriptionExpirationDate?: string | null;
+  subscriptionEnabled?: boolean;
+  subscriptionType?: 'standard' | 'lifetime';
+  subscriptionStatus?: 'active' | 'expired' | 'lifetime' | null;
+  subscriptionExpirationDate?: Date | null;
 }
 
 export type NotificationAgentTypes = Record<NotificationAgentKey, number>;

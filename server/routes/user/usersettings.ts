@@ -14,9 +14,6 @@ import { ApiError } from '@server/types/error';
 import { Router } from 'express';
 import { canMakePermissionsChange } from '.';
 
-// First, define proper types for subscription status
-type SubscriptionStatus = 'active' | 'lifetime' | null;
-
 const isOwnProfileOrAdmin = (): Middleware => {
   const authMiddleware: Middleware = (req, res, next) => {
     if (
@@ -71,6 +68,11 @@ userSettingsRoutes.get<{ id: string }, UserSettingsGeneralResponse>(
         globalTvQuotaLimit: defaultQuotas.tv.quotaLimit,
         watchlistSyncMovies: user.settings?.watchlistSyncMovies,
         watchlistSyncTv: user.settings?.watchlistSyncTv,
+        subscriptionStatus: user.subscriptionStatus,
+        subscriptionEnabled: !!user.subscriptionStatus,
+        subscriptionType:
+          user.subscriptionStatus === 'lifetime' ? 'lifetime' : 'standard',
+        subscriptionExpirationDate: user.subscriptionExpirationDate,
       });
     } catch (e) {
       next({ status: 500, message: e.message });
@@ -94,15 +96,38 @@ userSettingsRoutes.post<
       return next({ status: 404, message: 'User not found.' });
     }
 
-    // Update user fields
-    Object.assign(user, {
-      username: req.body.username,
-      email: user.jellyfinUsername ? (req.body.email || user.jellyfinUsername || user.email) : req.body.email,
-      subscriptionStatus: req.body.subscriptionStatus as 'active' | 'lifetime' | null,
-      subscriptionExpirationDate: req.body.subscriptionExpirationDate ? new Date(req.body.subscriptionExpirationDate) : null,
-    });
+    // "Owner" user settings cannot be modified by other users
+    if (user.id === 1 && req.user?.id !== 1) {
+      return next({
+        status: 403,
+        message: "You do not have permission to modify this user's settings.",
+      });
+    }
 
-    // Update settings
+    user.username = req.body.username;
+    const oldEmail = user.email;
+    if (user.jellyfinUsername) {
+      user.email = req.body.email || user.jellyfinUsername || user.email;
+    }
+
+    const existingUser = await userRepository.findOne({
+      where: { email: user.email },
+    });
+    if (oldEmail !== user.email && existingUser) {
+      throw new ApiError(400, ApiErrorCode.InvalidEmail);
+    }
+
+    // Update quota values only if the user has the correct permissions
+    if (
+      !user.hasPermission(Permission.MANAGE_USERS) &&
+      req.user?.id !== user.id
+    ) {
+      user.movieQuotaDays = req.body.movieQuotaDays;
+      user.movieQuotaLimit = req.body.movieQuotaLimit;
+      user.tvQuotaDays = req.body.tvQuotaDays;
+      user.tvQuotaLimit = req.body.tvQuotaLimit;
+    }
+
     if (!user.settings) {
       user.settings = new UserSettings({
         user: req.user,
@@ -114,26 +139,60 @@ userSettingsRoutes.post<
         watchlistSyncTv: req.body.watchlistSyncTv,
       });
     } else {
-      Object.assign(user.settings, {
-        discordId: req.body.discordId,
-        locale: req.body.locale,
-        region: req.body.region,
-        originalLanguage: req.body.originalLanguage,
-        watchlistSyncMovies: req.body.watchlistSyncMovies,
-        watchlistSyncTv: req.body.watchlistSyncTv,
-      });
+      user.settings.discordId = req.body.discordId;
+      user.settings.locale = req.body.locale;
+      user.settings.region = req.body.region;
+      user.settings.originalLanguage = req.body.originalLanguage;
+      user.settings.watchlistSyncMovies = req.body.watchlistSyncMovies;
+      user.settings.watchlistSyncTv = req.body.watchlistSyncTv;
     }
 
-    await userRepository.save(user);
+    // Handle subscription updates
+    const subscriptionEnabled = Boolean(req.body.subscriptionEnabled);
 
-    // Return updated user data formatted as response
+    if (subscriptionEnabled) {
+      user.subscriptionStatus =
+        req.body.subscriptionType === 'lifetime' ? 'lifetime' : 'active';
+
+      // Set expiration date 1 year from now for standard subscriptions
+      if (req.body.subscriptionType === 'standard') {
+        const oneYearFromNow = new Date();
+        oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+        user.subscriptionExpirationDate = oneYearFromNow;
+      } else {
+        user.subscriptionExpirationDate = null; // No expiration for lifetime
+      }
+    } else {
+      user.subscriptionStatus = null;
+      user.subscriptionExpirationDate = null;
+    }
+
+    const savedUser = await userRepository.save(user);
+
     return res.status(200).json({
-      ...user,
-      subscriptionExpirationDate: user.subscriptionExpirationDate?.toISOString(),
-    } as UserSettingsGeneralResponse);
-
+      username: savedUser.username,
+      discordId: savedUser.settings?.discordId,
+      locale: savedUser.settings?.locale,
+      region: savedUser.settings?.region,
+      originalLanguage: savedUser.settings?.originalLanguage,
+      watchlistSyncMovies: savedUser.settings?.watchlistSyncMovies,
+      watchlistSyncTv: savedUser.settings?.watchlistSyncTv,
+      email: savedUser.email,
+      subscriptionEnabled: !!savedUser.subscriptionStatus,
+      subscriptionType:
+        savedUser.subscriptionStatus === 'lifetime' ? 'lifetime' : 'standard',
+      subscriptionStatus: savedUser.subscriptionStatus,
+      subscriptionExpirationDate: savedUser.subscriptionExpirationDate,
+    });
   } catch (e) {
-    return next(e);
+    if (e.errorCode) {
+      return next({
+        status: e.statusCode,
+        message: e.errorCode,
+      });
+    } else {
+      return next({ status: 500, message: e.message });
+    }
   }
 });
 
