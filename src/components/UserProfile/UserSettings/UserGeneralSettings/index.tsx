@@ -288,6 +288,8 @@ const UserGeneralSettings = () => {
                         user?.jellyfinUsername ||
                         user?.plexUsername
                       }
+                      disabled={!hasPermission(Permission.ADMIN)}
+                      className={!hasPermission(Permission.ADMIN) ? 'opacity-70' : ''}
                     />
                   </div>
                   {errors.displayName &&

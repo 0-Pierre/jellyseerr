@@ -39,9 +39,10 @@ With more features on the way! Check out our [issue tracker](https://github.com/
 - Create an user directly on Jellyfin from Jellyseerr and import it immediatly : OK
 - Delete a "Jellyfin User" will delete it from Jellyseerr and Jellyfin at the same time : OK
 - Remove popup "Jellyseerr Updated" but keep tracking of main version release : OK
-- Customize welcome mail for new users
-- Add subscription system with killing
-- During the user import create naming schema
+- Customize welcome mail for new users : NOT DONE
+- Add subscription system with killing : NOT DONE
+- During the user import create format schema for the display name (First LASTNAME) if user's username is first.last, and lock 'Display Name' field for the user : OK
+- Sync new password to Jellyfin if an user change his password on Jellyseerr : NOT DONE
 
 ## Getting Started
 

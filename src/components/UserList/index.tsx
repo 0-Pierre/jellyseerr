@@ -533,7 +533,7 @@ const UserList = () => {
             username: '',
             email: '',
             password: '',
-            genpassword: true,
+            genpassword: false,
           }}
           validationSchema={CreateUserSchema}
           onSubmit={async (values) => {

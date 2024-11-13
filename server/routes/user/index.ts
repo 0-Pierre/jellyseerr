@@ -538,7 +538,17 @@ router.post(
         });
 
         if (!user) {
+          let displayName = jellyfinUser?.Name ?? '';
+
+          if (jellyfinUser?.Name && jellyfinUser.Name.includes('.')) {
+            const [firstname, lastname] = jellyfinUser.Name.split('.');
+            if (firstname && lastname) {
+              displayName = `${firstname.charAt(0).toUpperCase()}${firstname.slice(1)} ${lastname.toUpperCase()}`;
+            }
+          }
+
           const newUser = new User({
+            username: displayName,
             jellyfinUsername: jellyfinUser?.Name,
             jellyfinUserId: jellyfinUser?.Id,
             jellyfinDeviceId: Buffer.from(
