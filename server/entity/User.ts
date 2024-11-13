@@ -138,6 +138,15 @@ export class User {
   @UpdateDateColumn()
   public updatedAt: Date;
 
+  @Column({ nullable: true })
+  public subscriptionStatus?: string;
+
+  @Column({ type: 'date', nullable: true })
+  public subscriptionExpirationDate?: Date;
+
+  @Column({ default: 0 })
+  public suspiciousActivityCount: number;
+
   public warnings: string[] = [];
 
   constructor(init?: Partial<User>) {

@@ -82,9 +82,23 @@ const messages = defineMessages('components.UserList', {
   sortRequests: 'Request Count',
   localLoginDisabled:
     'The <strong>Enable Local Sign-In</strong> setting is currently disabled.',
+  subscriptionStatus: 'Subscription Status',
+  subscriptionExpirationDate: 'Subscription Expiration Date',
+  suspiciousActivity: 'Suspicious Activity',
+  expired: 'Expired',
+  lifetime: 'Lifetime',
+  active: 'Active',
+  never: 'Never',
 });
 
-type Sort = 'created' | 'updated' | 'requests' | 'displayname';
+type Sort =
+  | 'created'
+  | 'updated'
+  | 'requests'
+  | 'displayname'
+  | 'subscriptionStatus'
+  | 'subscriptionExpirationDate'
+  | 'suspiciousActivityCount';
 
 const UserList = () => {
   const intl = useIntl();
@@ -235,6 +249,19 @@ const UserList = () => {
   const passwordGenerationEnabled =
     settings.currentSettings.applicationUrl &&
     settings.currentSettings.emailEnabled;
+
+  const getStatusBadge = (status: string | null | undefined) => {
+    switch (status) {
+      case 'expired':
+        return <Badge className="bg-red-600">{intl.formatMessage(messages.expired)}</Badge>;
+      case 'lifetime':
+        return <Badge className="bg-yellow-500">{intl.formatMessage(messages.lifetime)}</Badge>;
+      case 'active':
+        return <Badge className="bg-blue-500">{intl.formatMessage(messages.active)}</Badge>;
+      default:
+        return <Badge className="bg-gray-500">{intl.formatMessage(messages.never)}</Badge>;
+    }
+  };
 
   return (
     <>
@@ -781,21 +808,27 @@ const UserList = () => {
             <select
               id="sort"
               name="sort"
-              onChange={(e) => {
-                setCurrentSort(e.target.value as Sort);
-                router.push(router.pathname);
-              }}
+              onChange={(e) => setCurrentSort(e.target.value as Sort)}
               value={currentSort}
-              className="rounded-r-only"
+              className="inline-flex items-center rounded-l-none rounded-r-md border border-l-0 border-gray-500 bg-gray-800 px-3 py-2 text-gray-100 sm:text-sm"
             >
+              <option value="displayname">
+                {intl.formatMessage(messages.sortDisplayName)}
+              </option>
               <option value="created">
                 {intl.formatMessage(messages.sortCreated)}
               </option>
               <option value="requests">
                 {intl.formatMessage(messages.sortRequests)}
               </option>
-              <option value="displayname">
-                {intl.formatMessage(messages.sortDisplayName)}
+              <option value="subscriptionStatus">
+                {intl.formatMessage(messages.subscriptionStatus)}
+              </option>
+              <option value="subscriptionExpirationDate">
+                {intl.formatMessage(messages.subscriptionExpirationDate)}
+              </option>
+              <option value="suspiciousActivityCount">
+                {intl.formatMessage(messages.suspiciousActivity)}
               </option>
             </select>
           </div>
@@ -822,6 +855,9 @@ const UserList = () => {
             <Table.TH>{intl.formatMessage(messages.accounttype)}</Table.TH>
             <Table.TH>{intl.formatMessage(messages.role)}</Table.TH>
             <Table.TH>{intl.formatMessage(messages.created)}</Table.TH>
+            <Table.TH>{intl.formatMessage(messages.subscriptionStatus)}</Table.TH>
+            <Table.TH>{intl.formatMessage(messages.subscriptionExpirationDate)}</Table.TH>
+            <Table.TH>{intl.formatMessage(messages.suspiciousActivity)}</Table.TH>
             <Table.TH className="text-right">
               {(data.results ?? []).length > 1 && (
                 <Button
@@ -943,6 +979,17 @@ const UserList = () => {
                   day: 'numeric',
                 })}
               </Table.TD>
+              <Table.TD>{getStatusBadge(user.subscriptionStatus)}</Table.TD>
+              <Table.TD>
+                {user.subscriptionExpirationDate
+                  ? intl.formatDate(user.subscriptionExpirationDate, {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    })
+                  : 'N/A'}
+              </Table.TD>
+              <Table.TD>{user.suspiciousActivityCount}</Table.TD>
               <Table.TD alignText="right">
                 <Button
                   buttonType="warning"
@@ -972,7 +1019,7 @@ const UserList = () => {
             </tr>
           ))}
           <tr className="bg-gray-700">
-            <Table.TD colSpan={8} noPadding>
+            <Table.TD colSpan={11} noPadding>
               <nav
                 className="flex w-screen flex-col items-center space-x-4 space-y-3 px-6 py-3 sm:flex-row sm:space-y-0 lg:w-full"
                 aria-label="Pagination"

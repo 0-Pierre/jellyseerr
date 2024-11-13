@@ -68,6 +68,15 @@ router.get('/', async (req, res, next) => {
           }, 'requestCount')
           .orderBy('requestCount', 'DESC');
         break;
+      case 'subscriptionStatus':
+        query = query.orderBy('user.subscriptionStatus', 'ASC');
+        break;
+      case 'subscriptionExpirationDate':
+        query = query.orderBy('user.subscriptionExpirationDate', 'ASC');
+        break;
+      case 'suspiciousActivityCount':
+        query = query.orderBy('user.suspiciousActivityCount', 'ASC');
+        break;
       default:
         query = query.orderBy('user.id', 'ASC');
         break;
