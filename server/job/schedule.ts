@@ -12,6 +12,8 @@ import { sonarrScanner } from '@server/lib/scanners/sonarr';
 import type { JobId } from '@server/lib/settings';
 import { getSettings } from '@server/lib/settings';
 import watchlistSync from '@server/lib/watchlistsync';
+import subscriptionsSync from '@server/lib/subscriptionssync';
+import checkJellyfinStreams from '@server/lib/jellyfinstreams';
 import logger from '@server/logger';
 import random from 'lodash/random';
 import schedule from 'node-schedule';
@@ -230,6 +232,34 @@ export const startJobs = (): void => {
 
       // Clean users avatar image cache
       ImageProxy.clearCache('avatar');
+    }),
+  });
+
+  scheduledJobs.push({
+    id: 'subscription-scan',
+    name: 'Subscription Scan',
+    type: 'process',
+    interval: 'hours',
+    cronSchedule: jobs['subscription-scan'].schedule,
+    job: schedule.scheduleJob(jobs['subscription-scan'].schedule, () => {
+      logger.info('Starting scheduled job: Subscription Scan', {
+        label: 'Jobs',
+      });
+      subscriptionsSync.run();
+    }),
+  });
+
+  scheduledJobs.push({
+    id: 'jellyfin-streams',
+    name: 'Jellyfin Streams',
+    type: 'process',
+    interval: 'seconds',
+    cronSchedule: jobs['jellyfin-streams'].schedule,
+    job: schedule.scheduleJob(jobs['jellyfin-streams'].schedule, () => {
+      logger.debug('Starting scheduled job: Jellyfin Streams', {
+        label: 'Jobs',
+      });
+      checkJellyfinStreams.run();
     }),
   });
 
