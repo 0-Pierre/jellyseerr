@@ -466,5 +466,35 @@ class JellyfinAPI extends ExternalAPI {
       throw new ApiError(e.response?.status, ApiErrorCode.InvalidJellyfinUser);
     }
   }
+
+  public async getActiveSessions(): Promise<any[]> {
+    try {
+      const sessions = await this.get<any[]>('/Sessions');
+      return sessions;
+    } catch (e) {
+      logger.error(`Failed to retrieve active sessions: ${e.message}`, {
+        label: 'Jellyfin API',
+      });
+      throw new ApiError(e.cause?.status, ApiErrorCode.InvalidAuthToken);
+    }
+  }
+
+  public async killSession(sessionId: string, message: string): Promise<void> {
+    try {
+      // Send a termination message to the user
+      await this.post<any>(`/Sessions/${sessionId}/Message`, {
+        Header: 'Session Terminated',
+        Text: message,
+      });
+
+      // Terminate the session by sending a DELETE request
+      await this.delete<void>(`/Sessions/${sessionId}`);
+    } catch (e) {
+      logger.error(`Failed to kill session ${sessionId}: ${e.message}`, {
+        label: 'Jellyfin API',
+      });
+      throw new ApiError(e.response?.status, ApiErrorCode.InvalidAuthToken);
+    }
+  }
 }
 export default JellyfinAPI;

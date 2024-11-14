@@ -13,7 +13,7 @@ import type { JobId } from '@server/lib/settings';
 import { getSettings } from '@server/lib/settings';
 import watchlistSync from '@server/lib/watchlistsync';
 import subscriptionsSync from '@server/lib/subscriptionssync';
-import checkJellyfinStreams from '@server/lib/jellyfinstreams';
+import jellyfinStreams from '@server/lib/jellyfinstreams';
 import logger from '@server/logger';
 import random from 'lodash/random';
 import schedule from 'node-schedule';
@@ -259,7 +259,7 @@ export const startJobs = (): void => {
       logger.debug('Starting scheduled job: Jellyfin Streams', {
         label: 'Jobs',
       });
-      checkJellyfinStreams.run();
+      jellyfinStreams.run();
     }),
   });
 

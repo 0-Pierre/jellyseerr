@@ -1,4 +1,4 @@
-import { getRepository } from 'typeorm';
+import { getRepository } from '@server/datasource';
 import { User } from '@server/entity/User';
 import logger from '@server/logger';
 
