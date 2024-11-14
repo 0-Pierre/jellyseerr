@@ -68,7 +68,11 @@ const ProfileHeader = ({ user, isSettingsPage }: ProfileHeaderProps) => {
             </Link>
             {user.email && user.displayName.toLowerCase() !== user.email && (
               <span className="text-sm text-gray-400 sm:ml-2 sm:text-lg">
-                ({user.email})
+                {user.username && user.username.match(/^[A-Z][a-z]+ [A-Z][A-Z]+$/)
+                  ? `(${user.username.split(' ')[0].toLowerCase()}.${user.username.split(' ')[1].toLowerCase()} | ${user.email})`
+                  : user.username
+                  ? `(${user.username.toLowerCase()} | ${user.email})`
+                  : user.email}
               </span>
             )}
           </h1>

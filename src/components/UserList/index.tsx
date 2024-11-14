@@ -941,9 +941,13 @@ const UserList = () => {
                       user.jellyfinUsername ||
                       user.plexUsername
                     )?.toLowerCase() !== user.email && (
-                      <div className="text-sm leading-5 text-gray-300">
-                        {user.email}
-                      </div>
+                    <div className="text-sm leading-5 text-gray-300">
+                      {user.username && user.username.match(/^[A-Z][a-z]+ [A-Z][A-Z]+$/)
+                        ? `${user.username.split(' ')[0].toLowerCase()}.${user.username.split(' ')[1].toLowerCase()} | ${user.email}`
+                        : user.username
+                        ? `${user.username.toLowerCase()} | ${user.email}`
+                        : user.email}
+                    </div>
                     )}
                   </div>
                 </div>
