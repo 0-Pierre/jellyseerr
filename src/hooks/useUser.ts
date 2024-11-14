@@ -25,6 +25,7 @@ export interface User {
   settings?: UserSettings;
   subscriptionStatus?: 'active' | 'expired' | 'lifetime' | null;
   subscriptionExpirationDate?: Date | null;
+  isLifetimeSubscriber?: boolean,
 }
 
 type NotificationAgentTypes = Record<NotificationAgentKey, number>;
