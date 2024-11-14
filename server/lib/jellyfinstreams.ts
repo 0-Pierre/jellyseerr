@@ -1,8 +1,8 @@
+import JellyfinAPI from '@server/api/jellyfin';
 import { getRepository } from '@server/datasource';
 import { User } from '@server/entity/User';
-import JellyfinAPI from '@server/api/jellyfin';
-import logger from '@server/logger';
 import { getSettings } from '@server/lib/settings';
+import logger from '@server/logger';
 
 const jellyfinStreams = {
   async run() {
@@ -17,12 +17,11 @@ const jellyfinStreams = {
 
       // Construct the full URL
       const protocol = jellyfinSettings.useSsl ? 'https' : 'http';
-      const jellyfinUrl = `${protocol}://${jellyfinSettings.ip}:${jellyfinSettings.port}${jellyfinSettings.urlBase || ''}`;
+      const jellyfinUrl = `${protocol}://${jellyfinSettings.ip}:${
+        jellyfinSettings.port
+      }${jellyfinSettings.urlBase || ''}`;
 
-      const jellyfin = new JellyfinAPI(
-        jellyfinUrl,
-        jellyfinSettings.apiKey
-      );
+      const jellyfin = new JellyfinAPI(jellyfinUrl, jellyfinSettings.apiKey);
 
       const sessions = await jellyfin.getActiveSessions();
 
@@ -40,13 +39,22 @@ const jellyfinStreams = {
           (user.subscriptionStatus !== 'active' &&
             user.subscriptionStatus !== 'lifetime')
         ) {
-          await jellyfin.killSession(
-            session.Id,
-            'Your subscription has expired or is invalid.'
-          );
-          logger.info(
-            `Killed stream for user ${jellyfinUserId} due to invalid subscription.`
-          );
+          try {
+            await jellyfin.stopSession(
+              session.Id,
+              'Your subscription has expired or is invalid.'
+            );
+            logger.info(
+              `Stopped stream for ${
+                user?.displayName || jellyfinUserId
+              } due to invalid subscription.`
+            );
+          } catch (error) {
+            // Ignore 404 errors for non-existent sessions
+            if (error?.response?.status !== 404) {
+              throw error;
+            }
+          }
         }
       }
     } catch (error) {

@@ -470,7 +470,14 @@ class JellyfinAPI extends ExternalAPI {
   public async getActiveSessions(): Promise<any[]> {
     try {
       const sessions = await this.get<any[]>('/Sessions');
-      return sessions;
+
+      // Filter for sessions with active playback
+      return sessions.filter((session) => {
+        if (!session.NowPlayingItem) return false;
+        if (!session.PlayState) return false;
+        if (!session.PlayState.PlayMethod) return false;
+        return true;
+      });
     } catch (e) {
       logger.error(`Failed to retrieve active sessions: ${e.message}`, {
         label: 'Jellyfin API',
@@ -479,18 +486,38 @@ class JellyfinAPI extends ExternalAPI {
     }
   }
 
-  public async killSession(sessionId: string, message: string): Promise<void> {
+  public async stopSession(sessionId: string, message?: string): Promise<void> {
     try {
-      // Send a termination message to the user
-      await this.post<any>(`/Sessions/${sessionId}/Message`, {
-        Header: 'Session Terminated',
-        Text: message,
-      });
+      const sessions = await this.getActiveSessions();
+      const activeSession = sessions.find((s) => s.Id === sessionId);
 
-      // Terminate the session by sending a DELETE request
-      await this.delete<void>(`/Sessions/${sessionId}`);
+      if (!activeSession) {
+        logger.debug(`No active playback found for session ${sessionId}`);
+        return;
+      }
+
+      // 1. Stop playback first
+      await this.post<void>(`/Sessions/${sessionId}/Playing/Stop`);
+
+      // 2. Go to home screen/dashboard immediately
+      await this.post<void>(`/Sessions/${sessionId}/System/GoHome`);
+
+      // 3. Wait 2 seconds while on dashboard
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      // 4. Display message last
+      if (message) {
+        await this.post<void>(`/Sessions/${sessionId}/Message`, {
+          Header: '⚠️',
+          Text: message,
+        });
+      }
     } catch (e) {
-      logger.error(`Failed to kill session ${sessionId}: ${e.message}`, {
+      if (e?.response?.status === 404) {
+        logger.debug(`Session ${sessionId} no longer exists`);
+        return;
+      }
+      logger.error(`Failed to stop session ${sessionId}: ${e.message}`, {
         label: 'Jellyfin API',
       });
       throw new ApiError(e.response?.status, ApiErrorCode.InvalidAuthToken);
