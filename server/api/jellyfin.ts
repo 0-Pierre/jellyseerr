@@ -496,16 +496,10 @@ class JellyfinAPI extends ExternalAPI {
         return;
       }
 
-      // 1. Stop playback first
       await this.post<void>(`/Sessions/${sessionId}/Playing/Stop`);
-
-      // 2. Go to home screen/dashboard immediately
       await this.post<void>(`/Sessions/${sessionId}/System/GoHome`);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      // 3. Wait 2 seconds while on dashboard
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      // 4. Display message last
       if (message) {
         await this.post<void>(`/Sessions/${sessionId}/Message`, {
           Header: '⚠️',
