@@ -3,6 +3,18 @@ import { getRepository } from '@server/datasource';
 import { User } from '@server/entity/User';
 import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
+import {
+  defineBackendMessages,
+  getTranslation,
+} from '@server/utils/backendMessages';
+
+const messages = defineBackendMessages(
+  'components.JellyfinSuspiciousActivity',
+  {
+    multipleIps:
+      'Multiple IP addresses detected for your account. For security reasons, all playbacks have been stopped.',
+  }
+);
 
 const jellyfinSuspiciousActivity = {
   async run() {
@@ -42,26 +54,30 @@ const jellyfinSuspiciousActivity = {
         const jellyfinUserId = session.UserId;
         const user = await userRepository.findOne({
           where: { jellyfinUserId },
+          relations: ['settings'],
         });
 
         if (!user) continue;
 
+        const userLocale = user.settings?.locale || 'en';
+
         // If multiple IPs detected for this user
         if (userIPs.get(jellyfinUserId).size > 1) {
           try {
-            await jellyfin.stopSession(
-              session.Id,
-              'Multiple IP addresses detected. Account sharing is not allowed.'
-            );
+            const message = getTranslation(messages, 'multipleIps', userLocale);
+            await jellyfin.stopSession(session.Id, message);
 
             logger.warn(
-              `Stopped stream for ${user.displayName} due to multiple IPs: ${
-                Array.from(userIPs.get(jellyfinUserId)).join(', ')
-              }`
+              `Stopped stream for ${
+                user.displayName
+              } due to multiple IPs: ${Array.from(
+                userIPs.get(jellyfinUserId)
+              ).join(', ')}`
             );
 
             // Increment suspicious activity counter
-            user.suspiciousActivityCount = (user.suspiciousActivityCount || 0) + 1;
+            user.suspiciousActivityCount =
+              (user.suspiciousActivityCount || 0) + 1;
             await userRepository.save(user);
           } catch (error) {
             // Ignore 404 errors for non-existent sessions

@@ -1,4 +1,7 @@
 {
+  "components.JellyfinStreams.subscriptionExpired": "Votre abonnement a expiré, renouvelez-le pour continuer la lecture de votre média.",
+  "components.JellyfinStreams.subscriptionRequired": "Vous avez besoin d'un abonnement actif pour continuer la lecture de votre média.",
+  "components.JellyfinSuspiciousActivity.suspiciousActivity": "Plusieurs adresses IP ont été détectées pour votre compte. Pour des raisons de sécurité, toutes les lectures ont été interrompues.",
   "components.AirDateBadge.airedrelative": "Diffusé {relativeTime}",
   "components.AirDateBadge.airsrelative": "Diffusion {relativeTime}",
   "components.AppDataWarning.dockerVolumeMissingDescription": "Le montage du volume <code>{appDataPath}</code> n'a pas été configuré correctement. Toutes les données seront effacées lorsque le conteneur sera arrêté ou redémarré.",

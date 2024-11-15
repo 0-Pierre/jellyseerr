@@ -35,6 +35,9 @@ RUN touch config/DOCKER
 
 RUN echo "{\"commitTag\": \"${COMMIT_TAG}\"}" > committag.json
 
+# Dockerfile additions
+COPY src/i18n/locale/*.json /app/src/i18n/locale/
+COPY src/i18n/locale/*.json /app/dist/i18n/locale/
 
 FROM node:20-alpine
 

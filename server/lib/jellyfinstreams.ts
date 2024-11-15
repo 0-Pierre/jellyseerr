@@ -3,6 +3,16 @@ import { getRepository } from '@server/datasource';
 import { User } from '@server/entity/User';
 import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
+import {
+  defineBackendMessages,
+  getTranslation,
+} from '@server/utils/backendMessages';
+
+const messages = defineBackendMessages('components.JellyfinStreams', {
+  subscriptionExpired:
+    'Your subscription has expired, renew it to continue playing.',
+  subscriptionRequired: 'You need an active subscription to continue playing.',
+});
 
 const jellyfinStreams = {
   async run() {
@@ -15,7 +25,6 @@ const jellyfinStreams = {
         return;
       }
 
-      // Construct the full URL
       const protocol = jellyfinSettings.useSsl ? 'https' : 'http';
       const jellyfinUrl = `${protocol}://${jellyfinSettings.ip}:${
         jellyfinSettings.port
@@ -32,28 +41,35 @@ const jellyfinStreams = {
 
         const user = await userRepository.findOne({
           where: { jellyfinUserId },
+          relations: ['settings'],
         });
 
-        if (
-          !user ||
-          (user.subscriptionStatus !== 'active' &&
-            user.subscriptionStatus !== 'lifetime')
+        const userLocale = user?.settings?.locale || 'en';
+
+        if (!user) {
+          try {
+            const message = getTranslation(
+              messages,
+              'subscriptionRequired',
+              userLocale
+            );
+            await jellyfin.stopSession(session.Id, message);
+          } catch (error) {
+            logger.error('Failed to stop session', { error });
+          }
+        } else if (
+          user.subscriptionStatus !== 'active' &&
+          user.subscriptionStatus !== 'lifetime'
         ) {
           try {
-            await jellyfin.stopSession(
-              session.Id,
-              'Your subscription has expired or is invalid.'
+            const message = getTranslation(
+              messages,
+              'subscriptionExpired',
+              userLocale
             );
-            logger.info(
-              `Stopped stream for ${
-                user?.displayName || jellyfinUserId
-              } due to invalid subscription.`
-            );
+            await jellyfin.stopSession(session.Id, message);
           } catch (error) {
-            // Ignore 404 errors for non-existent sessions
-            if (error?.response?.status !== 404) {
-              throw error;
-            }
+            logger.error('Failed to stop session', { error });
           }
         }
       }

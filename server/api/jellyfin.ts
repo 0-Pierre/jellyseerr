@@ -502,7 +502,7 @@ class JellyfinAPI extends ExternalAPI {
 
       if (message) {
         await this.post<void>(`/Sessions/${sessionId}/Message`, {
-          Header: '⚠️',
+          Header: '⛔',
           Text: message,
         });
       }
