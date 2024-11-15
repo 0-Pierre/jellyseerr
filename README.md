@@ -45,7 +45,7 @@ With more features on the way! Check out our [issue tracker](https://github.com/
   - Add more information related to subscription for user : OK
 - During the user import create format schema for the display name (First LASTNAME) if user's username is first.last, and lock 'Display Name' field for the user : OK
 - Add username | mail on user profile : OK
-- Variabilize the kill message and add it configurable on server settings, as we shoudld have one native message and one in english, if playback language != native language we show it in english.
+- Variabilize the kill message based on display language of this user : NOT DONE
 
 ## Getting Started
 
