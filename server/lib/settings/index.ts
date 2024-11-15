@@ -290,7 +290,8 @@ export type JobId =
   | 'image-cache-cleanup'
   | 'availability-sync'
   | 'jellyfin-streams'
-  | 'subscription-scan';
+  | 'subscription-scan'
+  | 'jellyfin-suspicious-activity';
 
 export interface AllSettings {
   clientId: string;
@@ -499,6 +500,9 @@ class Settings {
           schedule: '0 * * * *',
         },
         'jellyfin-streams': {
+          schedule: '0 * * * * *',
+        },
+        'jellyfin-suspicious-activity': {
           schedule: '0 * * * * *',
         },
       },

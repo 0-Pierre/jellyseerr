@@ -14,6 +14,7 @@ import { getSettings } from '@server/lib/settings';
 import watchlistSync from '@server/lib/watchlistsync';
 import subscriptionsSync from '@server/lib/subscriptionssync';
 import jellyfinStreams from '@server/lib/jellyfinstreams';
+import jellyfinSuspiciousActivity from '@server/lib/jellyfinsuspiciousactivity';
 import logger from '@server/logger';
 import random from 'lodash/random';
 import schedule from 'node-schedule';
@@ -260,6 +261,20 @@ export const startJobs = (): void => {
         label: 'Jobs',
       });
       jellyfinStreams.run();
+    }),
+  });
+
+  scheduledJobs.push({
+    id: 'jellyfin-suspicious-activity',
+    name: 'Jellyfin Suspicious Activity',
+    type: 'process',
+    interval: 'seconds',
+    cronSchedule: jobs['jellyfin-suspicious-activity'].schedule,
+    job: schedule.scheduleJob(jobs['jellyfin-suspicious-activity'].schedule, () => {
+      logger.debug('Starting scheduled job: Jellyfin Suspicious Activity', {
+        label: 'Jobs',
+      });
+      jellyfinSuspiciousActivity.run();
     }),
   });
 
