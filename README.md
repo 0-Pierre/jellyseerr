@@ -34,17 +34,19 @@ It is a fork of [Overseerr](https://github.com/sct/overseerr) built to bring sup
 
 With more features on the way! Check out our [issue tracker](https://github.com/fallenbagel/jellyseerr/issues) to see the features which have already been requested.
 
-
 ## Custom Features
 
 ### Upcoming Features
+
 - Implement French translations for all new international variables.
 - Add a slider to view current plays.
 - Allow users to select their display language for Jellyseerr and Jellyfin during account creation.
 - Personalize the welcome email for new users with multi-language support.
 - Develop a solution to properly terminate sessions, as the current method only closes the last opened tab/window.
+- Fix email not sent when creating Jellyfin user.
 
 ### Completed Features
+
 - Enable direct user creation on Jellyfin from Jellyseerr, with immediate import.
 - Deleting a "Jellyfin User" will automatically remove them from both Jellyseerr and Jellyfin.
 - Remove the "Jellyseerr Updated" popup, while continuing to track the main version release.
