@@ -291,22 +291,26 @@ const UserGeneralSettings = () => {
                 <div className="form-input-area">
                   <div className="form-input-field">
                   <Field
-                    id="displayName"
-                    name="displayName"
-                    type="text"
-                    style="color: rgb(170, 170, 170);"
-                    placeholder={
-                    user?.username ||
-                    user?.jellyfinUsername ||
-                    user?.plexUsername
-                    }
-                    disabled={!hasPermission(Permission.ADMIN)}
+                  id="displayName"
+                  name="displayName"
+                  type="text"
+                  placeholder={
+                  user?.username ||
+                  user?.jellyfinUsername ||
+                  user?.plexUsername
+                  }
+                  disabled={!hasPermission(Permission.ADMIN)}
+                  style={{
+                    color: !hasPermission(Permission.ADMIN)
+                    ? 'rgb(170, 170, 170)'
+                    : 'inherit',
+                  }}
                   />
                   </div>
                   {errors.displayName &&
                   touched.displayName &&
                   typeof errors.displayName === 'string' && (
-                    <div className="error">{errors.displayName}</div>
+                  <div className="error">{errors.displayName}</div>
                   )}
                 </div>
                 </div>

@@ -23,12 +23,44 @@ import logger from '@server/logger';
 import { isAuthenticated } from '@server/middleware/auth';
 import { getHostname } from '@server/utils/getHostname';
 import { Router } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import gravatarUrl from 'gravatar-url';
 import { findIndex, sortBy } from 'lodash';
 import { In } from 'typeorm';
 import userSettingsRoutes from './usersettings';
 import { default as generatePassword } from 'secure-random-password';
 import PreparedEmail from '@server/lib/email';
+import { UserSettings } from '@server/entity/UserSettings';
+import {
+  defineBackendMessages,
+  getTranslation,
+} from '@server/utils/backendMessages';
+
+
+const messages = defineBackendMessages('components.generatedpassword', {
+  subject: '{name}, your Jellyfin account has been created.',
+  greeting: 'Hi, {name}',
+  accessInfo: 'You now have access to Jellyfin and Jellyseerr as they sharing same account with the following credentials:',
+  credentials: '{username} | {password}',
+  passwordInfo: 'You can change your password at any time by visiting your account "Profile" directly in Jellyfin.',
+  jellyseerrInfo: 'You can request for movies, shows and music on Jellyseerr via the button below or {domain}',
+  jellyfinInfo: 'You can access your account and play media on Jellyfin via the button below or {domain}',
+  openButton: 'Open {service}',
+  warning: 'Your account is strictly personal and should not be shared. Feel free to use it as much as you want within the same household, but be aware that any suspicious activity may result in a permanent ban.'
+});
+
+interface CreateJellyfinUserRequest {
+  username: string;
+  email: string;
+  password?: string;
+  locale?: string;
+}
+
+interface ImportJellyfinUserRequest {
+  jellyfinUserIds: string[];
+  email?: string;
+  locale?: string;
+}
 
 const router = Router();
 
@@ -521,11 +553,15 @@ router.post(
 router.post(
   '/import-from-jellyfin',
   isAuthenticated(Permission.MANAGE_USERS),
-  async (req, res, next) => {
+  async (
+    req: Request<Record<string, never>, unknown, ImportJellyfinUserRequest>,
+    res: Response,
+    next: NextFunction
+  ) => {
     try {
       const settings = getSettings();
       const userRepository = getRepository(User);
-      const body = req.body as { jellyfinUserIds: string[]; email?: string };
+      const body = req.body;
 
       // taken from auth.ts
       const admin = await userRepository.findOneOrFail({
@@ -568,6 +604,8 @@ router.post(
             }
           }
 
+          const userSettingsRepository = getRepository(UserSettings);
+
           const newUser = new User({
             username: displayName,
             jellyfinUsername: jellyfinUser?.Name,
@@ -584,7 +622,17 @@ router.post(
                 : UserType.EMBY,
           });
 
+          // Create settings first
+          const userSettings = new UserSettings({
+            user: newUser,
+            locale: body.locale || settings.main.locale || 'en',
+          });
+
+          // Save both entities
           await userRepository.save(newUser);
+          await userSettingsRepository.save(userSettings);
+
+          newUser.settings = userSettings;
           createdUsers.push(newUser);
         }
       }
@@ -595,17 +643,16 @@ router.post(
   }
 );
 
-router.post(
-  '/jellyfinuser',
+router.post('/jellyfinuser',
   isAuthenticated(Permission.MANAGE_USERS),
-  async (req, res, next) => {
+  async (
+    req: Request<Record<string, never>, unknown, CreateJellyfinUserRequest>,
+    res: Response,
+    next: NextFunction
+  ) => {
     try {
-      if (!req.body.username) {
-        return next({
-          status: 400,
-          message: 'Username is required',
-        });
-      }
+      const { username, email, password: userPassword, locale } = req.body;
+      const password = userPassword || generatePassword.randomPassword();
 
       const settings = getSettings();
       const userRepository = getRepository(User);
@@ -615,8 +662,6 @@ router.post(
         order: { id: 'ASC' },
       });
 
-      const password = req.body.password || generatePassword.randomPassword({ length: 16 });
-
       const jellyfinApi = new JellyfinAPI(
         getHostname(),
         settings.jellyfin.apiKey,
@@ -624,31 +669,48 @@ router.post(
       );
 
       const jellyfinUser = await jellyfinApi.createUser({
-        Name: req.body.username,
+        Name: username,
         Password: password,
       });
 
-      if (req.body.email) {
+      if (email) {
         const { applicationTitle, applicationUrl } = settings.main;
         try {
-          logger.info(`Sending generated password email for ${req.body.email}`, {
+          logger.info(`Sending generated password email for ${email}`, {
             label: 'User Management',
           });
 
           const emailTemplatePath = '/app/dist/templates/email/generatedpassword';
 
-          const email = new PreparedEmail(settings.notifications.agents.email);
-          await email.send({
+          const emailService = new PreparedEmail(settings.notifications.agents.email);
+          await emailService.send({
             template: emailTemplatePath,
             message: {
-              to: req.body.email,
+              to: email,
             },
             locals: {
               password,
               applicationUrl,
               applicationTitle,
-              recipientName: req.body.username,
-              firstName: getFirstName(req.body.username),
+              recipientName: username,
+              firstName: getFirstName(username),
+              translations: {
+                translations: {
+                  subject: getTranslation(messages, 'subject', locale ?? 'en')
+                    .replace('{name}', getFirstName(username)),
+                  greeting: getTranslation(messages, 'greeting', locale ?? 'en')
+                    .replace('{name}', getFirstName(username)),
+                  accessInfo: getTranslation(messages, 'accessInfo', locale ?? 'en'),
+                  passwordInfo: getTranslation(messages, 'passwordInfo', locale ?? 'en'),
+                  jellyseerrInfo: getTranslation(messages, 'jellyseerrInfo', locale ?? 'en')
+                    .replace('{domain}', applicationUrl),
+                  jellyfinInfo: getTranslation(messages, 'jellyfinInfo', locale ?? 'en')
+                    .replace('{domain}', applicationUrl),
+                  openButton: getTranslation(messages, 'openButton', locale ?? 'en')
+                    .replace('{service}', 'Jellyfin'),
+                  warning: getTranslation(messages, 'warning', locale ?? 'en')
+                }
+              }
             },
           });
         } catch (e) {
@@ -662,17 +724,12 @@ router.post(
       return res.status(201).json({
         ...jellyfinUser,
         password: password,
+        locale: locale || settings.main.locale || 'en',
       });
     } catch (error) {
-      logger.error('Failed to create Jellyfin user:', error);
-      next({
-        status: 500,
-        message: 'Failed to create Jellyfin user',
-        errors: error instanceof Error ? [error.message] : undefined,
-      });
+      next(error);
     }
-  }
-);
+});
 
 router.get<{ id: string }, QuotaResponse>(
   '/:id/quota',

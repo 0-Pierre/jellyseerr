@@ -37,6 +37,8 @@ import { useToasts } from 'react-toast-notifications';
 import useSWR from 'swr';
 import * as Yup from 'yup';
 import JellyfinImportModal from './JellyfinImportModal';
+import type { AvailableLocale } from '@app/context/LanguageContext';
+import { availableLanguages } from '@app/context/LanguageContext';
 
 const messages = defineMessages('components.UserList', {
   users: 'Users',
@@ -89,6 +91,9 @@ const messages = defineMessages('components.UserList', {
   lifetime: 'Lifetime',
   active: 'Active',
   never: 'Never',
+  locale: 'User Default Language',
+  validationUsernameFormat: 'Username must be in format firstname.lastname',
+  validationUsernameRequired: 'Username is required',
 });
 
 type Sort =
@@ -239,6 +244,25 @@ const UserList = () => {
     ),
   });
 
+  const CreateJellyfinUserValidation = Yup.object().shape({
+    username: Yup.string()
+      .required(intl.formatMessage(messages.validationUsernameRequired))
+      .matches(
+        /^[a-zA-Z]+\.[a-zA-Z]+$/,
+        intl.formatMessage(messages.validationUsernameFormat)
+      ),
+    email: Yup.string().email(intl.formatMessage(messages.validationEmail)),
+    password: Yup.lazy((value) =>
+      !value
+        ? Yup.string()
+        : Yup.string().min(
+            8,
+            intl.formatMessage(messages.validationpasswordminchars)
+          )
+    ),
+    locale: Yup.string()
+  });
+
   if (!data) {
     return <LoadingSpinner />;
   }
@@ -327,6 +351,7 @@ const UserList = () => {
             email: '',
             password: '',
             genpassword: false,
+            locale: 'en' as AvailableLocale,
           }}
           validationSchema={CreateUserSchema}
           onSubmit={async (values) => {
@@ -340,6 +365,7 @@ const UserList = () => {
                   username: values.username,
                   email: values.email,
                   password: values.genpassword ? null : values.password,
+                  locale: values.locale,
                 }),
               });
               if (!res.ok) throw new Error(res.statusText, { cause: res });
@@ -502,6 +528,30 @@ const UserList = () => {
                         )}
                     </div>
                   </div>
+                  <div className="form-row">
+                    <label htmlFor="locale" className="text-label">
+                      {intl.formatMessage(messages.locale)}
+                    </label>
+                    <div className="form-input-area">
+                      <div className="form-input-field">
+                        <Field as="select" id="locale" name="locale">
+                          {(
+                            Object.keys(
+                              availableLanguages
+                            ) as (keyof typeof availableLanguages)[]
+                          ).map((key) => (
+                            <option
+                              key={key}
+                              value={availableLanguages[key].code}
+                              lang={availableLanguages[key].code}
+                            >
+                              {availableLanguages[key].display}
+                            </option>
+                          ))}
+                        </Field>
+                      </div>
+                    </div>
+                  </div>
                 </Form>
               </Modal>
             );
@@ -577,8 +627,9 @@ const UserList = () => {
             email: '',
             password: '',
             genpassword: false,
+            locale: 'en' as AvailableLocale,
           }}
-          validationSchema={CreateUserSchema}
+          validationSchema={CreateJellyfinUserValidation}
           onSubmit={async (values) => {
             try {
               const createJellyfinRes = await fetch(
@@ -592,59 +643,48 @@ const UserList = () => {
                     username: values.username,
                     email: values.email,
                     password: values.genpassword ? null : values.password,
+                    locale: values.locale,
                   }),
                 }
               );
-
-              if (!createJellyfinRes.ok) {
-                throw new Error(createJellyfinRes.statusText, {
-                  cause: createJellyfinRes,
-                });
-              }
 
               const jellyfinUser = await createJellyfinRes.json();
-              const importRes = await fetch(
-                '/api/v1/user/import-from-jellyfin',
-                {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    jellyfinUserIds: [jellyfinUser.Id],
-                    email: values.email,
-                  }),
-                }
-              );
 
-              if (!importRes.ok) {
-                throw new Error(importRes.statusText, { cause: importRes });
+              if (!jellyfinUser?.Id) {
+                throw new Error('Invalid Jellyfin user response');
               }
+
+              const importRes = await fetch('/api/v1/user/import-from-jellyfin', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  jellyfinUserIds: [jellyfinUser.Id],
+                  email: values.email,
+                  locale: values.locale,
+                }),
+              });
+
+              await importRes.json();
 
               addToast(intl.formatMessage(messages.usercreatedsuccess), {
                 appearance: 'success',
                 autoDismiss: true,
               });
+
               setCreateJellyfinModal({ isOpen: false });
+
+              values.username = '';
+              values.email = '';
+              values.password = '';
+              values.genpassword = false;
+
             } catch (e) {
-              let errorData;
-              try {
-                errorData = await e.cause?.text();
-                errorData = JSON.parse(errorData);
-              } catch {
-                /* empty */
-              }
-              addToast(
-                intl.formatMessage(
-                  errorData.errors?.includes('USER_EXISTS')
-                    ? messages.usercreatedfailedexisting
-                    : messages.usercreatedfailed
-                ),
-                {
-                  appearance: 'error',
-                  autoDismiss: true,
-                }
-              );
+              addToast(intl.formatMessage(messages.usercreatedfailed), {
+                appearance: 'error',
+                autoDismiss: true,
+              });
             }
           }}
         >
@@ -715,6 +755,31 @@ const UserList = () => {
                         typeof errors.email === 'string' && (
                           <div className="error">{errors.email}</div>
                         )}
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <label htmlFor="locale" className="text-label">
+                      {intl.formatMessage(messages.locale)}
+                      <span className="label-required">*</span>
+                    </label>
+                    <div className="form-input-area">
+                      <div className="form-input-field">
+                        <Field as="select" id="locale" name="locale">
+                          {(
+                            Object.keys(
+                              availableLanguages
+                            ) as (keyof typeof availableLanguages)[]
+                          ).map((key) => (
+                            <option
+                              key={key}
+                              value={availableLanguages[key].code}
+                              lang={availableLanguages[key].code}
+                            >
+                              {availableLanguages[key].display}
+                            </option>
+                          ))}
+                        </Field>
+                      </div>
                     </div>
                   </div>
                   <div

@@ -1,4 +1,13 @@
 {
+  "components.generatedpassword.subject": "{name}, ton compte Jellyfin a été créé.",
+  "components.generatedpassword.greeting": "Bonjour, {name}",
+  "components.generatedpassword.accessInfo": "Tu as maintenant accès à Jellyfin et Jellyseerr car ils partagent le même compte avec les identifiants suivants :",
+  "components.generatedpassword.credentials": "{username} | {password}",
+  "components.generatedpassword.passwordInfo": "Tu peux changer ton mot de passe à tout moment en visitant directement ton \"Profil\" dans Jellyfin.",
+  "components.generatedpassword.jellyseerrInfo": "Tu peux demander des films, des séries et de la musique sur Jellyseerr via le bouton ci-dessous ou {domain}",
+  "components.generatedpassword.jellyfinInfo": "Tu peux accéder à ton compte et lire des médias sur Jellyfin via le bouton ci-dessous ou {domain}",
+  "components.generatedpassword.openButton": "Ouvrir {service}",
+  "components.generatedpassword.warning": "Ton compte est strictement personnel et ne doit pas être partagé. N'hésite pas à l'utiliser autant que vous le souhaite au sein du même foyer, mai toute activité suspecte peut entraîner un bannissement permanent.",
   "components.JellyfinStreams.subscriptionExpired": "Votre abonnement a expiré, renouvelez-le pour continuer la lecture de votre média.",
   "components.JellyfinStreams.subscriptionRequired": "Vous avez besoin d'un abonnement actif pour continuer la lecture de votre média.",
   "components.JellyfinSuspiciousActivity.suspiciousActivity": "Plusieurs adresses IP ont été détectées pour votre compte. Pour des raisons de sécurité, toutes les lectures ont été interrompues.",
