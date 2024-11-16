@@ -270,49 +270,51 @@ const UserGeneralSettings = () => {
                   </div>
                 </div>
               </div>
-              <div className="form-row">
+                <div className="form-row">
                 <label className="text-label">
                   {intl.formatMessage(messages.role)}
                 </label>
                 <div className="mb-1 text-sm font-medium leading-5 text-gray-400 sm:mt-2">
                   <div className="flex max-w-lg items-center">
-                    {user?.id === 1
-                      ? intl.formatMessage(messages.owner)
-                      : hasPermission(Permission.ADMIN)
-                      ? intl.formatMessage(messages.admin)
-                      : intl.formatMessage(messages.user)}
+                  {user?.id === 1
+                    ? intl.formatMessage(messages.owner)
+                    : hasPermission(Permission.ADMIN)
+                    ? intl.formatMessage(messages.admin)
+                    : intl.formatMessage(messages.user)}
                   </div>
                 </div>
-              </div>
-              <div className="form-row">
+                </div>
+                <div className="form-row">
                 <label htmlFor="displayName" className="text-label">
                   {intl.formatMessage(messages.displayName)}
                 </label>
                 <div className="form-input-area">
                   <div className="form-input-field">
-                    <Field
-                      id="displayName"
-                      name="displayName"
-                      type="text"
-                      placeholder={
-                        user?.username ||
-                        user?.jellyfinUsername ||
-                        user?.plexUsername
-                      }
-                    />
+                  <Field
+                    id="displayName"
+                    name="displayName"
+                    type="text"
+                    style="color: rgb(170, 170, 170);"
+                    placeholder={
+                    user?.username ||
+                    user?.jellyfinUsername ||
+                    user?.plexUsername
+                    }
+                    disabled={!hasPermission(Permission.ADMIN)}
+                  />
                   </div>
                   {errors.displayName &&
-                    touched.displayName &&
-                    typeof errors.displayName === 'string' && (
-                      <div className="error">{errors.displayName}</div>
-                    )}
+                  touched.displayName &&
+                  typeof errors.displayName === 'string' && (
+                    <div className="error">{errors.displayName}</div>
+                  )}
                 </div>
-              </div>
-              <div className="form-row">
+                </div>
+                <div className="form-row">
                 <label htmlFor="email" className="text-label">
                   {intl.formatMessage(messages.email)}
                   {user?.warnings.find((w) => w === 'userEmailRequired') && (
-                    <span className="label-required">*</span>
+                  <span className="label-required">*</span>
                   )}
                 </label>
                 <div className="form-input-area">
