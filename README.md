@@ -43,7 +43,6 @@ With more features on the way! Check out our [issue tracker](https://github.com/
 - Allow users to select their display language for Jellyseerr and Jellyfin during account creation.
 - Personalize the welcome email for new users with multi-language support.
 - Develop a solution to properly terminate sessions, as the current method only closes the last opened tab/window.
-- Fix email not sent when creating Jellyfin user.
 
 ### Completed Features
 
@@ -54,6 +53,7 @@ With more features on the way! Check out our [issue tracker](https://github.com/
 - During user import, enforce a display name format (First LASTNAME) when the username is in the format first.last, and lock the ‘Display Name’ field.
 - Add username and email to the user profile.
 - Customize the kill message based on the user's display language.
+- Fix email not sent when creating Jellyfin user.
 
 ## Getting Started
 

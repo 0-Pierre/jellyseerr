@@ -27,6 +27,8 @@ import gravatarUrl from 'gravatar-url';
 import { findIndex, sortBy } from 'lodash';
 import { In } from 'typeorm';
 import userSettingsRoutes from './usersettings';
+import { default as generatePassword } from 'secure-random-password';
+import PreparedEmail from '@server/lib/email';
 
 const router = Router();
 
@@ -401,16 +403,18 @@ router.delete<{ id: string }>(
 
           await jellyfinApi.deleteUser(user.jellyfinUserId);
         } catch (e) {
-          logger.error('Failed to delete Jellyfin user', {
-            label: 'API',
-            errorMessage: e.message,
-            jellyfinUserId: user.jellyfinUserId,
-          });
-          return next({
-            status: 500,
-            message:
-              'Failed to delete user from Jellyfin. User not deleted from Jellyseerr.',
-          });
+          if (e.response?.status === 404) {
+            logger.warn('User not found in Jellyfin, continuing with local deletion', {
+              label: 'API',
+              jellyfinUserId: user.jellyfinUserId,
+            });
+          } else {
+            logger.error('Failed to delete Jellyfin user', {
+              label: 'API',
+              errorMessage: e.message,
+              jellyfinUserId: user.jellyfinUserId,
+            });
+          }
         }
       }
 
@@ -603,19 +607,54 @@ router.post(
         order: { id: 'ASC' },
       });
 
+      const password = req.body.password || generatePassword.randomPassword({ length: 16 });
+
       const jellyfinApi = new JellyfinAPI(
         getHostname(),
         settings.jellyfin.apiKey,
         admin.jellyfinDeviceId ?? ''
       );
 
-      // Create Jellyfin user
       const jellyfinUser = await jellyfinApi.createUser({
         Name: req.body.username,
-        Password: req.body.password || undefined,
+        Password: password,
       });
 
-      return res.status(201).json(jellyfinUser);
+      if (req.body.email) {
+        const { applicationTitle, applicationUrl } = settings.main;
+        try {
+          logger.info(`Sending generated password email for ${req.body.email}`, {
+            label: 'User Management',
+          });
+
+          const emailTemplatePath = '/app/dist/templates/email/generatedpassword';
+
+          const email = new PreparedEmail(settings.notifications.agents.email);
+          await email.send({
+            template: emailTemplatePath,
+            message: {
+              to: req.body.email,
+              subject: `Your New ${applicationTitle} Account`,
+            },
+            locals: {
+              password,
+              applicationUrl,
+              applicationTitle,
+              recipientName: req.body.username,
+            },
+          });
+        } catch (e) {
+          logger.error('Failed to send password email', {
+            label: 'User Management',
+            message: e.message,
+          });
+        }
+      }
+
+      return res.status(201).json({
+        ...jellyfinUser,
+        password: password,
+      });
     } catch (error) {
       logger.error('Failed to create Jellyfin user:', error);
       next({
