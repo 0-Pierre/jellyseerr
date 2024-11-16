@@ -34,21 +34,25 @@ It is a fork of [Overseerr](https://github.com/sct/overseerr) built to bring sup
 
 With more features on the way! Check out our [issue tracker](https://github.com/fallenbagel/jellyseerr/issues) to see the features which have already been requested.
 
+
 ## Custom Features
 
-- Create an user directly on Jellyfin from Jellyseerr and import it immediatly : OK
-- Delete a "Jellyfin User" will delete it from Jellyseerr and Jellyfin at the same time : OK
-- Remove popup "Jellyseerr Updated" but keep tracking of main version release : OK
-- Customize welcome mail for new users, add multilanguage support : NOT DONE
-- Add subscription system : OK
-  - Add kill switch : OK
-  - Add more information related to subscription for user : OK
-- During the user import create format schema for the display name (First LASTNAME) if user's username is first.last, and lock 'Display Name' field for the user : OK
-- Add username | mail on user profile : OK
-- Variabilize the kill message based on display language of this user : OK
-- Add french translations for all new intl variables added : NOT DONE
-- Add current plays slider : NOT DONE
-- Add possibility to setup display language for the user on Jellyseerr and Jellyfin during creation of the user.
+### Upcoming Features
+- Add French translations for all new international variables.
+- Add a current plays slider.
+- Enable setting the display language for users on Jellyseerr and Jellyfin during user creation.
+- Customize the welcome email for new users with multi-language support.
+- Find a solution to properly terminate sessions, as it currently only terminates the last opened tab/window for the user.
+
+### Completed Features
+- Create a user directly on Jellyfin from Jellyseerr and import it immediately.
+- Deleting a "Jellyfin User" will also delete it from Jellyseerr and Jellyfin simultaneously.
+- Remove the "Jellyseerr Updated" popup but keep tracking the main version release.
+- Add a subscription system with a kill switch and more information related to subscriptions for users.
+- During user import, create a format schema for the display name (First LASTNAME) if the user's username is first.last, and lock the 'Display Name' field for the user.
+- Add username and email on the user profile.
+- Customize the kill message based on the user's display language.
+
 
 ## Getting Started
 
