@@ -32,6 +32,14 @@ import PreparedEmail from '@server/lib/email';
 
 const router = Router();
 
+const getFirstName = (username: string): string => {
+  if (username && username.includes('.')) {
+    const [firstName] = username.split('.');
+    return `${firstName.charAt(0).toUpperCase()}${firstName.slice(1)}`;
+  }
+  return `${username.charAt(0).toUpperCase()}${username.slice(1)}`;
+};
+
 router.get('/', async (req, res, next) => {
   try {
     const pageSize = req.query.take ? Number(req.query.take) : 10;
@@ -634,13 +642,13 @@ router.post(
             template: emailTemplatePath,
             message: {
               to: req.body.email,
-              subject: `Your New ${applicationTitle} Account`,
             },
             locals: {
               password,
               applicationUrl,
               applicationTitle,
               recipientName: req.body.username,
+              firstName: getFirstName(req.body.username),
             },
           });
         } catch (e) {

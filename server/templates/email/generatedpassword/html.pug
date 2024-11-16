@@ -13,38 +13,53 @@ head
     @media only screen and (max-width:600px) {
     table {
     font-size: 20px !important;
-    width: 100% !important;
+    width: 55rem !important;
     }
     }
 div(style='display: block; background-color: #111827; padding: 2.5rem 0;')
-  table(style='margin: 0 auto; font-family: Inter, Arial, sans-serif; color: #fff; font-size: 16px; width: 26rem;')
+  table(style='margin: 0 auto; font-family: Inter, Arial, sans-serif; color: #fff; font-size: 16px; width: 48rem;')
     tr
-      td(style="text-align: center;")
+      td(style="text-align: center;" colspan='3')
         if applicationUrl
           a(href=applicationUrl style='margin: 0 1rem;')
-            img(src=applicationUrl +'/logo_full.png' style='width: 26rem; image-rendering: crisp-edges; image-rendering: -webkit-optimize-contrast;')
+            img(src=applicationUrl +'/jellyfin_full.png' style='width: 26rem; image-rendering: crisp-edges; image-rendering: -webkit-optimize-contrast;')
         else
           div(style='margin: 0 1rem 2.5rem; font-size: 3em; font-weight: 700;')
             | #{applicationTitle}
     if recipientName !== recipientEmail
       tr
-        td(style='text-align: center;')
-          div(style='margin: 1rem 0 0; font-size: 1.25em;')
-            | Hi, #{recipientName.replace(/\.|@/g, ((x) => x + '\ufeff'))}!
+        td(style='text-align: center;' colspan='3')
+          div(style='margin: 1rem 0 0; font-size: 1em;')
+            | Hi, #{firstName}.
     tr
-      td(style='text-align: center;')
-        div(style='margin: 1rem 0 0; font-size: 1.25em;')
-          | An account has been created for you at #{applicationTitle}.
-    tr
-      td(style='text-align: center;')
-        div(style='margin: 1rem 0 0; font-size: 1.25em;')
-          | Your password is:
-        div(style='font-size: 1.25em; font-weight: 500; line-height: 2.25em;')
+      td(style='text-align: center;' colspan='3')
+        div(style='margin: 1rem 0 0; font-size: 1em;')
+          | You now have access to Jellyfin and Jellyseerr as they sharing same account with the following credentials:
+        div(style='margin: 1rem 0 0; font-size: 1em; font-weight: 500; line-height: 2.25em;')
           span(style='padding: 0.5rem; font-weight: 500; border: 1px solid rgb(100,100,100); font-family: monospace;')
-            | #{password}
+            | #{recipientName} | #{password}
+    tr
+      td(style='text-align: center;' colspan='3')
+        div(style='margin: 1rem 0 2rem; font-size: 1em;' )
+          | You can change your password at any time by visiting your account "Profile" directly in Jellyfin.
     if applicationUrl
       tr
-        td
-          a(href=applicationUrl style='display: block; margin: 1.5rem 3rem 0; text-decoration: none; font-size: 1.0em; line-height: 2.25em;')
-            span(style='padding: 0.2rem; font-weight: 500; text-align: center; border-radius: 10px; background-color: rgb(99,102,241); color: #fff; display: block; border: 1px solid rgba(255,255,255,0.2);')
-              | Open #{applicationTitle}
+        td(style='padding: 0px 20px; text-align: center; vertical-align: top;')
+          p(style='width: 23.5rem; margin-bottom: 15px;') You can request for movies, shows and music on Jellyseerr via the button below or ******.com
+          img(src=applicationUrl +'/jellyseerr_preview_mobile.jpg' style='width: 26rem; image-rendering: crisp-edges; image-rendering: -webkit-optimize-contrast;')
+          a(href=applicationUrl style='display: block; margin: 0 auto; text-decoration: none; max-width: 200px;')
+            span(style='padding: 0.75rem; font-weight: 500; text-align: center; border-radius: 10px; background-color: rgb(99,102,241); color: #fff; display: block; border: 1px solid rgba(255,255,255,0.2);')
+              | Open Jellyseerr
+
+        td(style='width: 1px; background-color: #e5e7eb;')
+
+        td(style='padding: 0px 20px; text-align: center; vertical-align: top;')
+          p(style='width: 23.5rem; margin-bottom: 15px;') You can access your account and play media on Jellyfin via the button below or *****.com
+           img(src=applicationUrl +'/jellyfin_preview_mobile.jpg' style='width: 26rem; image-rendering: crisp-edges; image-rendering: -webkit-optimize-contrast;')
+          a(href=applicationUrl style='display: block; margin: 0 auto; text-decoration: none; max-width: 200px;')
+            span(style='padding: 0.75rem; font-weight: 500; text-align: center; border-radius: 10px; background-color: rgb(99,102,241); color: #fff; display: block; border: 1px solid rgba(255,255,255,0.2);')
+              | Open Jellyfin
+    tr
+      td(style='text-align: center;' colspan='3')
+        div(style='margin: 3rem 0 0; font-size: 0.75em;')
+          | Your account is strictly personal and should not be shared. Feel free to use it as much as you want within the same household, but be aware that any suspicious activity may result in a permanent ban.
