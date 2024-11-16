@@ -38,21 +38,20 @@ With more features on the way! Check out our [issue tracker](https://github.com/
 ## Custom Features
 
 ### Upcoming Features
-- Add French translations for all new international variables.
-- Add a current plays slider.
-- Enable setting the display language for users on Jellyseerr and Jellyfin during user creation.
-- Customize the welcome email for new users with multi-language support.
-- Find a solution to properly terminate sessions, as it currently only terminates the last opened tab/window for the user.
+- Implement French translations for all new international variables.
+- Add a slider to view current plays.
+- Allow users to select their display language for Jellyseerr and Jellyfin during account creation.
+- Personalize the welcome email for new users with multi-language support.
+- Develop a solution to properly terminate sessions, as the current method only closes the last opened tab/window.
 
 ### Completed Features
-- Create a user directly on Jellyfin from Jellyseerr and import it immediately.
-- Deleting a "Jellyfin User" will also delete it from Jellyseerr and Jellyfin simultaneously.
-- Remove the "Jellyseerr Updated" popup but keep tracking the main version release.
-- Add a subscription system with a kill switch and more information related to subscriptions for users.
-- During user import, create a format schema for the display name (First LASTNAME) if the user's username is first.last, and lock the 'Display Name' field for the user.
-- Add username and email on the user profile.
+- Enable direct user creation on Jellyfin from Jellyseerr, with immediate import.
+- Deleting a "Jellyfin User" will automatically remove them from both Jellyseerr and Jellyfin.
+- Remove the "Jellyseerr Updated" popup, while continuing to track the main version release.
+- Introduce a subscription system with a kill switch and provide users with more detailed subscription information.
+- During user import, enforce a display name format (First LASTNAME) when the username is in the format first.last, and lock the ‘Display Name’ field.
+- Add username and email to the user profile.
 - Customize the kill message based on the user's display language.
-
 
 ## Getting Started
 
