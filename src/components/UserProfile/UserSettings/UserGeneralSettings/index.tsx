@@ -615,43 +615,45 @@ const UserGeneralSettings = () => {
                     </div>
                   </div>
                 )}
-              <div className="form-row">
-                <label htmlFor="subscription" className="text-label">
+                {hasPermission(Permission.ADMIN) && (
+                <div className="form-row">
+                  <label htmlFor="subscription" className="text-label">
                   {intl.formatMessage(messages.subscription)}
-                </label>
-                <div className="form-input-area">
+                  </label>
+                  <div className="form-input-area">
                   <div className="flex max-w-lg items-center">
                     <Field
-                      type="checkbox"
-                      id="subscriptionEnabled"
-                      name="subscriptionEnabled"
-                      checked={values.subscriptionEnabled}
-                      onChange={() => {
-                        setFieldValue(
-                          'subscriptionEnabled',
-                          !values.subscriptionEnabled
-                        );
-                      }}
+                    type="checkbox"
+                    id="subscriptionEnabled"
+                    name="subscriptionEnabled"
+                    checked={values.subscriptionEnabled}
+                    onChange={() => {
+                      setFieldValue(
+                      'subscriptionEnabled',
+                      !values.subscriptionEnabled
+                      );
+                    }}
                     />
                     <div className="ml-4 flex-grow">
-                      <Field
-                        as="select"
-                        id="subscriptionType"
-                        name="subscriptionType"
-                        disabled={!values.subscriptionEnabled}
-                        className="inline"
-                      >
-                        <option value="standard">
-                          {intl.formatMessage(messages.subscriptionStandard)}
-                        </option>
-                        <option value="lifetime">
-                          {intl.formatMessage(messages.subscriptionLifetime)}
-                        </option>
-                      </Field>
+                    <Field
+                      as="select"
+                      id="subscriptionType"
+                      name="subscriptionType"
+                      disabled={!values.subscriptionEnabled}
+                      className="inline"
+                    >
+                      <option value="standard">
+                      {intl.formatMessage(messages.subscriptionStandard)}
+                      </option>
+                      <option value="lifetime">
+                      {intl.formatMessage(messages.subscriptionLifetime)}
+                      </option>
+                    </Field>
                     </div>
                   </div>
+                  </div>
                 </div>
-              </div>
+                )}
               <div className="actions">
                 <div className="flex justify-end">
                   <span className="ml-3 inline-flex rounded-md shadow-sm">

@@ -39,6 +39,7 @@ With more features on the way! Check out our [issue tracker](https://github.com/
 ### Upcoming Features
 
 - Implement French translations for all new international variables.
+- Translate existing email layout.
 - Add a slider to view current plays.
 - Allow users to select their display language for Jellyseerr and Jellyfin during account creation. : OK FOR JELLYSEERR, NEED TO CHECK IF POSSIBLE ON JELLYFIN.
 - Develop a solution to properly terminate sessions, as the current method only closes the last opened tab/window.
