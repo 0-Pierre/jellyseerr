@@ -53,7 +53,7 @@ With more features on the way! Check out our [issue tracker](https://github.com/
 - Customize the kill message based on the user's display language.
 - Fix email not sent when creating Jellyfin user.
 - Personalize the welcome email for new users with multi-language support.
-- Allow to select user display language for Jellyseerr during creation process
+- Allow to select user display language for Jellyseerr during creation process.
 
 ## Getting Started
 
