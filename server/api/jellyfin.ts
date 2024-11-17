@@ -497,7 +497,7 @@ class JellyfinAPI extends ExternalAPI {
       }
 
       await this.post<void>(`/Sessions/${sessionId}/Playing/Stop`);
-      await this.post<void>(`/Sessions/${sessionId}/System/GoHome`);
+      //await this.post<void>(`/Sessions/${sessionId}/System/GoHome`);
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       if (message) {

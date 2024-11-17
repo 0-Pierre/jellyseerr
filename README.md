@@ -41,8 +41,6 @@ With more features on the way! Check out our [issue tracker](https://github.com/
 - Implement French translations for all new international variables.
 - Translate existing email layout.
 - Add a slider to view current plays.
-- Allow users to select their display language for Jellyseerr and Jellyfin during account creation. : OK FOR JELLYSEERR, NEED TO CHECK IF POSSIBLE ON JELLYFIN.
-- Develop a solution to properly terminate sessions, as the current method only closes the last opened tab/window.
 
 ### Completed Features
 
@@ -55,6 +53,7 @@ With more features on the way! Check out our [issue tracker](https://github.com/
 - Customize the kill message based on the user's display language.
 - Fix email not sent when creating Jellyfin user.
 - Personalize the welcome email for new users with multi-language support.
+- Allow to select user display language for Jellyseerr during creation process
 
 ## Getting Started
 

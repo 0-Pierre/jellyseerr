@@ -79,7 +79,7 @@ const messages: { [messageName: string]: MessageDescriptor } = defineMessages(
     editJobScheduleSelectorMinutes:
       'Every {jobScheduleMinutes, plural, one {minute} other {{jobScheduleMinutes} minutes}}',
     editJobScheduleSelectorSeconds:
-      'Every {jobScheduleSeconds, plural, one {second} other {{jobScheduleSeconds} seconds}}',
+    'Every {scheduleSeconds, plural, one {second} other {{scheduleSeconds} seconds}}',
     imagecache: 'Image Cache',
     imagecacheDescription:
       'When enabled in settings, Jellyseerr will proxy and cache images from pre-configured external sources. Cached images are saved into your config folder. You can find the files in <code>{appDataPath}/cache/images</code>.',
@@ -350,13 +350,11 @@ const SettingsJobs = () => {
                         })
                       }
                     >
-                      {[30, 45, 60].map((v) => (
+                      {[5, 10, 20, 30, 45, 60].map((v) => (
                         <option value={v} key={`jobScheduleSeconds-${v}`}>
                           {intl.formatMessage(
                             messages.editJobScheduleSelectorSeconds,
-                            {
-                              jobScheduleSeconds: v,
-                            }
+                            { scheduleSeconds: v }
                           )}
                         </option>
                       ))}
