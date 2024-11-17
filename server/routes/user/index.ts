@@ -39,14 +39,17 @@ import {
 
 const messages = defineBackendMessages('components.generatedpassword', {
   subject: '{name}, your Jellyfin account has been created.',
-  greeting: 'Hi, {name}',
+  greeting: 'Hi, {name}.',
   accessInfo: 'You now have access to Jellyfin and Jellyseerr as they sharing same account with the following credentials:',
   credentials: '{username} | {password}',
   passwordInfo: 'You can change your password at any time by visiting your account "Profile" directly in Jellyfin.',
-  jellyseerrInfo: 'You can request for movies, shows and music on Jellyseerr via the button below or {domain}',
-  jellyfinInfo: 'You can access your account and play media on Jellyfin via the button below or {domain}',
+  jellyseerrInfo: 'You can request for movies, shows and music on Jellyseerr via the button below or with {domain}',
+  jellyfinInfo: 'You can access your account and play media on Jellyfin via the button below or with {jellyfinUrl}',
   openButton: 'Open {service}',
-  warning: 'Your account is strictly personal and should not be shared. Feel free to use it as much as you want within the same household, but be aware that any suspicious activity may result in a permanent ban.'
+  warning: 'Your account is strictly personal and should not be shared. Feel free to use it as much as you want within the same household, but be aware that any suspicious activity may result in a permanent ban.',
+  openJellyseerr: 'Open {applicationTitle}',
+  openJellyfin: 'Open {jellyfinName}',
+  downloads: 'Jellyfin is available for free on the following platforms, the Samsung app should be available shortly:',
 });
 
 interface CreateJellyfinUserRequest {
@@ -655,6 +658,9 @@ router.post('/jellyfinuser',
       const password = userPassword || generatePassword.randomPassword();
 
       const settings = getSettings();
+      const protocol = settings.jellyfin.useSsl ? 'https' : 'http';
+      const jellyfinUrl = `${protocol}://${settings.jellyfin.ip}`;
+
       const userRepository = getRepository(User);
       const admin = await userRepository.findOneOrFail({
         where: { id: 1 },
@@ -691,25 +697,27 @@ router.post('/jellyfinuser',
             locals: {
               password,
               applicationUrl,
+              jellyfinUrl,
               applicationTitle,
               recipientName: username,
               firstName: getFirstName(username),
               translations: {
-                translations: {
-                  subject: getTranslation(messages, 'subject', locale ?? 'en')
-                    .replace('{name}', getFirstName(username)),
-                  greeting: getTranslation(messages, 'greeting', locale ?? 'en')
-                    .replace('{name}', getFirstName(username)),
-                  accessInfo: getTranslation(messages, 'accessInfo', locale ?? 'en'),
-                  passwordInfo: getTranslation(messages, 'passwordInfo', locale ?? 'en'),
-                  jellyseerrInfo: getTranslation(messages, 'jellyseerrInfo', locale ?? 'en')
-                    .replace('{domain}', applicationUrl),
-                  jellyfinInfo: getTranslation(messages, 'jellyfinInfo', locale ?? 'en')
-                    .replace('{domain}', applicationUrl),
-                  openButton: getTranslation(messages, 'openButton', locale ?? 'en')
-                    .replace('{service}', 'Jellyfin'),
-                  warning: getTranslation(messages, 'warning', locale ?? 'en')
-                }
+                subject: getTranslation(messages, 'subject', locale ?? 'en')
+                  .replace('{name}', getFirstName(username)),
+                greeting: getTranslation(messages, 'greeting', locale ?? 'en')
+                  .replace('{name}', getFirstName(username)),
+                accessInfo: getTranslation(messages, 'accessInfo', locale ?? 'en'),
+                passwordInfo: getTranslation(messages, 'passwordInfo', locale ?? 'en'),
+                jellyseerrInfo: getTranslation(messages, 'jellyseerrInfo', locale ?? 'en')
+                  .replace('{domain}', applicationUrl),
+                jellyfinInfo: getTranslation(messages, 'jellyfinInfo', locale ?? 'en')
+                  .replace('{jellyfinUrl}', jellyfinUrl),
+                openJellyseerr: getTranslation(messages, 'openJellyseerr', locale ?? 'en')
+                  .replace('{applicationTitle}', applicationTitle),
+                openJellyfin: getTranslation(messages, 'openJellyfin', locale ?? 'en')
+                  .replace('{jellyfinName}', settings.jellyfin.name || 'Jellyfin'),
+                downloads: getTranslation(messages, 'downloads', locale ?? 'en'),
+                warning: getTranslation(messages, 'warning', locale ?? 'en')
               }
             },
           });

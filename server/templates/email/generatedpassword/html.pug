@@ -13,7 +13,7 @@ head
     @media only screen and (max-width:600px) {
     table {
     font-size: 20px !important;
-    width: 55rem !important;
+    width: 100%!important;
     }
     }
 div(style='display: block; background-color: #111827; padding: 2.5rem 0;')
@@ -22,7 +22,7 @@ div(style='display: block; background-color: #111827; padding: 2.5rem 0;')
       td(style="text-align: center;" colspan='3')
         if applicationUrl
           a(href=applicationUrl style='margin: 0 1rem;')
-            img(src=applicationUrl +'/jellyfin_full.png' style='width: 26rem; image-rendering: crisp-edges; image-rendering: -webkit-optimize-contrast;')
+            img(src=applicationUrl +'/jellyfin_full.png' style='width: 20rem; image-rendering: crisp-edges; image-rendering: -webkit-optimize-contrast;')
         else
           div(style='margin: 0 1rem 2.5rem; font-size: 3em; font-weight: 700;')
             | #{applicationTitle}
@@ -45,21 +45,38 @@ div(style='display: block; background-color: #111827; padding: 2.5rem 0;')
     if applicationUrl
       tr
         td(style='padding: 0px 20px; text-align: center; vertical-align: top;')
-          p(style='width: 23.5rem; margin-bottom: 15px;') #{translations.jellyseerrInfo}
-          img(src=applicationUrl +'/jellyseerr_preview_mobile.jpg' style='width: 26rem; image-rendering: crisp-edges; image-rendering: -webkit-optimize-contrast;')
+          p(style='width: 23.5rem; margin-bottom: 15px; ') #{translations.jellyseerrInfo}
+          img(src=applicationUrl +'/jellyseerr_preview_mobile.jpg' style='width: 10rem; image-rendering: crisp-edges; image-rendering: -webkit-optimize-contrast; margin-bottom: 15px; border-radius: 10px;')
           a(href=applicationUrl style='display: block; margin: 0 auto; text-decoration: none; max-width: 200px;')
             span(style='padding: 0.75rem; font-weight: 500; text-align: center; border-radius: 10px; background-color: rgb(99,102,241); color: #fff; display: block; border: 1px solid rgba(255,255,255,0.2);')
-              | Open Jellyseerr
+              | #{translations.openJellyseerr}
 
         td(style='width: 1px; background-color: #e5e7eb;')
 
         td(style='padding: 0px 20px; text-align: center; vertical-align: top;')
           p(style='width: 23.5rem; margin-bottom: 15px;') #{translations.jellyfinInfo}
-           img(src=applicationUrl +'/jellyfin_preview_mobile.jpg' style='width: 26rem; image-rendering: crisp-edges; image-rendering: -webkit-optimize-contrast;')
-          a(href=applicationUrl style='display: block; margin: 0 auto; text-decoration: none; max-width: 200px;')
+          img(src=applicationUrl +'/jellyfin_preview_mobile.jpg' style='width: 10rem; image-rendering: crisp-edges; image-rendering: -webkit-optimize-contrast; margin-bottom: 15px; border-radius: 10px;')
+          a(href=jellyfinUrl style='display: block; margin: 0 auto; text-decoration: none; max-width: 200px;')
             span(style='padding: 0.75rem; font-weight: 500; text-align: center; border-radius: 10px; background-color: rgb(99,102,241); color: #fff; display: block; border: 1px solid rgba(255,255,255,0.2);')
-              | Open Jellyfin
+              | #{translations.openJellyfin}
     tr
       td(style='text-align: center;' colspan='3')
         div(style='margin: 3rem 0 0; font-size: 0.75em;')
+          | #{translations.downloads}
+        div(style='margin: 1rem auto; max-width: 600px; font-size: 0.75em;')
+          div(style='display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap;')
+            a(href='https://play.google.com/store/apps/details?id=org.jellyfin.mobile' style='color: #fff; text-decoration: none;') Android
+            span(style='color: #FFF; margin: 0px 5px') |
+            a(href='https://play.google.com/store/apps/details?id=org.jellyfin.androidtv' style='color: #fff; text-decoration: none;') Android TV
+            span(style='color: #FFF; margin: 0px 5px') |
+            a(href='https://www.amazon.com/gp/aw/d/B081RFTTQ9' style='color: #fff; text-decoration: none;') Amazon Fire TV
+            span(style='color: #FFF; margin: 0px 5px') |
+            a(href='https://apps.apple.com/us/app/jellyfin-mobile/id1480192618?mt=8' style='color: #fff; text-decoration: none;') iOS
+            span(style='color: #FFF; margin: 0px 5px') |
+            a(href='https://apps.apple.com/ca/app/swiftfin/id1604098728' style='color: #fff; text-decoration: none;') Apple TV
+            span(style='color: #FFF; margin: 0px 5px') |
+            a(href='https://us.lgappstv.com/main/tvapp/detail?appId=1030579' style='color: #fff; text-decoration: none;') LG webOS
+    tr
+      td(style='text-align: center;' colspan='3')
+        div(style='margin: 1rem 0 0; font-size: 0.75em;')
           | #{translations.warning}
