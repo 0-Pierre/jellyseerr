@@ -9,8 +9,7 @@ import {
 } from '@server/utils/backendMessages';
 
 const messages = defineBackendMessages('components.JellyfinStreams', {
-  subscriptionExpired:
-    'Your subscription has expired, renew it to continue playing.',
+  subscriptionExpired: 'Your subscription has expired, renew it by sending ${settings.main.subscriptionPrice} € to ${settings.main.adminEmail} on PayPal to continue playing.',
   subscriptionRequired: 'You need an active subscription to continue playing.',
 });
 

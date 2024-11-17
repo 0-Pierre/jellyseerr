@@ -872,6 +872,8 @@
   "components.Settings.SettingsMain.apikey": "API Key",
   "components.Settings.SettingsMain.applicationTitle": "Application Title",
   "components.Settings.SettingsMain.applicationurl": "Application URL",
+  "components.Settings.SettingsMain.validationAdminEmail": "You must provide a valid email address",
+  "components.Settings.SettingsMain.validationSubscriptionPrice": "Price must be a positive number",
   "components.Settings.SettingsMain.cacheImages": "Enable Image Caching",
   "components.Settings.SettingsMain.cacheImagesTip": "Cache externally sourced images (requires a significant amount of disk space)",
   "components.Settings.SettingsMain.csrfProtection": "Enable CSRF Protection",

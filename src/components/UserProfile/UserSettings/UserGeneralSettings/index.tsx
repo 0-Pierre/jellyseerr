@@ -615,7 +615,7 @@ const UserGeneralSettings = () => {
                     </div>
                   </div>
                 )}
-                {hasPermission(Permission.ADMIN) && (
+                {currentHasPermission(Permission.ADMIN) && (
                 <div className="form-row">
                   <label htmlFor="subscription" className="text-label">
                   {intl.formatMessage(messages.subscription)}

@@ -66,6 +66,13 @@ const messages = defineMessages('components.Settings.SettingsMain', {
     "Use ',' as a separator, and '*.' as a wildcard for subdomains",
   proxyBypassLocalAddresses: 'Bypass Proxy for Local Addresses',
   validationProxyPort: 'You must provide a valid port',
+  adminEmail: 'Admin Email',
+  adminEmailTip: 'Enter the admin email address',
+  subscriptionPrice: 'Subscription Price',
+  subscriptionPriceTip: 'Enter the subscription price without the currency symbol',
+  validationAdminEmail: 'You must provide a valid email address',
+  validationSubscriptionPrice: 'Subscription price must be a positive number',
+  validationSubscriptionPriceEmpty: 'Subscription price is required',
 });
 
 const SettingsMain = () => {
@@ -99,6 +106,12 @@ const SettingsMain = () => {
         intl.formatMessage(messages.validationProxyPort)
       ),
     }),
+    adminEmail: Yup.string()
+      .email(intl.formatMessage(messages.validationAdminEmail))
+      .required(intl.formatMessage(messages.validationAdminEmail)),
+    subscriptionPrice: Yup.number()
+      .min(0, intl.formatMessage(messages.validationSubscriptionPrice))
+      .required(intl.formatMessage(messages.validationSubscriptionPriceEmpty))
   });
 
   const regenerate = async () => {
@@ -162,6 +175,8 @@ const SettingsMain = () => {
             proxyPassword: data?.proxy?.password,
             proxyBypassFilter: data?.proxy?.bypassFilter,
             proxyBypassLocalAddresses: data?.proxy?.bypassLocalAddresses,
+            adminEmail: data?.adminEmail,
+            subscriptionPrice: data?.subscriptionPrice,
           }}
           enableReinitialize
           validationSchema={MainSettingsSchema}
@@ -193,6 +208,8 @@ const SettingsMain = () => {
                     bypassFilter: values.proxyBypassFilter,
                     bypassLocalAddresses: values.proxyBypassLocalAddresses,
                   },
+                  adminEmail: values.adminEmail,
+                  subscriptionPrice: values.subscriptionPrice,
                 }),
               });
               if (!res.ok) throw new Error();
@@ -299,6 +316,53 @@ const SettingsMain = () => {
                       typeof errors.applicationUrl === 'string' && (
                         <div className="error">{errors.applicationUrl}</div>
                       )}
+                  </div>
+                </div>
+                <div className="form-row">
+                  <label htmlFor="adminEmail" className="text-label">
+                    {intl.formatMessage(messages.adminEmail)}
+                    <span className="label-tip">
+                      {intl.formatMessage(messages.adminEmailTip)}
+                    </span>
+                  </label>
+                  <div className="form-input-area">
+                    <div className="form-input-field">
+                      <Field
+                        type="text"
+                        id="adminEmail"
+                        name="adminEmail"
+                      />
+                    </div>
+                    {errors.adminEmail &&
+                      touched.adminEmail &&
+                      typeof errors.adminEmail === 'string' && (
+                        <div className="error">{errors.adminEmail}</div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <label htmlFor="subscriptionPrice" className="text-label">
+                    {intl.formatMessage(messages.subscriptionPrice)}
+                    <span className="label-tip">
+                      {intl.formatMessage(messages.subscriptionPriceTip)}
+                    </span>
+                  </label>
+                  <div className="form-input-area">
+                    <div className="form-input-field">
+                      <Field
+                        type="text"
+                        min="0"
+                        step="0.01"
+                        id="subscriptionPrice"
+                        name="subscriptionPrice"
+                      />
+                    </div>
+                    {errors.subscriptionPrice &&
+                      touched.subscriptionPrice &&
+                      typeof errors.subscriptionPrice === 'string' && (
+                        <div className="error">{errors.subscriptionPrice}</div>
+                    )}
                   </div>
                 </div>
                 <div className="form-row">

@@ -131,6 +131,8 @@ export interface MainSettings {
   partialRequestsEnabled: boolean;
   locale: string;
   proxy: ProxySettings;
+  adminEmail: string;
+  subscriptionPrice: number;
 }
 
 interface PublicSettings {
@@ -350,6 +352,8 @@ class Settings {
           bypassFilter: '',
           bypassLocalAddresses: true,
         },
+        adminEmail: '',
+        subscriptionPrice: 0,
       },
       plex: {
         name: '',
