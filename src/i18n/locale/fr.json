@@ -1319,6 +1319,7 @@
   "components.TvDetails.seasonstitle": "Saisons",
   "components.TvDetails.status4k": "{status} 4K",
   "components.TvDetails.tmdbuserscore": "Score utilisateur sur TMDB",
+  "components.UserList.createjellyfinuser": "Créer un utilisateur Jellyfin",
   "components.UserList.importfromJellyfin": "Importer les utilisateurs de {mediaServerName}",
   "components.UserList.importfromJellyfinerror": "Une erreur est survenue lors de l'importation des utilisateurs de {mediaServerName}.",
   "components.UserList.importfrommediaserver": "Importer les utilisateurs de {mediaServerName}",
