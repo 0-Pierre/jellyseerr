@@ -10,6 +10,7 @@ import MovieGenreSlider from '@app/components/Discover/MovieGenreSlider';
 import NetworkSlider from '@app/components/Discover/NetworkSlider';
 import PlexWatchlistSlider from '@app/components/Discover/PlexWatchlistSlider';
 import RecentlyAddedSlider from '@app/components/Discover/RecentlyAddedSlider';
+import JellyfinSessionsSlider from '@app/components/Discover/JellyfinSessionsSlider';
 import RecentRequestsSlider from '@app/components/Discover/RecentRequestsSlider';
 import StudioSlider from '@app/components/Discover/StudioSlider';
 import TvGenreSlider from '@app/components/Discover/TvGenreSlider';
@@ -221,6 +222,9 @@ const Discover = () => {
         switch (slider.type) {
           case DiscoverSliderType.RECENTLY_ADDED:
             sliderComponent = <RecentlyAddedSlider />;
+            break;
+          case DiscoverSliderType.JELLYFIN_SESSIONS:
+            sliderComponent = <JellyfinSessionsSlider />;
             break;
           case DiscoverSliderType.RECENT_REQUESTS:
             sliderComponent = <RecentRequestsSlider />;

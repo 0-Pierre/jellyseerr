@@ -9,6 +9,7 @@ import { getRepository } from '@server/datasource';
 import DiscoverSlider from '@server/entity/DiscoverSlider';
 import { Permission } from '@server/lib/permissions';
 import { getSettings } from '@server/lib/settings';
+import jellyfinRoutes from '@server/lib/jellyfin';
 import logger from '@server/logger';
 import { checkUser, isAuthenticated } from '@server/middleware/auth';
 import { mapWatchProviderDetails } from '@server/models/common';
@@ -139,6 +140,7 @@ router.use('/service', isAuthenticated(), serviceRoutes);
 router.use('/issue', isAuthenticated(), issueRoutes);
 router.use('/issueComment', isAuthenticated(), issueCommentRoutes);
 router.use('/auth', authRoutes);
+router.use('/jellyfin', isAuthenticated(), jellyfinRoutes);
 
 router.get('/regions', isAuthenticated(), async (req, res, next) => {
   const tmdb = new TheMovieDb();

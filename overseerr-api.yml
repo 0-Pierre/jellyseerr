@@ -40,6 +40,8 @@ tags:
     description: Collection of media to watch later
   - name: blacklist
     description: Blacklisted media from discovery page.
+  - name: jellyfin
+    description: Endpoints related to Jellyfin integration and playback sessions.
 servers:
   - url: '{server}/api/v1'
     variables:
@@ -48,6 +50,61 @@ servers:
 
 components:
   schemas:
+    JellyfinSession:
+      type: object
+      properties:
+        Id:
+          type: string
+        UserId:
+          type: string
+        UserName:
+          type: string
+        Client:
+          type: string
+        DeviceId:
+          type: string
+        ApplicationVersion:
+          type: string
+        RemoteEndPoint:
+          type: string
+        PlayState:
+          type: object
+          properties:
+            PositionTicks:
+              type: number
+            CanSeek:
+              type: boolean
+            IsPaused:
+              type: boolean
+            IsMuted:
+              type: boolean
+            VolumeLevel:
+              type: number
+            AudioStreamIndex:
+              type: number
+            SubtitleStreamIndex:
+              type: number
+            PlayMethod:
+              type: string
+        NowPlayingItem:
+          type: object
+          properties:
+            Id:
+              type: string
+            Name:
+              type: string
+            Type:
+              type: string
+            MediaType:
+              type: string
+            RunTimeTicks:
+              type: number
+            BackdropImageTags:
+              type: array
+              items:
+                type: string
+            PrimaryImageTag:
+              type: string
     JellyfinUser:
       type: object
       required:
@@ -1966,6 +2023,25 @@ components:
       name: X-Api-Key
 
 paths:
+  /jellyfin/sessions:
+    get:
+      tags:
+        - jellyfin
+      summary: Gets all active Jellyfin sessions
+      description: Returns a list of current active playback sessions from Jellyfin
+      responses:
+        '200':
+          description: List of active Jellyfin sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/JellyfinSession'
+        '404':
+          description: Jellyfin not configured
+        '500':
+          description: Failed to fetch sessions from Jellyfin
   /user/jellyfinuser:
     post:
       summary: Create new Jellyfin user
@@ -3825,7 +3901,16 @@ paths:
           name: sort
           schema:
             type: string
-            enum: [created, updated, requests, displayname, subscriptionStatus, subscriptionExpirationDate, suspiciousActivityCount]
+            enum:
+              [
+                created,
+                updated,
+                requests,
+                displayname,
+                subscriptionStatus,
+                subscriptionExpirationDate,
+                suspiciousActivityCount,
+              ]
             default: created
       responses:
         '200':
