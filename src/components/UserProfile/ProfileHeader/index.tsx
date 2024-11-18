@@ -14,8 +14,8 @@ const messages = defineMessages('components.UserProfile.ProfileHeader', {
   userid: 'User ID: {userid}',
   noSubscription: 'No Subscription',
   lifetimeSubscription: 'Lifetime Subscription',
-  subscriptionExpired: 'Your Subscription Has Expired on {subscriptionExpirationDate}',
-  subscriptionExpiresOn: 'Subscription Expires On {subscriptionExpirationDate}',
+  subscriptionExpired: 'Subscription Expired on {subscriptionExpirationDate}',
+  subscriptionExpiresOn: 'Subscribed Until {subscriptionExpirationDate}',
 });
 
 interface ProfileHeaderProps {
