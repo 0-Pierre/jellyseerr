@@ -40,6 +40,13 @@ interface JellyfinSessionCardProps {
       ProviderIds?: {
         Tmdb?: string;
       };
+      ParentId?: string;
+      AlbumPrimaryImageTag?: string;
+      SeriesId?: string;
+      SeriesBackdropImageTags?: string[];
+      ParentBackdropImageTags?: string[];
+      IndexNumber?: number;
+      ParentIndexNumber?: number;
     };
     PlayState: {
       PositionTicks: number;
@@ -66,9 +73,35 @@ const JellyfinSessionCard = ({ session }: JellyfinSessionCardProps) => {
   const settings = useSettings();
 
   const protocol = settings.currentSettings.jellyfinSsl ? 'https' : 'http';
-  const baseUrl = `${protocol}://${settings.currentSettings.jellyfinHostname}:${settings.currentSettings.jellyfinPort}${settings.currentSettings.jellyfinBaseUrl || ''}`;
+  const baseUrl = `${protocol}://${settings.currentSettings.jellyfinHostname}${settings.currentSettings.jellyfinBaseUrl || ''}`;
 
-  const imageUrl = `${baseUrl}/Items/${session.NowPlayingItem.Id}/Images/Backdrop?maxWidth=384&tag=${session.NowPlayingItem.BackdropImageTags?.[0]}&quality=100`;
+  const isMusic = session.NowPlayingItem.Type.toLowerCase() === 'audio';
+  const isTvShow = session.NowPlayingItem.Type.toLowerCase() === 'episode';
+
+  const getImageInfo = () => {
+    if (isMusic) {
+      return {
+        id: session.NowPlayingItem.ParentId,
+        type: 'Primary',
+        tag: session.NowPlayingItem.AlbumPrimaryImageTag || session.NowPlayingItem.PrimaryImageTag
+      };
+    }
+    if (isTvShow) {
+      return {
+        id: session.NowPlayingItem.SeriesId,
+        type: 'Backdrop',
+        tag: session.NowPlayingItem.SeriesBackdropImageTags?.[0] || session.NowPlayingItem.ParentBackdropImageTags?.[0]
+      };
+    }
+    return {
+      id: session.NowPlayingItem.Id,
+      type: 'Backdrop',
+      tag: session.NowPlayingItem.BackdropImageTags?.[0]
+    };
+  };
+
+  const { id, type, tag } = getImageInfo();
+  const imageUrl = tag ? `${baseUrl}/Items/${id}/Images/${type}?maxWidth=384&tag=${tag}&quality=100` : '';
 
   const [currentPosition, setCurrentPosition] = useState(
     Math.floor(session.PlayState.PositionTicks / 10_000_000)
@@ -110,16 +143,24 @@ const JellyfinSessionCard = ({ session }: JellyfinSessionCardProps) => {
     return <div ref={ref}><JellyfinSessionCardPlaceholder /></div>;
   }
 
-  const mediaUrl = tmdbData?.id
-    ? `/${session.NowPlayingItem.Type.toLowerCase()}/${tmdbData.id}`
-    : undefined;
+  const getMediaUrl = () => {
+    if (!tmdbData?.id) return undefined;
+
+    const mediaType = session.NowPlayingItem.Type.toLowerCase() === 'episode'
+      ? 'tv'
+      : 'movie';
+
+    return `/${mediaType}/${tmdbData.id}`;
+  };
+
+  const mediaUrl = getMediaUrl();
 
   return (
     <div
       className="relative flex w-72 overflow-hidden rounded-xl bg-gray-800 bg-cover bg-center p-4 text-gray-400 shadow ring-1 ring-gray-700 sm:w-96"
       data-testid="jellyfin-card"
     >
-      <div className="absolute" style={{ backgroundImage: 'top: -50px; left: 0p;' }}>
+      <div className="absolute" style={{ top: -50, left: 0 }}>
         <CachedImage
           type="tmdb"
           className="position: absolute; height: 100%; width: 100%; inset: 0px; object-fit: cover; color: transparent;"
@@ -144,6 +185,16 @@ const JellyfinSessionCard = ({ session }: JellyfinSessionCardProps) => {
             session.NowPlayingItem.Name
           )}
         </Link>
+
+        {isTvShow && (
+          <div>
+            {session.NowPlayingItem.ParentIndexNumber && session.NowPlayingItem.IndexNumber
+              ? `S${session.NowPlayingItem.ParentIndexNumber}:E${session.NowPlayingItem.IndexNumber} - `
+              : ''
+            }
+            {session.NowPlayingItem.Name}
+          </div>
+        )}
 
         {session.jellyseerrUser && (
           <div className="card-field">
