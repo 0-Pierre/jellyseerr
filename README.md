@@ -38,7 +38,6 @@ With more features on the way! Check out our [issue tracker](https://github.com/
 
 ### Upcoming Features
 
-- Implement French translations for all new international variables.
 - Translate existing email layout.
 - Add a slider to view current plays.
 
@@ -54,6 +53,7 @@ With more features on the way! Check out our [issue tracker](https://github.com/
 - Fix email not sent when creating Jellyfin user.
 - Personalize the welcome email for new users with multi-language support.
 - Allow to select user display language for Jellyseerr during creation process.
+- Implement French translations for all new international variables.
 
 ## Getting Started
 
