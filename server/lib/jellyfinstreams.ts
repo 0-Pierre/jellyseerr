@@ -9,7 +9,7 @@ import {
 } from '@server/utils/backendMessages';
 
 const messages = defineBackendMessages('components.JellyfinStreams', {
-  subscriptionExpired: 'Your yearly subscription has expired, renew it by sending ${settings.main.subscriptionPrice} € to ${settings.main.adminEmail} on PayPal to continue playing.',
+  subscriptionExpired: 'Your yearly subscription has expired, renew it by sending {subscriptionPrice} € to {adminEmail} on PayPal to continue playing.',
   subscriptionRequired: 'You need an active subscription to continue playing.',
 });
 
@@ -61,11 +61,10 @@ const jellyfinStreams = {
           user.subscriptionStatus !== 'lifetime'
         ) {
           try {
-            const message = getTranslation(
-              messages,
-              'subscriptionExpired',
-              userLocale
-            );
+            const rawMessage = getTranslation(messages, 'subscriptionExpired', userLocale);
+            const message = rawMessage
+              .replace('{subscriptionPrice}', settings.main.subscriptionPrice.toString())
+              .replace('{adminEmail}', settings.main.adminEmail);
             await jellyfin.stopSession(session.Id, message);
           } catch (error) {
             logger.error('Failed to stop session', { error });

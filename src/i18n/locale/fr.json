@@ -10,7 +10,7 @@
   "components.generatedpassword.openJellyfin": "Ouvrir Jellyfin",
   "components.generatedpassword.downloads": "Jellyfin est disponible gratuitement sur les plateformes suivantes, l'application pour Samsung devrait être disponible sous peu :",
   "components.generatedpassword.warning": "Ton compte est strictement personnel et ne doit pas être partagé. N'hésite pas à l'utiliser autant que vous le souhaite au sein du même foyer, mais toute activité suspecte peut entraîner un bannissement permanent.",
-  "components.JellyfinStreams.subscriptionExpired": "Ton abonnement annuel a expiré, renouvelez-le en envoyant ${settings.main.subscriptionPrice} € à ${settings.main.adminEmail} sur PayPal pour continuer la lecture de votre média.",
+  "components.JellyfinStreams.subscriptionExpired": "Ton abonnement annuel est expiré, renouvelez-le en envoyant {subscriptionPrice} € à {adminEmail} sur PayPal pour continuer la lecture de ton média.",
   "components.JellyfinStreams.subscriptionRequired": "Tu as besoin d'un abonnement actif pour continuer la lecture de ton média.",
   "components.JellyfinSuspiciousActivity.suspiciousActivity": "Plusieurs adresses IP ont été détectées pour votre compte. Pour des raisons de sécurité, toutes les lectures ont été interrompues.",
   "components.AirDateBadge.airedrelative": "Diffusé {relativeTime}",
