@@ -27,6 +27,10 @@ export interface PublicSettingsResponse {
   jellyfinExternalHost?: string;
   jellyfinServerName?: string;
   jellyfinForgotPasswordUrl?: string;
+  jellyfinSsl?: boolean;
+  jellyfinHostname?: string;
+  jellyfinPort?: number;
+  jellyfinBaseUrl?: string;
   initialized: boolean;
   applicationTitle: string;
   applicationUrl: string;

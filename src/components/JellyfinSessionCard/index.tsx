@@ -65,7 +65,8 @@ const JellyfinSessionCard = ({ session }: JellyfinSessionCardProps) => {
   });
   const settings = useSettings();
 
-  const baseUrl = settings.currentSettings.jellyfinHost
+  const protocol = settings.currentSettings.jellyfinSsl ? 'https' : 'http';
+  const baseUrl = `${protocol}://${settings.currentSettings.jellyfinHostname}:${settings.currentSettings.jellyfinPort}${settings.currentSettings.jellyfinBaseUrl || ''}`;
 
   const imageUrl = `${baseUrl}/Items/${session.NowPlayingItem.Id}/Images/Backdrop?maxWidth=384&tag=${session.NowPlayingItem.BackdropImageTags?.[0]}&quality=100`;
 
@@ -125,7 +126,7 @@ const JellyfinSessionCard = ({ session }: JellyfinSessionCardProps) => {
           src={imageUrl}
           alt=""
         />
-        <div className="absolute inset-0" style="background-image: linear-gradient(135deg, rgba(17, 24, 39, 0.47) 0%, rgb(17, 24, 39) 75%);" />
+        <div className="absolute inset-0" style={{ backgroundImage: 'linear-gradient(135deg, rgba(17, 24, 39, 0.47) 0%, rgb(17, 24, 39) 75%)' }} />
       </div>
       <div
         className="relative z-10 flex min-w-0 flex-1 flex-col pr-4"

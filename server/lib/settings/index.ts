@@ -160,6 +160,10 @@ interface FullPublicSettings extends PublicSettings {
   emailEnabled: boolean;
   userEmailRequired: boolean;
   newPlexLogin: boolean;
+  jellyfinSsl: boolean;
+  jellyfinHostname: string;
+  jellyfinPort: number;
+  jellyfinBaseUrl: string;
 }
 
 export interface NotificationAgentConfig {
@@ -575,6 +579,10 @@ class Settings {
   get fullPublicSettings(): FullPublicSettings {
     return {
       ...this.data.public,
+      jellyfinSsl: this.data.jellyfin?.useSsl ?? false,
+      jellyfinHostname: this.data.jellyfin?.ip ?? '',
+      jellyfinPort: this.data.jellyfin?.port ?? 8096,
+      jellyfinBaseUrl: this.data.jellyfin?.urlBase ?? '',
       applicationTitle: this.data.main.applicationTitle,
       applicationUrl: this.data.main.applicationUrl,
       hideAvailable: this.data.main.hideAvailable,
