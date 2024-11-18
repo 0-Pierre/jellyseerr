@@ -852,7 +852,7 @@ const UserList = () => {
               <span>{intl.formatMessage(messages.createlocaluser)}</span>
             </Button>
             <Button
-              className="flex-grow lg:mr-2"
+              className="mb-2 flex-grow sm:mb-0 sm:mr-2"
               buttonType="primary"
               onClick={() => setCreateJellyfinModal({ isOpen: true })}
             >
