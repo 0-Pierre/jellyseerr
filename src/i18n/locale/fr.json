@@ -1234,6 +1234,8 @@
   "components.Settings.SettingsMain.validationAdminEmail": "Vous devez fournir une adresse e-mail valide",
   "components.Settings.SettingsMain.validationSubscriptionPrice": "Le prix doit être positif",
   "components.Settings.SettingsMain.validationSubscriptionPriceEmpty": "Vous devez fournir un prix d'abonnement",
+  "components.Settings.SettingsMain.adminEmail": "Adresse e-mail de l'administrateur",
+  "components.Settings.SettingsMain.adminEmailTip": "Renseigner une adresse email",
   "components.TvDetails.Season.noepisodes": "Liste des épisodes non disponible.",
   "components.StatusBadge.seasonepisodenumber": "S{seasonNumber}E{episodeNumber}",
   "components.RequestCard.unknowntitle": "Titre inconnu",
