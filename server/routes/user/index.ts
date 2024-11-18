@@ -47,8 +47,8 @@ const messages = defineBackendMessages('components.generatedpassword', {
   jellyfinInfo: 'You can access your account and play media on Jellyfin via the button below or with {jellyfinUrl}',
   openButton: 'Open {service}',
   warning: 'Your account is strictly personal and should not be shared. Feel free to use it as much as you want within the same household, but be aware that any suspicious activity may result in a permanent ban.',
-  openJellyseerr: 'Open {applicationTitle}',
-  openJellyfin: 'Open {jellyfinName}',
+  openJellyseerr: 'Open Jellyseerr',
+  openJellyfin: 'Open Jellyfin',
   downloads: 'Jellyfin is available for free on the following platforms, the Samsung app should be available shortly:',
 });
 
