@@ -47,6 +47,8 @@ interface JellyfinSessionCardProps {
       ParentBackdropImageTags?: string[];
       IndexNumber?: number;
       ParentIndexNumber?: number;
+      SeriesName?: string;
+      Artists?: string[];
     };
     PlayState: {
       PositionTicks: number;
@@ -78,30 +80,41 @@ const JellyfinSessionCard = ({ session }: JellyfinSessionCardProps) => {
   const isMusic = session.NowPlayingItem.Type.toLowerCase() === 'audio';
   const isTvShow = session.NowPlayingItem.Type.toLowerCase() === 'episode';
 
+  const getImageTag = () => {
+    if (isMusic) {
+      return session.NowPlayingItem.AlbumPrimaryImageTag || session.NowPlayingItem.PrimaryImageTag;
+    }
+    if (isTvShow) {
+      return session.NowPlayingItem.SeriesBackdropImageTags?.[0] || session.NowPlayingItem.ParentBackdropImageTags?.[0];
+    }
+    return session.NowPlayingItem.BackdropImageTags?.[0];
+  };
+
   const getImageInfo = () => {
     if (isMusic) {
       return {
         id: session.NowPlayingItem.ParentId,
-        type: 'Primary',
-        tag: session.NowPlayingItem.AlbumPrimaryImageTag || session.NowPlayingItem.PrimaryImageTag
+        tag: getImageTag(),
+        type: 'Backdrop'
       };
     }
-    if (isTvShow) {
+
+    if (isTvShow || session.NowPlayingItem.Type.toLowerCase().includes('series')) {
       return {
         id: session.NowPlayingItem.SeriesId,
-        type: 'Backdrop',
-        tag: session.NowPlayingItem.SeriesBackdropImageTags?.[0] || session.NowPlayingItem.ParentBackdropImageTags?.[0]
+        tag: getImageTag(),
+        type: 'Backdrop'
       };
     }
+
     return {
-      id: session.NowPlayingItem.Id,
-      type: 'Backdrop',
-      tag: session.NowPlayingItem.BackdropImageTags?.[0]
+      id: session.NowPlayingItem.ParentId,
+      tag: getImageTag(),
+      type: 'Backdrop'
     };
   };
 
-  const { id, type, tag } = getImageInfo();
-  const imageUrl = tag ? `${baseUrl}/Items/${id}/Images/${type}?maxWidth=384&tag=${tag}&quality=100` : '';
+  const imageUrl = `${baseUrl}/Items/${getImageInfo().id}/Images/${getImageInfo().type}?maxWidth=384&tag=${getImageInfo().tag}&quality=100`;
 
   const [currentPosition, setCurrentPosition] = useState(
     Math.floor(session.PlayState.PositionTicks / 10_000_000)
@@ -110,9 +123,11 @@ const JellyfinSessionCard = ({ session }: JellyfinSessionCardProps) => {
   const { data: tmdbData } = useSWR<MovieDetails | TvDetails>(
     session.NowPlayingItem.ProviderIds?.Tmdb
       ? `${
-          session.NowPlayingItem.Type.toLowerCase() === 'movie'
+          session.NowPlayingItem.Type.toLowerCase().includes('movie')
             ? '/api/v1/movie/'
-            : '/api/v1/tv/'
+            : session.NowPlayingItem.Type.toLowerCase().includes('series')
+              ? '/api/v1/tv/'
+              : null
         }${session.NowPlayingItem.ProviderIds.Tmdb}`
       : null
   );
@@ -146,7 +161,8 @@ const JellyfinSessionCard = ({ session }: JellyfinSessionCardProps) => {
   const getMediaUrl = () => {
     if (!tmdbData?.id) return undefined;
 
-    const mediaType = session.NowPlayingItem.Type.toLowerCase() === 'episode'
+    const mediaType = session.NowPlayingItem.Type.toLowerCase().includes('series') ||
+      session.NowPlayingItem.SeriesId
       ? 'tv'
       : 'movie';
 
@@ -160,7 +176,7 @@ const JellyfinSessionCard = ({ session }: JellyfinSessionCardProps) => {
       className="relative flex w-72 overflow-hidden rounded-xl bg-gray-800 bg-cover bg-center p-4 text-gray-400 shadow ring-1 ring-gray-700 sm:w-96"
       data-testid="jellyfin-card"
     >
-      <div className="absolute" style={{ top: -50, left: 0 }}>
+      <div className="absolute" style={{ top: -30, left: 0 }}>
         <CachedImage
           type="tmdb"
           className="position: absolute; height: 100%; width: 100%; inset: 0px; object-fit: cover; color: transparent;"
@@ -176,17 +192,31 @@ const JellyfinSessionCard = ({ session }: JellyfinSessionCardProps) => {
 
         <div className="hidden text-xs font-medium text-white sm:flex">
           {session.NowPlayingItem.ProductionYear}
+          {isTvShow && session.NowPlayingItem.SeriesName && (
+            <>
+              <span className="mx-2">-</span>
+              <Link
+                href={`/tv/${tmdbData?.id}`}
+                className="hover:underline"
+              >
+                <span>{session.NowPlayingItem.SeriesName}</span>
+              </Link>
+            </>
+          )}
+          {isMusic && Array.isArray(session.NowPlayingItem.Artists) && session.NowPlayingItem.Artists.length > 0 && (
+            <>
+              <span className="mx-2">-</span>
+              <span>{session.NowPlayingItem.Artists[0]}</span>
+            </>
+          )}
         </div>
 
         <Link href={mediaUrl ?? '#'} className="overflow-hidden overflow-ellipsis whitespace-nowrap text-base font-bold text-white hover:underline sm:text-lg">
           {tmdbData ? (
             isMovie(tmdbData) ? tmdbData.title : tmdbData.name
           ) : (
-            session.NowPlayingItem.Name
-          )}
-        </Link>
-
-        {isTvShow && (
+            <>
+              {isTvShow && (
           <div>
             {session.NowPlayingItem.ParentIndexNumber && session.NowPlayingItem.IndexNumber
               ? `S${session.NowPlayingItem.ParentIndexNumber}:E${session.NowPlayingItem.IndexNumber} - `
@@ -194,7 +224,11 @@ const JellyfinSessionCard = ({ session }: JellyfinSessionCardProps) => {
             }
             {session.NowPlayingItem.Name}
           </div>
-        )}
+              )}
+              {!isTvShow && session.NowPlayingItem.Name}
+            </>
+          )}
+        </Link>
 
         {session.jellyseerrUser && (
           <div className="card-field">
@@ -219,7 +253,7 @@ const JellyfinSessionCard = ({ session }: JellyfinSessionCardProps) => {
           </div>
         )}
 
-        <div className="mt-2 hidden text-xs font-medium text-white sm:flex">
+        <div className="mt-6 hidden text-xs font-medium text-white sm:flex">
           <span>
             {session.PlayState.IsPaused
               ? intl.formatMessage(messages.statusPaused)
