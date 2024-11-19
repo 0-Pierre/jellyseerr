@@ -298,7 +298,7 @@ const JellyfinSessionCard = ({ session }: JellyfinSessionCardProps) => {
         data-testid="jellyfin-card-title"
       >
 
-        <div className="hidden text-xs font-medium text-white sm:flex">
+        <div className="text-xs font-medium text-white sm:flex">
           {session.NowPlayingItem.ProductionYear}
           {isTvShow && session.NowPlayingItem.SeriesName && (
             <>
