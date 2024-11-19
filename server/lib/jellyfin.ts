@@ -35,18 +35,22 @@ router.get('/sessions', async (req, res) => {
       }
     });
 
-    const mappedSessions = jellyfinSessions.map(session => {
-      const jellyseerrUser = jellyseerrUsers.find(
-        user => user.jellyfinUserId === session.UserId
-      );
-      return {
-        ...session,
-        jellyseerrUser: jellyseerrUser ? {
-          ...jellyseerrUser,
-          displayName: jellyseerrUser.username || jellyseerrUser.jellyfinUsername
-        } : undefined
-      };
-    });
+    const mappedSessions = jellyfinSessions
+      .map(session => {
+        const jellyseerrUser = jellyseerrUsers.find(
+          user => user.jellyfinUserId === session.UserId
+        );
+        return {
+          ...session,
+          jellyseerrUser: jellyseerrUser ? {
+            ...jellyseerrUser,
+            displayName: jellyseerrUser.username || jellyseerrUser.jellyfinUsername
+          } : undefined
+        };
+      })
+      .sort((a, b) => {
+        return b.PlayState.PositionTicks - a.PlayState.PositionTicks;
+      });
 
     return res.status(200).json(mappedSessions);
   } catch (error) {
