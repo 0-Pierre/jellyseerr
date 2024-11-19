@@ -41,7 +41,7 @@ const JellyfinSessionsSlider = () => {
   const { data: sessions, error } = useSWR<JellyfinSession[]>(
     '/api/v1/jellyfin/sessions',
     {
-      refreshInterval: 900,
+      refreshInterval: 1000,
     }
   );
 
