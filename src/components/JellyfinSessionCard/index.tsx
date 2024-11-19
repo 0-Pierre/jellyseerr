@@ -10,6 +10,8 @@ import useSWR from 'swr';
 import type { MovieDetails } from '@server/models/Movie';
 import type { TvDetails } from '@server/models/Tv';
 import useSettings from '@app/hooks/useSettings';
+import TheMovieDb from '@server/api/themoviedb';
+import useLocale from '@app/hooks/useLocale';
 
 const isMovie = (media: MovieDetails | TvDetails): media is MovieDetails => {
   return (media as MovieDetails).title !== undefined;
@@ -57,6 +59,12 @@ interface JellyfinSessionCardProps {
   };
 }
 
+interface TvSearchParams {
+  query: string;
+  language: string;
+  first_air_date_year?: number;
+}
+
 const JellyfinSessionCardPlaceholder = () => {
   return (
     <div className="relative w-72 animate-pulse rounded-xl bg-gray-700 p-4 sm:w-96">
@@ -67,12 +75,25 @@ const JellyfinSessionCardPlaceholder = () => {
   );
 };
 
+const SeriesLink = ({ mediaUrl, name }: { mediaUrl?: string; name: string }) => {
+  if (!mediaUrl) {
+    return <span>{name}</span>;
+  }
+
+  return (
+    <Link href={mediaUrl} className="hover:underline">
+      {name}
+    </Link>
+  );
+};
+
 const JellyfinSessionCard = ({ session }: JellyfinSessionCardProps) => {
   const intl = useIntl();
   const { ref, inView } = useInView({
     triggerOnce: true,
   });
   const settings = useSettings();
+  const { locale } = useLocale();
 
   const protocol = settings.currentSettings.jellyfinSsl ? 'https' : 'http';
   const baseUrl = `${protocol}://${settings.currentSettings.jellyfinHostname}${settings.currentSettings.jellyfinBaseUrl || ''}`;
@@ -154,6 +175,70 @@ const JellyfinSessionCard = ({ session }: JellyfinSessionCardProps) => {
     setCurrentPosition(Math.floor(session.PlayState.PositionTicks / 10_000_000));
   }, [session.PlayState.PositionTicks]);
 
+  const [tmdbId, setTmdbId] = useState<number | null>(null);
+  const [localizedTitle, setLocalizedTitle] = useState<string>(
+    session.NowPlayingItem.SeriesName || ''
+  );
+
+  useEffect(() => {
+    const fetchTmdbId = async () => {
+      try {
+        const showTitle = session.NowPlayingItem?.SeriesName ||
+                         session.NowPlayingItem?.Name;
+
+        const year = session.NowPlayingItem?.ProductionYear;
+
+        const tmdb = new TheMovieDb();
+
+        const searchParams: TvSearchParams = {
+          query: showTitle,
+          language: locale,
+        };
+
+        if (year) {
+          searchParams.first_air_date_year = year;
+        }
+
+        let searchResults = await tmdb.searchTvShows(searchParams);
+
+        if (searchResults.results?.length === 0 && year) {
+          const {first_air_date_year, ...paramsWithoutYear} = searchParams;
+          searchResults = await tmdb.searchTvShows(paramsWithoutYear);
+        }
+
+        if (searchResults.results?.length > 0) {
+          setTmdbId(searchResults.results[0].id);
+        }
+      } catch (err) {
+        console.error('Error fetching TMDB ID:', err);
+      }
+    };
+
+    fetchTmdbId();
+  }, [session, locale]);
+
+  useEffect(() => {
+    const fetchLocalizedDetails = async () => {
+      if (!tmdbId) return;
+
+      try {
+        const tmdb = new TheMovieDb();
+        const tvDetails = await tmdb.getTvShow({
+          tvId: tmdbId,
+          language: locale
+        });
+
+        if (tvDetails?.name) {
+          setLocalizedTitle(tvDetails.name);
+        }
+      } catch (err) {
+        console.error('Error fetching localized show details:', err);
+      }
+    };
+
+    fetchLocalizedDetails();
+  }, [tmdbId, locale]);
+
   if (!inView) {
     return <div ref={ref}><JellyfinSessionCardPlaceholder /></div>;
   }
@@ -170,6 +255,23 @@ const JellyfinSessionCard = ({ session }: JellyfinSessionCardProps) => {
   };
 
   const mediaUrl = getMediaUrl();
+
+  // Format episode info using locale
+  const getEpisodeInfo = () => {
+    if (!session.NowPlayingItem?.ParentIndexNumber ||
+        !session.NowPlayingItem?.IndexNumber) {
+      return '';
+    }
+
+    const seasonNum = new Intl.NumberFormat(locale).format(
+      session.NowPlayingItem.ParentIndexNumber
+    );
+    const episodeNum = new Intl.NumberFormat(locale).format(
+      session.NowPlayingItem.IndexNumber
+    );
+
+    return `S${seasonNum}:E${episodeNum}`;
+  };
 
   return (
     <div
@@ -192,36 +294,25 @@ const JellyfinSessionCard = ({ session }: JellyfinSessionCardProps) => {
 
         <div className="hidden text-xs font-medium text-white sm:flex">
           {session.NowPlayingItem.ProductionYear}
-          {isTvShow && session.NowPlayingItem.SeriesName && (
+          {session.NowPlayingItem.SeriesName && (
             <>
               <span className="mx-2">-</span>
-              <Link
-                href={`/tv/${tmdbData?.id}`}
-                className="hover:underline"
-              >
-                <span>{session.NowPlayingItem.SeriesName}</span>
-              </Link>
-            </>
-          )}
-          {isMusic && Array.isArray(session.NowPlayingItem.Artists) && session.NowPlayingItem.Artists.length > 0 && (
-            <>
-              <span className="mx-2">-</span>
-              <span>{session.NowPlayingItem.Artists[0]}</span>
+              <SeriesLink
+                mediaUrl={mediaUrl}
+                name={localizedTitle}
+              />
             </>
           )}
         </div>
 
-        <Link href={mediaUrl ?? '#'} className="overflow-hidden overflow-ellipsis whitespace-nowrap text-base font-bold text-white hover:underline sm:text-lg">
+        <Link href={tmdbId ? `/tv/${tmdbId}` : '#'} className="overflow-hidden overflow-ellipsis whitespace-nowrap text-base font-bold text-white hover:underline sm:text-lg">
           {tmdbData ? (
             isMovie(tmdbData) ? tmdbData.title : tmdbData.name
           ) : (
             <>
               {isTvShow && (
           <div>
-            {session.NowPlayingItem.ParentIndexNumber && session.NowPlayingItem.IndexNumber
-              ? `S${session.NowPlayingItem.ParentIndexNumber}:E${session.NowPlayingItem.IndexNumber} - `
-              : ''
-            }
+            {getEpisodeInfo() && `${getEpisodeInfo()} - `}
             {session.NowPlayingItem.Name}
           </div>
               )}
