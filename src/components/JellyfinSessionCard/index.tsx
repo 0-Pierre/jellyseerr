@@ -10,6 +10,8 @@ import useSWR from 'swr';
 import type { MovieDetails } from '@server/models/Movie';
 import type { TvDetails } from '@server/models/Tv';
 import useSettings from '@app/hooks/useSettings';
+import TheMovieDb from '@server/api/themoviedb';
+import useLocale from '@app/hooks/useLocale';
 
 const isMovie = (media: MovieDetails | TvDetails): media is MovieDetails => {
   return (media as MovieDetails).title !== undefined;
@@ -20,44 +22,6 @@ const messages = defineMessages('components.JellyfinSessionCard', {
   statusPaused: 'Paused'
 });
 
-interface ArtistItem {
-  Id: string;
-  Name?: string;
-  BackdropImageTags?: string[];
-}
-
-interface AlbumArtist {
-  Id: string;
-  Name?: string;
-}
-
-interface ProviderIds {
-  Tmdb?: string;
-  [key: string]: string | undefined;
-}
-
-interface NowPlayingItem {
-  Id: string;
-  ParentId?: string;
-  Name: string;
-  Type: string;
-  PrimaryImageTag?: string;
-  RunTimeTicks: number;
-  BackdropImageTags?: string[];
-  ProductionYear?: number;
-  SeriesName?: string;
-  ParentIndexNumber?: number;
-  SeriesId?: string;
-  SeriesBackdropImageTags?: string[];
-  ParentBackdropImageTags?: string[];
-  ProviderIds?: ProviderIds;
-  Artists?: string[];
-  IndexNumber?: number;
-  ArtistItems?: ArtistItem[];
-  AlbumArtists?: AlbumArtist[];
-  AlbumPrimaryImageTag?: string;
-}
-
 interface JellyfinSessionCardProps {
   session: {
     Id: string;
@@ -67,12 +31,37 @@ interface JellyfinSessionCardProps {
       displayName: string;
       avatar: string;
     };
-    NowPlayingItem: NowPlayingItem;
+    NowPlayingItem: {
+      Id: string;
+      Name: string;
+      Type: string;
+      PrimaryImageTag?: string;
+      RunTimeTicks: number;
+      BackdropImageTags?: string[];
+      ProductionYear?: number;
+      ProviderIds?: {
+        Tmdb?: string;
+      };
+      ParentId?: string;
+      AlbumPrimaryImageTag?: string;
+      SeriesId?: string;
+      SeriesBackdropImageTags?: string[];
+      ParentBackdropImageTags?: string[];
+      IndexNumber?: number;
+      ParentIndexNumber?: number;
+      SeriesName?: string;
+      Artists?: string[];
+    };
     PlayState: {
       PositionTicks: number;
       IsPaused: boolean;
     };
   };
+}
+
+interface TvSearchParams {
+  query: string;
+  language: string;
 }
 
 const JellyfinSessionCardPlaceholder = () => {
@@ -85,12 +74,32 @@ const JellyfinSessionCardPlaceholder = () => {
   );
 };
 
+const SeriesLink = ({ mediaUrl, name }: { mediaUrl?: string; name: React.ReactNode }) => {
+  if (!mediaUrl) {
+    return <span>{name}</span>;
+  }
+
+  return (
+    <Link href={mediaUrl} className="hover:underline">
+      {name}
+    </Link>
+  );
+};
+
+const getMediaType = (session: JellyfinSessionCardProps['session']) => {
+  const type = session.NowPlayingItem.Type.toLowerCase();
+  if (type.includes('movie')) return 'movie';
+  if (type.includes('series') || type.includes('episode')) return 'tv';
+  return null;
+};
+
 const JellyfinSessionCard = ({ session }: JellyfinSessionCardProps) => {
   const intl = useIntl();
   const { ref, inView } = useInView({
     triggerOnce: true,
   });
   const settings = useSettings();
+  const { locale } = useLocale();
 
   const protocol = settings.currentSettings.jellyfinSsl ? 'https' : 'http';
   const baseUrl = `${protocol}://${settings.currentSettings.jellyfinHostname}${settings.currentSettings.jellyfinBaseUrl || ''}`;
@@ -98,11 +107,21 @@ const JellyfinSessionCard = ({ session }: JellyfinSessionCardProps) => {
   const isMusic = session.NowPlayingItem.Type.toLowerCase() === 'audio';
   const isTvShow = session.NowPlayingItem.Type.toLowerCase() === 'episode';
 
+  const getImageTag = () => {
+    if (isMusic) {
+      return session.NowPlayingItem.AlbumPrimaryImageTag || session.NowPlayingItem.PrimaryImageTag;
+    }
+    if (isTvShow) {
+      return session.NowPlayingItem.SeriesBackdropImageTags?.[0] || session.NowPlayingItem.ParentBackdropImageTags?.[0];
+    }
+    return session.NowPlayingItem.BackdropImageTags?.[0];
+  };
+
   const getImageInfo = () => {
     if (isMusic) {
       return {
         id: session.NowPlayingItem.ParentId,
-        tag: session.NowPlayingItem.AlbumPrimaryImageTag || session.NowPlayingItem.PrimaryImageTag,
+        tag: getImageTag(),
         type: 'Backdrop'
       };
     }
@@ -110,36 +129,37 @@ const JellyfinSessionCard = ({ session }: JellyfinSessionCardProps) => {
     if (isTvShow || session.NowPlayingItem.Type.toLowerCase().includes('series')) {
       return {
         id: session.NowPlayingItem.SeriesId,
-        tag: session.NowPlayingItem.SeriesBackdropImageTags?.[0] ||
-             session.NowPlayingItem.ParentBackdropImageTags?.[0],
+        tag: getImageTag(),
+        type: 'Backdrop'
+      };
+    }
+
+    if (session.NowPlayingItem.Type.toLowerCase().includes('movie')) {
+      return {
+        id: session.NowPlayingItem.Id,
+        tag: session.NowPlayingItem.BackdropImageTags?.[0],
         type: 'Backdrop'
       };
     }
 
     return {
       id: session.NowPlayingItem.Id,
-      tag: session.NowPlayingItem.BackdropImageTags?.[0],
+      tag: getImageTag(),
       type: 'Backdrop'
     };
   };
 
-  const imageUrl = getImageInfo().tag
-    ? `${baseUrl}/Items/${getImageInfo().id}/Images/${getImageInfo().type}?maxWidth=384&tag=${getImageInfo().tag}&quality=100`
-    : '';
+  const imageUrl = `${baseUrl}/Items/${getImageInfo().id}/Images/${getImageInfo().type}?maxWidth=384&tag=${getImageInfo().tag}&quality=100`;
 
   const [currentPosition, setCurrentPosition] = useState(
     Math.floor(session.PlayState.PositionTicks / 10_000_000)
   );
 
+  const mediaType = getMediaType(session);
+
   const { data: tmdbData } = useSWR<MovieDetails | TvDetails>(
-    session.NowPlayingItem.ProviderIds?.Tmdb
-      ? `${
-          session.NowPlayingItem.Type.toLowerCase().includes('movie')
-            ? '/api/v1/movie/'
-            : session.NowPlayingItem.Type.toLowerCase().includes('series')
-              ? '/api/v1/tv/'
-              : null
-        }${session.NowPlayingItem.ProviderIds.Tmdb}`
+    session.NowPlayingItem.ProviderIds?.Tmdb && mediaType
+      ? `/api/v1/${mediaType}/${session.NowPlayingItem.ProviderIds.Tmdb}`
       : null
   );
 
@@ -165,28 +185,106 @@ const JellyfinSessionCard = ({ session }: JellyfinSessionCardProps) => {
     setCurrentPosition(Math.floor(session.PlayState.PositionTicks / 10_000_000));
   }, [session.PlayState.PositionTicks]);
 
+  const [tmdbId, setTmdbId] = useState<number | null>(null);
+  const [localizedTitle, setLocalizedTitle] = useState<string>('');
+
+  useEffect(() => {
+    const fetchTmdbId = async () => {
+      if (!mediaType) return;
+
+      try {
+        const tmdb = new TheMovieDb();
+        const title = mediaType === 'tv'
+          ? session.NowPlayingItem.SeriesName || session.NowPlayingItem.Name
+          : session.NowPlayingItem.Name;
+
+        if (mediaType === 'tv') {
+          const searchParams: TvSearchParams = {
+            query: title,
+            language: locale,
+          };
+          const results = await tmdb.searchTvShows(searchParams);
+          if (results.results?.length > 0) {
+            setTmdbId(results.results[0].id);
+          }
+        } else {
+          const results = await tmdb.searchMovies({
+            query: title,
+            language: locale,
+          });
+          if (results.results?.length > 0) {
+            setTmdbId(results.results[0].id);
+          }
+        }
+      } catch (err) {
+        setTmdbId(null);
+      }
+    };
+
+    fetchTmdbId();
+  }, [session, locale, mediaType]);
+
+  useEffect(() => {
+    const fetchLocalizedDetails = async () => {
+      if (!tmdbId || !mediaType) return;
+
+      try {
+        const tmdb = new TheMovieDb();
+        if (mediaType === 'tv') {
+          const tvDetails = await tmdb.getTvShow({
+            tvId: tmdbId,
+            language: locale
+          });
+          setLocalizedTitle(tvDetails?.name || session.NowPlayingItem.SeriesName || '');
+        } else {
+          const movieDetails = await tmdb.getMovie({
+            movieId: tmdbId,
+            language: locale
+          });
+          setLocalizedTitle(movieDetails?.title || session.NowPlayingItem.Name);
+        }
+      } catch (err) {
+        setLocalizedTitle(session.NowPlayingItem.Name);
+      }
+    };
+
+    fetchLocalizedDetails();
+  }, [tmdbId, locale, mediaType, session.NowPlayingItem]);
+
   if (!inView) {
     return <div ref={ref}><JellyfinSessionCardPlaceholder /></div>;
   }
 
   const getMediaUrl = () => {
-    if (!tmdbData?.id) return undefined;
-
-    const mediaType = session.NowPlayingItem.Type.toLowerCase() === 'episode'
-      ? 'tv'
-      : 'movie';
-
-    return `/${mediaType}/${tmdbData.id}`;
+    if (!tmdbId || !mediaType) return undefined;
+    const prefix = mediaType === 'tv' ? 'tv' : 'movie';
+    return `/${prefix}/${tmdbId}`;
   };
 
   const mediaUrl = getMediaUrl();
+
+  const getEpisodeInfo = () => {
+    if (!session.NowPlayingItem?.ParentIndexNumber ||
+        !session.NowPlayingItem?.IndexNumber) {
+      return '';
+    }
+
+    const seasonNum = new Intl.NumberFormat(locale).format(
+      session.NowPlayingItem.ParentIndexNumber
+    );
+    const episodeNum = new Intl.NumberFormat(locale).format(
+      session.NowPlayingItem.IndexNumber
+    );
+
+    return `S${seasonNum}:E${episodeNum}`;
+  };
 
   return (
     <div
       className="relative flex w-72 overflow-hidden rounded-xl bg-gray-800 bg-cover bg-center p-4 text-gray-400 shadow ring-1 ring-gray-700 sm:w-96"
       data-testid="jellyfin-card"
     >
-      <div className="absolute" style={{ top: -40, left: 0 }}>
+      <div className="absolute" style={{ top: -30, left: 0 }}>
         <CachedImage
           type="tmdb"
           className="position: absolute; height: 100%; width: 100%; inset: 0px; object-fit: cover; color: transparent;"
@@ -200,39 +298,44 @@ const JellyfinSessionCard = ({ session }: JellyfinSessionCardProps) => {
         data-testid="jellyfin-card-title"
       >
 
-        <div className="text-xs font-medium text-white sm:flex">
+        <div className="hidden text-xs font-medium text-white sm:flex">
           {session.NowPlayingItem.ProductionYear}
           {isTvShow && session.NowPlayingItem.SeriesName && (
             <>
-              {' - '}
-              {session.NowPlayingItem.SeriesName}
+              <span className="mx-2">-</span>
+              <SeriesLink
+                mediaUrl={mediaUrl}
+                name={localizedTitle}
+              />
             </>
           )}
           {!isTvShow && session.NowPlayingItem.Artists?.[0] && (
             <>
-              {' - '}
-              {session.NowPlayingItem.Artists[0]}
+              <span className="mx-2">-</span>
+              <span>{session.NowPlayingItem.Artists[0]}</span>
             </>
           )}
         </div>
 
-        <Link href={mediaUrl ?? ''} className="overflow-hidden overflow-ellipsis whitespace-nowrap text-base font-bold text-white hover:underline sm:text-lg">
-          {tmdbData ? (
-            isMovie(tmdbData) ? tmdbData.title : tmdbData.name
-          ) : (
-            isTvShow ? (
-              <>
-                {session.NowPlayingItem.ParentIndexNumber && session.NowPlayingItem.IndexNumber
-                  ? `S${session.NowPlayingItem.ParentIndexNumber}:E${session.NowPlayingItem.IndexNumber} - `
-                  : ''
-                }
-                {session.NowPlayingItem.Name}
-              </>
+        <div className="overflow-hidden overflow-ellipsis whitespace-nowrap text-base font-bold text-white hover:underline sm:text-lg">
+          <SeriesLink
+            mediaUrl={tmdbId ? `/${mediaType === 'tv' ? 'tv' : 'movie'}/${tmdbId}` : '#'}
+            name={tmdbData ? (
+              isMovie(tmdbData) ? tmdbData.title : tmdbData.name
             ) : (
-              session.NowPlayingItem.Name
-            )
-          )}
-        </Link>
+              <>
+                {isTvShow && (
+                  <div>
+                    {getEpisodeInfo() && `${getEpisodeInfo()} - `}
+                    {session.NowPlayingItem.Name}
+                  </div>
+                )}
+                {!isTvShow && session.NowPlayingItem.Name}
+              </>
+            )}
+          />
+        </div>
+
         {session.jellyseerrUser && (
           <div className="card-field mt-6">
             <Link
@@ -256,7 +359,7 @@ const JellyfinSessionCard = ({ session }: JellyfinSessionCardProps) => {
           </div>
         )}
 
-        <div className="mt-2 text-xs font-medium text-white sm:flex">
+        <div className="text-xs font-medium text-white sm:flex">
           <span>
             {session.PlayState.IsPaused
               ? intl.formatMessage(messages.statusPaused)
