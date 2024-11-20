@@ -231,11 +231,31 @@ const JellyfinSessionCard = ({ session }: JellyfinSessionCardProps) => {
       try {
         const tmdb = new TheMovieDb();
         if (mediaType === 'tv') {
+          // Get the TV show details first
           const tvDetails = await tmdb.getTvShow({
             tvId: tmdbId,
             language: locale
           });
+
+          // Set the series name
           setLocalizedTitle(tvDetails?.name || session.NowPlayingItem.SeriesName || '');
+
+          // If this is an episode, try to get the localized episode title
+          if (isTvShow &&
+              session.NowPlayingItem.ParentIndexNumber &&
+              session.NowPlayingItem.IndexNumber) {
+            const seasonEpisode = await tmdb.getTvEpisode({
+              tvId: tmdbId,
+              seasonNumber: session.NowPlayingItem.ParentIndexNumber,
+              episodeNumber: session.NowPlayingItem.IndexNumber,
+              language: locale
+            });
+
+            if (seasonEpisode) {
+              // Update the episode name while keeping series name
+              setLocalizedTitle(`${tvDetails?.name || session.NowPlayingItem.SeriesName} - ${seasonEpisode.name}`);
+            }
+          }
         } else {
           const movieDetails = await tmdb.getMovie({
             movieId: tmdbId,
@@ -249,7 +269,7 @@ const JellyfinSessionCard = ({ session }: JellyfinSessionCardProps) => {
     };
 
     fetchLocalizedDetails();
-  }, [tmdbId, locale, mediaType, session.NowPlayingItem]);
+  }, [tmdbId, locale, mediaType, session.NowPlayingItem, isTvShow]);
 
   if (!inView) {
     return <div ref={ref}><JellyfinSessionCardPlaceholder /></div>;
@@ -297,45 +317,49 @@ const JellyfinSessionCard = ({ session }: JellyfinSessionCardProps) => {
         className="relative z-10 flex min-w-0 flex-1 flex-col pr-4"
         data-testid="jellyfin-card-title"
       >
-
-        <div className="text-xs font-medium text-white sm:flex">
-          {session.NowPlayingItem.ProductionYear}
-          {isTvShow && session.NowPlayingItem.SeriesName && (
-            <>
-              <span className="mx-2">-</span>
-              <SeriesLink
-                mediaUrl={mediaUrl}
-                name={localizedTitle}
-              />
-            </>
-          )}
-          {!isTvShow && session.NowPlayingItem.Artists?.[0] && (
-            <>
-              <span className="mx-2">-</span>
-              <span>{session.NowPlayingItem.Artists[0]}</span>
-            </>
-          )}
-        </div>
-
+      <div className="text-xs font-medium text-white sm:flex">
+        {session.NowPlayingItem.ProductionYear}
+        {isTvShow && session.NowPlayingItem.SeriesName && (
+          <>
+            <span className="mx-2">-</span>
+            <SeriesLink
+              mediaUrl={mediaUrl}
+              name={tmdbData ? (
+                isMovie(tmdbData) ? tmdbData.title : tmdbData.name
+              ) : session.NowPlayingItem.SeriesName}
+            />
+          </>
+        )}
+        {!isTvShow && session.NowPlayingItem.Artists?.[0] && (
+          <>
+            <span className="mx-2">-</span>
+            <span>{session.NowPlayingItem.Artists[0]}</span>
+          </>
+        )}
+      </div>
         <div className="overflow-hidden overflow-ellipsis whitespace-nowrap text-base font-bold text-white hover:underline sm:text-lg">
-          <SeriesLink
-            mediaUrl={tmdbId ? `/${mediaType === 'tv' ? 'tv' : 'movie'}/${tmdbId}` : '#'}
-            name={tmdbData ? (
-              isMovie(tmdbData) ? tmdbData.title : tmdbData.name
-            ) : (
-              <>
-                {isTvShow && (
+          {isMusic ? (
+            <span>{session.NowPlayingItem.Name}</span>
+          ) : (
+            <SeriesLink
+              mediaUrl={tmdbId ? `/${mediaType === 'tv' ? 'tv' : 'movie'}/${tmdbId}` : '#'}
+              name={
+                isTvShow ? (
                   <div>
                     {getEpisodeInfo() && `${getEpisodeInfo()} - `}
-                    {session.NowPlayingItem.Name}
+                    {localizedTitle?.split(' - ')[1] || session.NowPlayingItem.Name}
                   </div>
-                )}
-                {!isTvShow && session.NowPlayingItem.Name}
-              </>
-            )}
-          />
+                ) : (
+                  tmdbData ? (
+                    isMovie(tmdbData) ? tmdbData.title : tmdbData.name
+                  ) : (
+                    session.NowPlayingItem.Name
+                  )
+                )
+              }
+            />
+          )}
         </div>
-
         {session.jellyseerrUser && (
           <div className="card-field mt-6">
             <Link

@@ -684,7 +684,7 @@
   "components.UserProfile.ProfileHeader.noSubscription": "Aucun abonnement",
   "components.UserProfile.ProfileHeader.lifetimeSubscription": "Abonnement à vie",
   "components.UserProfile.ProfileHeader.subscriptionExpired": "Abonnement expiré le {subscriptionExpirationDate}",
-  "components.UserProfile.ProfileHeader.subscriptionExpiresOn": "Abonné jusqu'au {subscriptionExpirationDate}",
+  "components.UserProfile.ProfileHeader.subscriptionExpiresOn": "Abonné(e) jusqu'au {subscriptionExpirationDate}",
   "components.Settings.menuUsers": "Utilisateurs",
   "components.Settings.SettingsUsers.userSettings": "Paramètres utilisateur",
   "components.Settings.SettingsUsers.toastSettingsSuccess": "Les paramètres utilisateur ont été enregistrés avec succès !",

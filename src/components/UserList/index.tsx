@@ -351,7 +351,7 @@ const UserList = () => {
             email: '',
             password: '',
             genpassword: false,
-            locale: 'en' as AvailableLocale,
+            locale: 'fr' as AvailableLocale,
           }}
           validationSchema={CreateUserSchema}
           onSubmit={async (values) => {

@@ -24,6 +24,7 @@ import type {
   TmdbUpcomingMoviesResponse,
   TmdbWatchProviderDetails,
   TmdbWatchProviderRegion,
+  TmdbEpisodeDetails,
 } from './interfaces';
 
 interface SearchOptions {
@@ -313,6 +314,23 @@ class TheMovieDb extends ExternalAPI {
       throw new Error(`[TMDB] Failed to fetch TV show details: ${e.message}`);
     }
   };
+
+  public async getTvEpisode({
+    tvId,
+    seasonNumber,
+    episodeNumber,
+    language,
+  }: {
+    tvId: number;
+    seasonNumber: number;
+    episodeNumber: number;
+    language?: string;
+  }): Promise<TmdbEpisodeDetails> {
+    return this.get<TmdbEpisodeDetails>(
+      `/tv/${tvId}/season/${seasonNumber}/episode/${episodeNumber}`,
+      language ? { language } : undefined
+    );
+  }
 
   public async getMovieRecommendations({
     movieId,

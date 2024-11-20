@@ -1,7 +1,7 @@
 import Button from '@app/components/Common/Button';
 import CachedImage from '@app/components/Common/CachedImage';
 import { Permission, UserType, useUser } from '@app/hooks/useUser';
-import { User } from '@app/hooks/useUser';
+import type { User } from '@app/hooks/useUser';
 import defineMessages from '@app/utils/defineMessages';
 import { CogIcon, UserIcon, EnvelopeIcon } from '@heroicons/react/24/solid';
 import Link from 'next/link';
@@ -61,7 +61,7 @@ const ProfileHeader = ({ user, isSettingsPage }: ProfileHeaderProps) => {
             day: 'numeric',
           }),
         })
-    : user.isLifetimeSubscriber
+    : user.subscriptionStatus === 'lifetime'
     ? intl.formatMessage(messages.lifetimeSubscription)
     : intl.formatMessage(messages.noSubscription);
 

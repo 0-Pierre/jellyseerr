@@ -469,3 +469,15 @@ export interface TmdbWatchProviderRegion {
   english_name: string;
   native_name: string;
 }
+
+export interface TmdbEpisodeDetails {
+  id: number;
+  name: string;
+  overview: string;
+  air_date: string;
+  episode_number: number;
+  season_number: number;
+  still_path: string | null;
+  vote_average: number;
+  vote_count: number;
+}
