@@ -147,20 +147,21 @@ userSettingsRoutes.post<
       user.settings.watchlistSyncTv = req.body.watchlistSyncTv;
     }
 
-    // Handle subscription updates
-    const subscriptionEnabled = Boolean(req.body.subscriptionEnabled);
+    const previousSubscriptionStatus = user.subscriptionStatus;
 
-    if (subscriptionEnabled) {
-      user.subscriptionStatus =
-        req.body.subscriptionType === 'lifetime' ? 'lifetime' : 'active';
+    if (req.body.subscriptionEnabled) {
+      user.subscriptionStatus = req.body.subscriptionType === 'lifetime' ? 'lifetime' : 'active';
 
-      // Set expiration date 1 year from now for standard subscriptions
-      if (req.body.subscriptionType === 'standard') {
+      if (user.subscriptionStatus === 'lifetime') {
+        user.subscriptionExpirationDate = null;
+      } else if (
+        (previousSubscriptionStatus === null || previousSubscriptionStatus === 'expired') &&
+        user.subscriptionStatus === 'active' &&
+        req.body.subscriptionType === 'standard'
+      ) {
         const oneYearFromNow = new Date();
         oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
         user.subscriptionExpirationDate = oneYearFromNow;
-      } else {
-        user.subscriptionExpirationDate = null; // No expiration for lifetime
       }
     } else {
       user.subscriptionStatus = null;

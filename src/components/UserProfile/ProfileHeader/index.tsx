@@ -117,30 +117,32 @@ const ProfileHeader = ({ user, isSettingsPage }: ProfileHeaderProps) => {
       </div>
       <div className="justify-stretch mt-6 flex flex-col-reverse space-y-4 space-y-reverse lg:flex-row lg:justify-end lg:space-y-0 lg:space-x-3 lg:space-x-reverse">
         {hasPermission(Permission.ADMIN) && user.userType === UserType.JELLYFIN && (
-          <Button as="a"
+            <Button
+            as="a"
+            className="mr-4"
             onClick={async () => {
               try {
-                const response = await fetch(`/api/v1/user/${user.id}/welcome-mail`, {
-                  method: 'POST',
-                });
-                if (!response.ok) {
-                  throw new Error();
-                }
-                addToast(intl.formatMessage(messages.welcomeMailSuccess), {
-                  appearance: 'success',
-                  autoDismiss: true,
-                });
+              const response = await fetch(`/api/v1/user/${user.id}/welcome-mail`, {
+                method: 'POST',
+              });
+              if (!response.ok) {
+                throw new Error();
+              }
+              addToast(intl.formatMessage(messages.welcomeMailSuccess), {
+                appearance: 'success',
+                autoDismiss: true,
+              });
               } catch (e) {
-                addToast(intl.formatMessage(messages.welcomeMailError), {
-                  appearance: 'error',
-                  autoDismiss: true,
-                });
+              addToast(intl.formatMessage(messages.welcomeMailError), {
+                appearance: 'error',
+                autoDismiss: true,
+              });
               }
             }}
-          >
+            >
             <EnvelopeIcon />
             <span>{intl.formatMessage(messages.resendWelcomeMail)}</span>
-          </Button>
+            </Button>
         )}
         {(loggedInUser?.id === user.id ||
           (user.id !== 1 && hasPermission(Permission.MANAGE_USERS))) &&
