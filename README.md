@@ -39,10 +39,10 @@ With more features on the way! Check out our [issue tracker](https://github.com/
 ### Upcoming Features
 
 - Translate existing email layout.
-- Add epsiode locale support in new slider.
 
 ### Completed Features
 
+- Add epsiode locale support in new slider.
 - Add resend welcome mail button.
 - Add a slider to view current plays.
 - Enable direct user creation on Jellyfin from Jellyseerr, with immediate import.

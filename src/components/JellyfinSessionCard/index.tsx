@@ -324,9 +324,7 @@ const JellyfinSessionCard = ({ session }: JellyfinSessionCardProps) => {
             <span className="mx-2">-</span>
             <SeriesLink
               mediaUrl={mediaUrl}
-              name={tmdbData ? (
-                isMovie(tmdbData) ? tmdbData.title : tmdbData.name
-              ) : session.NowPlayingItem.SeriesName}
+              name={localizedTitle?.split(' - ')[0] || session.NowPlayingItem.SeriesName}
             />
           </>
         )}
