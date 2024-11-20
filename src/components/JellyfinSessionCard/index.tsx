@@ -284,7 +284,7 @@ const JellyfinSessionCard = ({ session }: JellyfinSessionCardProps) => {
       className="relative flex w-72 overflow-hidden rounded-xl bg-gray-800 bg-cover bg-center p-4 text-gray-400 shadow ring-1 ring-gray-700 sm:w-96"
       data-testid="jellyfin-card"
     >
-      <div className="absolute" style={{ top: -30, left: 0 }}>
+      <div className="absolute inset-0 z-0">
         <CachedImage
           type="tmdb"
           className="position: absolute; height: 100%; width: 100%; inset: 0px; object-fit: cover; color: transparent;"
