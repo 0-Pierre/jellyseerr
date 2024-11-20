@@ -1,11 +1,12 @@
 import Button from '@app/components/Common/Button';
 import CachedImage from '@app/components/Common/CachedImage';
-import type { User } from '@app/hooks/useUser';
-import { Permission, useUser } from '@app/hooks/useUser';
+import { Permission, UserType, useUser } from '@app/hooks/useUser';
+import { User } from '@app/hooks/useUser';
 import defineMessages from '@app/utils/defineMessages';
-import { CogIcon, UserIcon } from '@heroicons/react/24/solid';
+import { CogIcon, UserIcon, EnvelopeIcon } from '@heroicons/react/24/solid';
 import Link from 'next/link';
 import { useIntl } from 'react-intl';
+import { useToasts } from 'react-toast-notifications';
 
 const messages = defineMessages('components.UserProfile.ProfileHeader', {
   settings: 'Edit Settings',
@@ -16,6 +17,9 @@ const messages = defineMessages('components.UserProfile.ProfileHeader', {
   lifetimeSubscription: 'Lifetime Subscription',
   subscriptionExpired: 'Subscription Expired on {subscriptionExpirationDate}',
   subscriptionExpiresOn: 'Subscribed Until {subscriptionExpirationDate}',
+  resendWelcomeMail: 'Resend Welcome Email',
+  welcomeMailSuccess: 'Welcome email sent successfully',
+  welcomeMailError: 'Failed to send welcome email',
 });
 
 interface ProfileHeaderProps {
@@ -26,7 +30,7 @@ interface ProfileHeaderProps {
 const ProfileHeader = ({ user, isSettingsPage }: ProfileHeaderProps) => {
   const intl = useIntl();
   const { user: loggedInUser, hasPermission } = useUser();
-
+  const { addToast } = useToasts();
   const subtextItems: React.ReactNode[] = [
     intl.formatMessage(messages.joindate, {
       joindate: intl.formatDate(user.createdAt, {
@@ -112,6 +116,32 @@ const ProfileHeader = ({ user, isSettingsPage }: ProfileHeaderProps) => {
         </div>
       </div>
       <div className="justify-stretch mt-6 flex flex-col-reverse space-y-4 space-y-reverse lg:flex-row lg:justify-end lg:space-y-0 lg:space-x-3 lg:space-x-reverse">
+        {hasPermission(Permission.ADMIN) && user.userType === UserType.JELLYFIN && (
+          <Button as="a"
+            onClick={async () => {
+              try {
+                const response = await fetch(`/api/v1/user/${user.id}/welcome-mail`, {
+                  method: 'POST',
+                });
+                if (!response.ok) {
+                  throw new Error();
+                }
+                addToast(intl.formatMessage(messages.welcomeMailSuccess), {
+                  appearance: 'success',
+                  autoDismiss: true,
+                });
+              } catch (e) {
+                addToast(intl.formatMessage(messages.welcomeMailError), {
+                  appearance: 'error',
+                  autoDismiss: true,
+                });
+              }
+            }}
+          >
+            <EnvelopeIcon />
+            <span>{intl.formatMessage(messages.resendWelcomeMail)}</span>
+          </Button>
+        )}
         {(loggedInUser?.id === user.id ||
           (user.id !== 1 && hasPermission(Permission.MANAGE_USERS))) &&
         !isSettingsPage ? (

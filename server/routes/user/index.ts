@@ -739,6 +739,94 @@ router.post('/jellyfinuser',
     }
 });
 
+router.post('/:id/welcome-mail',
+  isAuthenticated(Permission.ADMIN),
+  async (req, res, next) => {
+    try {
+      const settings = getSettings();
+      const userRepository = getRepository(User);
+
+      const user = await userRepository.findOne({
+        where: { id: Number(req.params.id) },
+        relations: ['settings']
+      });
+
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      if (user.userType !== UserType.JELLYFIN || !user.jellyfinUserId) {
+        throw new Error('User is not a Jellyfin user');
+      }
+
+      const newPassword = generatePassword.randomPassword();
+      const protocol = settings.jellyfin.useSsl ? 'https' : 'http';
+      const jellyfinUrl = `${protocol}://${settings.jellyfin.ip}`;
+      const { applicationTitle, applicationUrl } = settings.main;
+
+      const admin = await userRepository.findOneOrFail({
+        where: { id: 1 },
+        select: ['id', 'jellyfinDeviceId']
+      });
+
+      const jellyfinApi = new JellyfinAPI(
+        getHostname(),
+        settings.jellyfin.apiKey,
+        admin.jellyfinDeviceId ?? ''
+      );
+
+      await jellyfinApi.resetUserPassword(user.jellyfinUserId, newPassword);
+
+      logger.info(`Sending generated password email for ${user.email}`, {
+        label: 'User Management',
+      });
+
+      const emailTemplatePath = '/app/dist/templates/email/generatedpassword';
+      const emailService = new PreparedEmail(settings.notifications.agents.email);
+
+      await emailService.send({
+        template: emailTemplatePath,
+        message: {
+          to: user.email,
+        },
+        locals: {
+          password: newPassword,
+          applicationUrl,
+          jellyfinUrl,
+          applicationTitle,
+          recipientName: user.jellyfinUsername,
+          firstName: getFirstName(user.jellyfinUsername ?? ''),
+          translations: {
+            subject: getTranslation(messages, 'subject', user.settings?.locale ?? 'en')
+              .replace('{name}', getFirstName(user.jellyfinUsername ?? '')),
+            greeting: getTranslation(messages, 'greeting', user.settings?.locale ?? 'en')
+              .replace('{name}', getFirstName(user.jellyfinUsername ?? '')),
+            accessInfo: getTranslation(messages, 'accessInfo', user.settings?.locale ?? 'en'),
+            passwordInfo: getTranslation(messages, 'passwordInfo', user.settings?.locale ?? 'en'),
+            jellyseerrInfo: getTranslation(messages, 'jellyseerrInfo', user.settings?.locale ?? 'en')
+              .replace('{domain}', applicationUrl),
+            jellyfinInfo: getTranslation(messages, 'jellyfinInfo', user.settings?.locale ?? 'en')
+              .replace('{jellyfinUrl}', jellyfinUrl),
+            openJellyseerr: getTranslation(messages, 'openJellyseerr', user.settings?.locale ?? 'en')
+              .replace('{applicationTitle}', applicationTitle),
+            openJellyfin: getTranslation(messages, 'openJellyfin', user.settings?.locale ?? 'en')
+              .replace('{jellyfinName}', settings.jellyfin.name || 'Jellyfin'),
+            downloads: getTranslation(messages, 'downloads', user.settings?.locale ?? 'en'),
+            warning: getTranslation(messages, 'warning', user.settings?.locale ?? 'en')
+          }
+        },
+      });
+
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      logger.error('Failed to reset password or send welcome email', {
+        label: 'User Management',
+        errorMessage: error.message,
+      });
+      next(error);
+    }
+});
+
 router.get<{ id: string }, QuotaResponse>(
   '/:id/quota',
   async (req, res, next) => {

@@ -4132,6 +4132,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/User'
+  /user/{userId}/welcome-mail:
+    post:
+      summary: Resend welcome email to user
+      description: Resets user's Jellyfin password and sends welcome email
+      tags:
+        - users
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Email sent successfully
+        '404':
+          description: User not found
+        '400':
+          description: User is not a Jellyfin user
+        '500':
+          description: Failed to send email
   /user/{userId}/requests:
     get:
       summary: Get requests for a specific user

@@ -517,5 +517,18 @@ class JellyfinAPI extends ExternalAPI {
       throw new ApiError(e.response?.status, ApiErrorCode.InvalidAuthToken);
     }
   }
+
+  public async resetUserPassword(userId: string, newPassword: string): Promise<void> {
+    try {
+      await this.post<void>(`/Users/${userId}/Password`, {
+        NewPw: newPassword,
+      });
+    } catch (e) {
+      logger.error(`Failed to reset password for Jellyfin user: ${e.message}`, {
+        label: 'Jellyfin API',
+      });
+      throw new ApiError(e.response?.status, ApiErrorCode.InvalidJellyfinUser);
+    }
+  }
 }
 export default JellyfinAPI;
