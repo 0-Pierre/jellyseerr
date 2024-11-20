@@ -40,10 +40,10 @@ With more features on the way! Check out our [issue tracker](https://github.com/
 
 - Translate existing email layout.
 - Add epsiode locale support in new slider.
-- Add resend welcome mail button.
 
 ### Completed Features
 
+- Add resend welcome mail button.
 - Add a slider to view current plays.
 - Enable direct user creation on Jellyfin from Jellyseerr, with immediate import.
 - Deleting a "Jellyfin User" will automatically remove them from both Jellyseerr and Jellyfin.
