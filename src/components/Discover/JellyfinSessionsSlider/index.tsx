@@ -45,6 +45,9 @@ const JellyfinSessionsSlider = () => {
     }
   );
 
+  const isLoading = !sessions && !error;
+  const isEmpty = sessions?.length === 0;
+
   return (
     <>
       <div className="slider-header">
@@ -54,8 +57,8 @@ const JellyfinSessionsSlider = () => {
       </div>
       <Slider
         sliderKey="jellyfin-sessions"
-        isLoading={!sessions && !error}
-        isEmpty={!sessions?.length}
+        isLoading={isLoading}
+        isEmpty={isEmpty}
         emptyMessage={intl.formatMessage(messages.emptysessions)}
         items={sessions?.map((session) => (
           <JellyfinSessionCard
