@@ -508,10 +508,10 @@ class Settings {
           schedule: '0 * * * *',
         },
         'jellyfin-streams': {
-          schedule: '*/5 * * * * *',
+          schedule: '*/30 * * * * *',
         },
         'jellyfin-suspicious-activity': {
-          schedule: '*/5 * * * * *',
+          schedule: '*/60 * * * * *',
         },
       },
     };
