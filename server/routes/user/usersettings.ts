@@ -104,6 +104,16 @@ userSettingsRoutes.post<
       });
     }
 
+    if (
+      (user.id !== req.user?.id && !req.user?.hasPermission(Permission.ADMIN)) ||
+      (user.id === req.user?.id && !req.user?.hasPermission(Permission.ADMIN))
+    ) {
+      return next({
+        status: 403,
+        message: "You do not have permission to modify this user's display name.",
+      });
+    }
+
     user.username = req.body.username;
     const oldEmail = user.email;
     if (user.jellyfinUsername) {

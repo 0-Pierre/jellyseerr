@@ -299,9 +299,9 @@ const UserGeneralSettings = () => {
                   user?.jellyfinUsername ||
                   user?.plexUsername
                   }
-                  disabled={!hasPermission(Permission.ADMIN)}
+                  disabled={!currentHasPermission(Permission.ADMIN)}
                   style={{
-                    color: !hasPermission(Permission.ADMIN)
+                    color: !currentHasPermission(Permission.ADMIN)
                     ? 'rgb(170, 170, 170)'
                     : 'inherit',
                   }}
