@@ -16,6 +16,18 @@ const messages = defineBackendMessages(
   }
 );
 
+// Function to check if string is IPv6
+const isIPv6 = (ip: string): boolean => {
+  return ip.includes(':');
+};
+
+// Function to get IPv6 network prefix (first 4 segments)
+const getIPv6Prefix = (ip: string): string => {
+  if (!isIPv6(ip)) return ip;
+  const segments = ip.split(':');
+  return segments.slice(0, 4).join(':');
+};
+
 const jellyfinSuspiciousActivity = {
   async run() {
     try {
@@ -27,7 +39,6 @@ const jellyfinSuspiciousActivity = {
         return;
       }
 
-      // Construct the full URL
       const protocol = jellyfinSettings.useSsl ? 'https' : 'http';
       const jellyfinUrl = `${protocol}://${jellyfinSettings.ip}:${
         jellyfinSettings.port
@@ -37,16 +48,20 @@ const jellyfinSuspiciousActivity = {
       const sessions = await jellyfin.getActiveSessions();
       const userRepository = getRepository(User);
 
-      // Track IPs per user
+      // Track IPs/Prefixes per user
       const userIPs = new Map();
 
-      // First pass - collect all IPs per user
+      // First pass - collect all IPs/Prefixes per user
       for (const session of sessions) {
         const jellyfinUserId = session.UserId;
         if (!userIPs.has(jellyfinUserId)) {
           userIPs.set(jellyfinUserId, new Set());
         }
-        userIPs.get(jellyfinUserId).add(session.RemoteEndPoint);
+        const ipAddress = session.RemoteEndPoint;
+        // Store prefix for IPv6, full address for IPv4
+        userIPs.get(jellyfinUserId).add(
+          isIPv6(ipAddress) ? getIPv6Prefix(ipAddress) : ipAddress
+        );
       }
 
       // Second pass - check and take action
@@ -61,7 +76,7 @@ const jellyfinSuspiciousActivity = {
 
         const userLocale = user.settings?.locale || 'en';
 
-        // If multiple IPs detected for this user
+        // If multiple network locations detected for this user
         if (userIPs.get(jellyfinUserId).size > 1) {
           try {
             const message = getTranslation(messages, 'multipleIps', userLocale);
@@ -70,17 +85,15 @@ const jellyfinSuspiciousActivity = {
             logger.warn(
               `Stopped stream for ${
                 user.displayName
-              } due to multiple IPs: ${Array.from(
+              } due to multiple networks: ${Array.from(
                 userIPs.get(jellyfinUserId)
               ).join(', ')}`
             );
 
-            // Increment suspicious activity counter
             user.suspiciousActivityCount =
               (user.suspiciousActivityCount || 0) + 1;
             await userRepository.save(user);
           } catch (error) {
-            // Ignore 404 errors for non-existent sessions
             if (error?.response?.status !== 404) {
               throw error;
             }
