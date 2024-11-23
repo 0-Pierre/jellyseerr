@@ -13,6 +13,8 @@ const messages = defineMessages('components.Discover.JellyfinSessionsSlider', {
 interface JellyfinSession {
   Id: string;
   UserName: string;
+  DeviceName: string;
+  Client: string;
   jellyseerrUser?: {
     id: number;
     displayName: string;

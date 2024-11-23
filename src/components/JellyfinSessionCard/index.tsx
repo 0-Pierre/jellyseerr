@@ -12,6 +12,7 @@ import type { TvDetails } from '@server/models/Tv';
 import useSettings from '@app/hooks/useSettings';
 import TheMovieDb from '@server/api/themoviedb';
 import useLocale from '@app/hooks/useLocale';
+import Image from 'next/image';
 
 const isMovie = (media: MovieDetails | TvDetails): media is MovieDetails => {
   return (media as MovieDetails).title !== undefined;
@@ -26,6 +27,8 @@ interface JellyfinSessionCardProps {
   session: {
     Id: string;
     UserName: string;
+    DeviceName: string;
+    Client: string;
     jellyseerrUser?: {
       id: number;
       displayName: string;
@@ -91,6 +94,35 @@ const getMediaType = (session: JellyfinSessionCardProps['session']) => {
   if (type.includes('movie')) return 'movie';
   if (type.includes('series') || type.includes('episode')) return 'tv';
   return null;
+};
+
+const getDeviceIcon = (deviceName: string, client: string): string => {
+  const device = deviceName.toLowerCase();
+  const clientName = client.toLowerCase();
+
+  const combinedInfo = `${device} ${clientName}`;
+
+  const iconKeywords = [
+    'safari',
+    'firefox',
+    'chrome',
+    'ios',
+    'android',
+    'tvos',
+    'webos',
+    'finamp',
+    'roku',
+    'firetv',
+    'fineamp',
+  ];
+
+  for (const keyword of iconKeywords) {
+    if (combinedInfo.includes(keyword)) {
+      return `${keyword}.svg`;
+    }
+  }
+
+  return 'other.svg';
 };
 
 const JellyfinSessionCard = ({ session }: JellyfinSessionCardProps) => {
@@ -317,24 +349,33 @@ const JellyfinSessionCard = ({ session }: JellyfinSessionCardProps) => {
         className="relative z-10 flex min-w-0 flex-1 flex-col pr-4"
         data-testid="jellyfin-card-title"
       >
-      <div className="text-xs font-medium text-white sm:flex">
-        {session.NowPlayingItem.ProductionYear}
-        {isTvShow && session.NowPlayingItem.SeriesName && (
-          <>
-            <span className="mx-2">-</span>
-            <SeriesLink
-              mediaUrl={mediaUrl}
-              name={localizedTitle?.split(' - ')[0] || session.NowPlayingItem.SeriesName}
-            />
-          </>
-        )}
-        {!isTvShow && session.NowPlayingItem.Artists?.[0] && (
-          <>
-            <span className="mx-2">-</span>
-            <span>{session.NowPlayingItem.Artists[0]}</span>
-          </>
-        )}
-      </div>
+        <div className="text-xs font-medium text-white flex justify-between items-center">
+          <div className="flex">
+            {session.NowPlayingItem.ProductionYear}
+            {isTvShow && session.NowPlayingItem.SeriesName && (
+              <>
+                <span className="mx-2">-</span>
+                <SeriesLink
+                  mediaUrl={mediaUrl}
+                  name={localizedTitle?.split(' - ')[0] || session.NowPlayingItem.SeriesName}
+                />
+              </>
+            )}
+            {!isTvShow && session.NowPlayingItem.Artists?.[0] && (
+              <>
+                <span className="mx-2">-</span>
+                <span>{session.NowPlayingItem.Artists[0]}</span>
+              </>
+            )}
+          </div>
+          <Image
+            src={`/devices/${getDeviceIcon(session.DeviceName, session.Client)}`}
+            alt={session.DeviceName}
+            width={16}
+            height={16}
+            className="h-4 w-4"
+          />
+        </div>
         <div className="overflow-hidden overflow-ellipsis whitespace-nowrap text-base font-bold text-white hover:underline sm:text-lg">
           {isMusic ? (
             <span>{session.NowPlayingItem.Name}</span>
