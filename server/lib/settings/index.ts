@@ -131,7 +131,7 @@ export interface MainSettings {
   partialRequestsEnabled: boolean;
   locale: string;
   proxy: ProxySettings;
-  adminEmail: string;
+  paypalMeLink: string;
   subscriptionPrice: number;
 }
 
@@ -164,6 +164,8 @@ interface FullPublicSettings extends PublicSettings {
   jellyfinHostname: string;
   jellyfinPort: number;
   jellyfinBaseUrl: string;
+  paypalMeLink: string;    // Add this
+  subscriptionPrice: number;  // Add this
 }
 
 export interface NotificationAgentConfig {
@@ -356,7 +358,7 @@ class Settings {
           bypassFilter: '',
           bypassLocalAddresses: true,
         },
-        adminEmail: '',
+        paypalMeLink: '',
         subscriptionPrice: 0,
       },
       plex: {
@@ -579,6 +581,8 @@ class Settings {
   get fullPublicSettings(): FullPublicSettings {
     return {
       ...this.data.public,
+      paypalMeLink: this.data.main.paypalMeLink,
+      subscriptionPrice: this.data.main.subscriptionPrice,
       jellyfinSsl: this.data.jellyfin?.useSsl ?? false,
       jellyfinHostname: this.data.jellyfin?.ip ?? '',
       jellyfinPort: this.data.jellyfin?.port ?? 8096,

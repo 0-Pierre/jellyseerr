@@ -23,6 +23,8 @@ export interface SettingsAboutResponse {
 }
 
 export interface PublicSettingsResponse {
+  paypalMeLink: string;
+  subscriptionPrice: number;
   jellyfinHost?: string;
   jellyfinExternalHost?: string;
   jellyfinServerName?: string;

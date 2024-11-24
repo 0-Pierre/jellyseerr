@@ -202,6 +202,8 @@ CoreApp.getInitialProps = async (initialProps) => {
     locale: 'en',
     emailEnabled: false,
     newPlexLogin: true,
+    paypalMeLink: '',
+    subscriptionPrice: 0,
   };
 
   if (ctx.res) {

@@ -39,6 +39,11 @@ With more features on the way! Check out our [issue tracker](https://github.com/
 ### Upcoming Features
 
 - Translate existing email layout.
+- Add a new email layout to send it to an user when subscription expires.
+- Add popup for expired or never subscribed user to subscribe.
+- Add the fact that we allow request to the user only if he's subscribed or lifetime and remove it when expired.
+- Track Paypal email incoming when an user renew his subscription to automaticly change his subscription status to active.
+- Add confirmation message before rensend welcome email button actives.
 
 ### Completed Features
 

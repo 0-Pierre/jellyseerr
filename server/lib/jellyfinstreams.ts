@@ -9,7 +9,7 @@ import {
 } from '@server/utils/backendMessages';
 
 const messages = defineBackendMessages('components.JellyfinStreams', {
-  subscriptionExpired: 'Your yearly subscription has expired, renew it by sending {subscriptionPrice} € to {adminEmail} on PayPal to continue playing.',
+  subscriptionExpired: 'Your yearly subscription has expired, renew it directly on Jellyseerr.',
   subscriptionRequired: 'You need an active subscription to continue playing.',
 });
 
@@ -63,8 +63,6 @@ const jellyfinStreams = {
           try {
             const rawMessage = getTranslation(messages, 'subscriptionExpired', userLocale);
             const message = rawMessage
-              .replace('{subscriptionPrice}', settings.main.subscriptionPrice.toString())
-              .replace('{adminEmail}', settings.main.adminEmail);
             await jellyfin.stopSession(session.Id, message);
           } catch (error) {
             logger.error('Failed to stop session', { error });

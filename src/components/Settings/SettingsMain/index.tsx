@@ -66,11 +66,11 @@ const messages = defineMessages('components.Settings.SettingsMain', {
     "Use ',' as a separator, and '*.' as a wildcard for subdomains",
   proxyBypassLocalAddresses: 'Bypass Proxy for Local Addresses',
   validationProxyPort: 'You must provide a valid port',
-  adminEmail: 'Admin Email',
-  adminEmailTip: 'Enter the admin email address',
+  paypalMeLink: 'PayPal.Me Link',
+  paypalMeLinkTip: 'Enter your PayPal.Me link',
   subscriptionPrice: 'Subscription Price',
   subscriptionPriceTip: 'Enter the subscription price without the currency symbol',
-  validationAdminEmail: 'You must provide a valid email address',
+  validationpaypalMeLink: 'You must provide a valid PayPal.me link',
   validationSubscriptionPrice: 'Subscription price must be a positive number',
   validationSubscriptionPriceEmpty: 'Subscription price is required',
 });
@@ -89,7 +89,7 @@ const SettingsMain = () => {
     currentUser ? `/api/v1/user/${currentUser.id}/settings/main` : null
   );
 
-  const MainSettingsSchema = Yup.object().shape({
+  const schema = Yup.object().shape({
     applicationTitle: Yup.string().required(
       intl.formatMessage(messages.validationApplicationTitle)
     ),
@@ -106,12 +106,26 @@ const SettingsMain = () => {
         intl.formatMessage(messages.validationProxyPort)
       ),
     }),
-    adminEmail: Yup.string()
-      .email(intl.formatMessage(messages.validationAdminEmail))
-      .required(intl.formatMessage(messages.validationAdminEmail)),
-    subscriptionPrice: Yup.number()
-      .min(0, intl.formatMessage(messages.validationSubscriptionPrice))
+    subscriptionPrice: Yup
+      .number()
+      .typeError(intl.formatMessage(messages.validationSubscriptionPriceEmpty))
       .required(intl.formatMessage(messages.validationSubscriptionPriceEmpty))
+      .min(0, intl.formatMessage(messages.validationSubscriptionPrice))
+      .test(
+        'is-decimal',
+        'Amount cannot have more than 2 decimal places',
+        (value) => {
+          if (!value) return true;
+          return Number.isInteger(value * 100);
+        }
+      ),
+    paypalMeLink: Yup
+      .string()
+      .required(intl.formatMessage(messages.validationpaypalMeLink))
+      .matches(
+        /^https:\/\/paypal\.me\/[a-zA-Z0-9._-]+$/,
+        intl.formatMessage(messages.validationpaypalMeLink)
+      )
   });
 
   const regenerate = async () => {
@@ -175,11 +189,11 @@ const SettingsMain = () => {
             proxyPassword: data?.proxy?.password,
             proxyBypassFilter: data?.proxy?.bypassFilter,
             proxyBypassLocalAddresses: data?.proxy?.bypassLocalAddresses,
-            adminEmail: data?.adminEmail,
             subscriptionPrice: data?.subscriptionPrice,
+            paypalMeLink: data?.paypalMeLink,
           }}
           enableReinitialize
-          validationSchema={MainSettingsSchema}
+          validationSchema={schema}
           onSubmit={async (values) => {
             try {
               const res = await fetch('/api/v1/settings/main', {
@@ -208,8 +222,8 @@ const SettingsMain = () => {
                     bypassFilter: values.proxyBypassFilter,
                     bypassLocalAddresses: values.proxyBypassLocalAddresses,
                   },
-                  adminEmail: values.adminEmail,
                   subscriptionPrice: values.subscriptionPrice,
+                  paypalMeLink: values.paypalMeLink,
                 }),
               });
               if (!res.ok) throw new Error();
@@ -319,28 +333,28 @@ const SettingsMain = () => {
                   </div>
                 </div>
                 <div className="form-row">
-                  <label htmlFor="adminEmail" className="text-label">
-                    {intl.formatMessage(messages.adminEmail)}
+                  <label htmlFor="paypalMeLink" className="text-label">
+                    PayPal Link
                     <span className="label-tip">
-                      {intl.formatMessage(messages.adminEmailTip)}
+                      Enter your PayPal.me URL
                     </span>
                   </label>
                   <div className="form-input-area">
                     <div className="form-input-field">
                       <Field
                         type="text"
-                        id="adminEmail"
-                        name="adminEmail"
+                        id="paypalMeLink"
+                        name="paypalMeLink"
+                        placeholder="https://paypal.me/username/"
                       />
                     </div>
-                    {errors.adminEmail &&
-                      touched.adminEmail &&
-                      typeof errors.adminEmail === 'string' && (
-                        <div className="error">{errors.adminEmail}</div>
+                    {errors.paypalMeLink &&
+                      touched.paypalMeLink &&
+                      typeof errors.paypalMeLink === 'string' && (
+                        <div className="error">{errors.paypalMeLink}</div>
                     )}
                   </div>
                 </div>
-
                 <div className="form-row">
                   <label htmlFor="subscriptionPrice" className="text-label">
                     {intl.formatMessage(messages.subscriptionPrice)}

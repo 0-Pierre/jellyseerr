@@ -26,6 +26,8 @@ const defaultSettings = {
   locale: 'en',
   emailEnabled: false,
   newPlexLogin: true,
+  paypalMeLink: '',
+  subscriptionPrice: 0,
 };
 
 export const SettingsContext = React.createContext<SettingsContextProps>({
