@@ -299,7 +299,9 @@ export type JobId =
   | 'availability-sync'
   | 'jellyfin-streams'
   | 'subscription-scan'
-  | 'jellyfin-suspicious-activity';
+  | 'jellyfin-suspicious-activity'
+  | 'paypal-payments';
+
 
 export interface AllSettings {
   clientId: string;
@@ -513,6 +515,9 @@ class Settings {
           schedule: '*/30 * * * * *',
         },
         'jellyfin-suspicious-activity': {
+          schedule: '*/60 * * * * *',
+        },
+        'paypal-payments': {
           schedule: '*/60 * * * * *',
         },
       },

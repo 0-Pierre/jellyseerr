@@ -9,18 +9,18 @@ import { format } from 'date-fns';
 import useSettings from '@app/hooks/useSettings';
 
 const messages = defineMessages('components.SubscriptionModal', {
-  titleExpired: 'Your subscription has expired.',
-  titleNoSubscription: "You don't have an active subscription, for the moment.",
-  messageExpired: 'Your subscription has expired on {expirationDate}. You can renew your access by clicking the button below or directly in your profile at the top right corner. This will restore your ability to request content on Jellyseerr and stream all media on Jellyfin.',
-  messageNoSubscription: 'You currently do not have an active subscription. You can subscribe by clicking on the button below or directly in your profile on top right. Upon subscribing, you will have the ability to request new content on Jellyseerr and stream all these media directly on Jellyfin.',
+  titleExpired: 'Your annual subscription has expired, renew it for {subscriptionPrice}€, only.',
+  titleNoSubscription: "{subscriptionPrice}€ per year, that's all.",
+  messageExpired: 'Your subscription expired on {expirationDate}. To renew, simply click the button below or access your profile in the top right corner. Ensure your PayPal account name matches your Jellyseerr account name and that the amount is exactly {subscriptionPrice} € to avoid any payment automatic detection issues. Once renewed, you will regain the ability to request content on Jellyseerr and stream media on Jellyfin seamlessly.',
+  messageNoSubscription: 'You currently do not have an active subscription. You can subscribe by clicking on the button below or directly in your profile in the top right. Ensure that the name on your PayPal account matches the name on your Jellyseerr account and that the subscription price is exactly {subscriptionPrice}€ to avoid any payment automatic detection issues. Upon subscribing, you will have the ability to request new content on Jellyseerr and stream all these media directly on Jellyfin.',
   closeButton: 'Close',
   renewButton: 'Renew Subscription',
-  subscribeButton: 'Subscribe Now'
+  subscribeButton: 'Subscribe Now',
+  manualProcessingMessage: "If your payment isn't detected automatically within the next few minutes, don't worry. I'll process it manually when I'll the time."
 });
 
 const SubscriptionStatusModal = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [showPaypal, setShowPaypal] = useState(false);
   const { user } = useUser();
   const { currentSettings } = useSettings();
   const intl = useIntl();
@@ -52,23 +52,31 @@ const SubscriptionStatusModal = () => {
 
   const getTitle = () => {
     if (user?.subscriptionStatus === 'expired') {
-      return intl.formatMessage(messages.titleExpired);
+      return intl.formatMessage(messages.titleExpired, {
+        subscriptionPrice: currentSettings.subscriptionPrice
+      });
     }
-    return intl.formatMessage(messages.titleNoSubscription);
+    return intl.formatMessage(messages.titleNoSubscription, {
+      subscriptionPrice: currentSettings.subscriptionPrice
+    });
   };
 
   const getMessage = () => {
     if (user?.subscriptionStatus === 'expired' && user?.subscriptionExpirationDate) {
       const formattedDate = format(new Date(user.subscriptionExpirationDate), 'PP');
       return intl.formatMessage(messages.messageExpired, {
-        expirationDate: formattedDate
+        expirationDate: formattedDate,
+        subscriptionPrice: currentSettings.subscriptionPrice
       });
     }
-    return intl.formatMessage(messages.messageNoSubscription);
+    return intl.formatMessage(messages.messageNoSubscription, {
+      subscriptionPrice: currentSettings.subscriptionPrice
+    });
   };
 
   const handleActionClick = () => {
-    setShowPaypal(true);
+    window.open(`${currentSettings.paypalMeLink}/${currentSettings.subscriptionPrice}`, '_blank');
+    setIsOpen(false);
   };
 
   return (
@@ -92,25 +100,10 @@ const SubscriptionStatusModal = () => {
         backgroundClickable={false}
       >
         <div className="mt-6">
-          {!showPaypal ? (
-            <p className="text-gray-200">
-              {getMessage()}
-            </p>
-          ) : (
-            <div className="w-full text-center">
-              <a
-                href={`${currentSettings.paypalMeLink}/${currentSettings.subscriptionPrice}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-150 ease-in-out"
-              >
-                {getActionButton()}
-              </a>
-              <p className="mt-2 text-sm text-gray-400">
-                You will be redirected to PayPal to complete your payment
-              </p>
-            </div>
-          )}
+          <p className="text-white">
+            {getMessage()}
+          </p>
+          <p className="text-gray-400 mt-6 mb-6">{intl.formatMessage(messages.manualProcessingMessage)}</p>
         </div>
       </Modal>
     </Transition>

@@ -69,6 +69,7 @@ const messages: { [messageName: string]: MessageDescriptor } = defineMessages(
     'subscription-scan': 'Subscription Scan',
     'jellyfin-streams': 'Subscription Streams Scan',
     'jellyfin-suspicious-activity': 'Suspicious Activity Scan',
+    'paypal-payments': 'PayPal Payments Scan',
     editJobSchedule: 'Modify Job',
     jobScheduleEditSaved: 'Job edited successfully!',
     jobScheduleEditFailed: 'Something went wrong while saving the job.',

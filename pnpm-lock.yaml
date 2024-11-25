@@ -95,9 +95,15 @@ importers:
       gravatar-url:
         specifier: 3.1.0
         version: 3.1.0
+      imap:
+        specifier: ^0.8.19
+        version: 0.8.19
       lodash:
         specifier: 4.17.21
         version: 4.17.21
+      mailparser:
+        specifier: ^3.7.1
+        version: 3.7.1
       mime:
         specifier: '3'
         version: 3.0.0
@@ -267,9 +273,15 @@ importers:
       '@types/express-session':
         specifier: 1.17.6
         version: 1.17.6
+      '@types/imap':
+        specifier: ^0.8.42
+        version: 0.8.42
       '@types/lodash':
         specifier: 4.14.191
         version: 4.14.191
+      '@types/mailparser':
+        specifier: ^3.4.5
+        version: 3.4.5
       '@types/mime':
         specifier: '3'
         version: 3.0.4
@@ -2827,6 +2839,9 @@ packages:
   '@types/http-errors@2.0.4':
     resolution: {integrity: sha512-D0CFMMtydbJAegzOyHjtiKPLlvnm3iTZyZRSZoLq2mRhDdmLfIWOCYPfQJ4cu2erKghU++QvjcUjp/5h7hESpA==}
 
+  '@types/imap@0.8.42':
+    resolution: {integrity: sha512-FusePG9Cp2GYN6OLow9xBCkjznFkAR7WCz0Fm+j1p/ER6C8V8P71DtjpSmwrZsS7zekCeqdTPHEk9N5OgPwcsg==}
+
   '@types/istanbul-lib-coverage@2.0.6':
     resolution: {integrity: sha512-2QF/t/auWm0lsy8XtKVPG19v3sSOQlJe/YHZgfjb/KBBHOGSV+J2q/S671rcq9uTBrLAXmZpqJiaQbMT+zNU1w==}
 
@@ -2850,6 +2865,9 @@ packages:
 
   '@types/lodash@4.17.5':
     resolution: {integrity: sha512-MBIOHVZqVqgfro1euRDWX7OO0fBVUUMrN6Pwm8LQsz8cWhEpihlvR70ENj3f40j58TNxZaWv2ndSkInykNBBJw==}
+
+  '@types/mailparser@3.4.5':
+    resolution: {integrity: sha512-EPERBp7fLeFZh7tS2X36MF7jawUx3Y6/0rXciZah3CTYgwLi3e0kpGUJ6FOmUabgzis/U1g+3/JzrVWbWIOGjg==}
 
   '@types/mdast@3.0.15':
     resolution: {integrity: sha512-LnwD+mUEfxWMa1QpDraczIn6k0Ee3SMicuYSSzS6ZYl2gKS09EClnJYGd8Du6rfc5r/GZEk5o1mRb8TaTj03sQ==}
@@ -5442,6 +5460,10 @@ packages:
     engines: {node: '>=16.x'}
     hasBin: true
 
+  imap@0.8.19:
+    resolution: {integrity: sha512-z5DxEA1uRnZG73UcPA4ES5NSCGnPuuouUx43OPX7KZx1yzq3N8/vx2mtXEShT5inxB3pRgnfG1hijfu7XN2YMw==}
+    engines: {node: '>=0.8.0'}
+
   import-fresh@2.0.0:
     resolution: {integrity: sha512-eZ5H8rcgYazHbKC3PG4ClHNykCSxtAhxSSEM+2mb+7evD2CKF5V7c0dNum7AdpDh0ZdICwZY9sRSn8f+KH96sg==}
     engines: {node: '>=4'}
@@ -7696,6 +7718,9 @@ packages:
   readable-stream@1.0.34:
     resolution: {integrity: sha512-ok1qVCJuRkNmvebYikljxJA/UEsKwLl2nI1OmaqAu4/UE+h0wKCHok4XkL/gvi39OacXvw59RJUOFUkDib2rHg==}
 
+  readable-stream@1.1.14:
+    resolution: {integrity: sha512-+MeVjFf4L44XUkhM1eYbD8fyEsxcV81pqMSR5gblfcLCHfZvbrqy4/qYHE+/R5HoBUT11WV5O08Cr1n3YXkWVQ==}
+
   readable-stream@2.3.8:
     resolution: {integrity: sha512-8p0AUk4XODgIewSi0l8Epjs+EVnWiK7NoDIEGU0HhE7+ZyY8D1IMY7odu5lRrFXGg71L15KG8QrPmum45RTtdA==}
 
@@ -7958,6 +7983,10 @@ packages:
   semver-regex@3.1.4:
     resolution: {integrity: sha512-6IiqeZNgq01qGf0TId0t3NvKzSvUsjcpdEO3AQNeIjR6A2+ckTnQlDpl4qu1bjRv0RzN3FP9hzFmws3lKqRWkA==}
     engines: {node: '>=8'}
+
+  semver@5.3.0:
+    resolution: {integrity: sha512-mfmm3/H9+67MCVix1h+IXTpDwL6710LyHuk7+cWC9T1mE0qz4iHhh6r4hU2wrIT9iTsAAC2XQRvfblL028cpLw==}
+    hasBin: true
 
   semver@5.7.2:
     resolution: {integrity: sha512-cBznnQ9KjJqU67B52RMC65CMarK2600WFnbkcaiwWq3xy/5haFJlshgnpjovMVJ+Hff49d8GEn0b87C5pDQ10g==}
@@ -8875,6 +8904,9 @@ packages:
     resolution: {integrity: sha512-PElTlVMwpblvbNqQ82d2n6RjStvdSoNe9FG28kNfz3WiXilJm4DdNkEzRhCZuIDwY8U08WVihhGR5iRqAwfDiw==}
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0
+
+  utf7@1.0.2:
+    resolution: {integrity: sha512-qQrPtYLLLl12NF4DrM9CvfkxkYI97xOb5dsnGZHE3teFr0tWiEZ9UdgMPczv24vl708cYMpe6mGXGHrotIp3Bw==}
 
   util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
@@ -12648,6 +12680,10 @@ snapshots:
 
   '@types/http-errors@2.0.4': {}
 
+  '@types/imap@0.8.42':
+    dependencies:
+      '@types/node': 20.14.8
+
   '@types/istanbul-lib-coverage@2.0.6': {}
 
   '@types/istanbul-lib-report@3.0.3':
@@ -12667,6 +12703,11 @@ snapshots:
   '@types/lodash@4.14.191': {}
 
   '@types/lodash@4.17.5': {}
+
+  '@types/mailparser@3.4.5':
+    dependencies:
+      '@types/node': 20.14.8
+      iconv-lite: 0.6.3
 
   '@types/mdast@3.0.15':
     dependencies:
@@ -15782,6 +15823,11 @@ snapshots:
     dependencies:
       queue: 6.0.2
 
+  imap@0.8.19:
+    dependencies:
+      readable-stream: 1.1.14
+      utf7: 1.0.2
+
   import-fresh@2.0.0:
     dependencies:
       caller-path: 2.0.0
@@ -18321,6 +18367,13 @@ snapshots:
       isarray: 0.0.1
       string_decoder: 0.10.31
 
+  readable-stream@1.1.14:
+    dependencies:
+      core-util-is: 1.0.3
+      inherits: 2.0.4
+      isarray: 0.0.1
+      string_decoder: 0.10.31
+
   readable-stream@2.3.8:
     dependencies:
       core-util-is: 1.0.3
@@ -18646,6 +18699,8 @@ snapshots:
       semver: 6.3.1
 
   semver-regex@3.1.4: {}
+
+  semver@5.3.0: {}
 
   semver@5.7.2: {}
 
@@ -19587,6 +19642,10 @@ snapshots:
   use-sync-external-store@1.2.2(react@18.3.1):
     dependencies:
       react: 18.3.1
+
+  utf7@1.0.2:
+    dependencies:
+      semver: 5.3.0
 
   util-deprecate@1.0.2: {}
 

@@ -14,6 +14,7 @@ import { getSettings } from '@server/lib/settings';
 import watchlistSync from '@server/lib/watchlistsync';
 import subscriptionsSync from '@server/lib/subscriptionssync';
 import jellyfinStreams from '@server/lib/jellyfinstreams';
+import paypalPayments from '@server/lib/paypalPayments';
 import jellyfinSuspiciousActivity from '@server/lib/jellyfinsuspiciousactivity';
 import logger from '@server/logger';
 import random from 'lodash/random';
@@ -275,6 +276,20 @@ export const startJobs = (): void => {
         label: 'Jobs',
       });
       jellyfinSuspiciousActivity.run();
+    }),
+  });
+
+  scheduledJobs.push({
+    id: 'paypal-payments',
+    name: 'PayPal Payments Scan',
+    type: 'process',
+    interval: 'minutes',
+    cronSchedule: jobs['paypal-payments'].schedule,
+    job: schedule.scheduleJob(jobs['paypal-payments'].schedule, () => {
+      logger.info('Starting scheduled job: PayPal Payments Scan', {
+        label: 'Jobs',
+      });
+      paypalPayments.run();
     }),
   });
 
