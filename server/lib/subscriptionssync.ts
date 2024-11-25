@@ -15,6 +15,7 @@ const subscriptionsSync = {
       for (const user of users) {
         if (user.subscriptionExpirationDate && new Date(user.subscriptionExpirationDate) < now) {
           user.subscriptionStatus = 'expired';
+          user.permissions = 1277181952;
           await userRepository.save(user);
           logger.info(`User ${user.id} subscription expired.`);
         }

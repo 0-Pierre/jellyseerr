@@ -164,25 +164,20 @@ const UserGeneralSettings = () => {
         enableReinitialize
         onSubmit={async (values) => {
           try {
-            const res = await fetch(`/api/v1/user/${user?.id}/settings/main`, {
+            const mainRes = await fetch(`/api/v1/user/${user?.id}/settings/main`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
                 username: values.displayName,
-                email:
-                  values.email || user?.jellyfinUsername || user?.plexUsername,
+                email: values.email || user?.jellyfinUsername || user?.plexUsername,
                 discordId: values.discordId,
                 locale: values.locale,
                 region: values.region,
                 originalLanguage: values.originalLanguage,
-                movieQuotaLimit: movieQuotaEnabled
-                  ? values.movieQuotaLimit
-                  : null,
-                movieQuotaDays: movieQuotaEnabled
-                  ? values.movieQuotaDays
-                  : null,
+                movieQuotaLimit: movieQuotaEnabled ? values.movieQuotaLimit : null,
+                movieQuotaDays: movieQuotaEnabled ? values.movieQuotaDays : null,
                 tvQuotaLimit: tvQuotaEnabled ? values.tvQuotaLimit : null,
                 tvQuotaDays: tvQuotaEnabled ? values.tvQuotaDays : null,
                 watchlistSyncMovies: values.watchlistSyncMovies,
@@ -191,7 +186,19 @@ const UserGeneralSettings = () => {
                 subscriptionType: values.subscriptionType,
               }),
             });
-            if (!res.ok) throw new Error(res.statusText, { cause: res });
+            const permissionsRes = await fetch(`/api/v1/user/${user?.id}/settings/permissions`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                permissions: values.subscriptionEnabled ? 1289765024 : 1277181952
+              }),
+            });
+
+            if (!mainRes.ok || !permissionsRes.ok) {
+              throw new Error('Failed to update settings');
+            }
 
             if (currentUser?.id === user?.id && setLocale) {
               setLocale(
