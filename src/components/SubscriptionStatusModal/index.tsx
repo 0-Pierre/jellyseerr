@@ -11,8 +11,8 @@ import useSettings from '@app/hooks/useSettings';
 const messages = defineMessages('components.SubscriptionModal', {
   titleExpired: 'Your annual subscription has expired, renew it for {subscriptionPrice}€, only.',
   titleNoSubscription: "{subscriptionPrice}€ per year, that's all.",
-  messageExpired: 'Your subscription expired on {expirationDate}. To renew, simply click the button below or access your profile in the top right corner. Ensure your PayPal account name matches your Jellyseerr account name and that the amount is exactly {subscriptionPrice} € to avoid any payment automatic detection issues. Once renewed, you will regain the ability to request content on Jellyseerr and stream media on Jellyfin seamlessly.',
-  messageNoSubscription: 'You currently do not have an active subscription. You can subscribe by clicking on the button below or directly in your profile in the top right. Ensure that the name on your PayPal account matches the name on your Jellyseerr account and that the subscription price is exactly {subscriptionPrice}€ to avoid any payment automatic detection issues. Upon subscribing, you will have the ability to request new content on Jellyseerr and stream all these media directly on Jellyfin.',
+  messageExpired: 'Your subscription expired on {expirationDate}.<br /><br />To renew, simply click the button below or access your profile in the top right corner.<br />Ensure your PayPal account name matches your Jellyseerr account name and that the amount is exactly {subscriptionPrice}€ to avoid any payment automatic detection issues.<br />Once renewed, you will regain the ability to request content on Jellyseerr and stream media on Jellyfin seamlessly.',
+  messageNoSubscription: 'You currently do not have an active subscription.<br /><br />You can subscribe by clicking on the button below or directly in your profile in the top right.<br />Ensure that the name on your PayPal account matches the name on your Jellyseerr account and that the subscription price is exactly {subscriptionPrice}€ to avoid any payment automatic detection issues.<br />Upon subscribing, you will have the ability to request new content on Jellyseerr and stream all these media directly on Jellyfin.',
   closeButton: 'Close',
   renewButton: 'Renew Subscription',
   subscribeButton: 'Subscribe Now',
@@ -100,10 +100,18 @@ const SubscriptionStatusModal = () => {
         backgroundClickable={false}
       >
         <div className="mt-6">
-          <p className="text-white">
-            {getMessage()}
-          </p>
-          <p className="text-gray-400 mt-6 mb-6">{intl.formatMessage(messages.manualProcessingMessage)}</p>
+          <p
+            className="text-white"
+            dangerouslySetInnerHTML={{
+              __html: getMessage()
+            }}
+          />
+          <p
+            className="text-gray-400 mt-6 mb-6"
+            dangerouslySetInnerHTML={{
+              __html: intl.formatMessage(messages.manualProcessingMessage)
+            }}
+          />
         </div>
       </Modal>
     </Transition>

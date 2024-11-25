@@ -3,13 +3,15 @@ import CachedImage from '@app/components/Common/CachedImage';
 import { Permission, UserType, useUser } from '@app/hooks/useUser';
 import type { User } from '@app/hooks/useUser';
 import defineMessages from '@app/utils/defineMessages';
-import { CogIcon, UserIcon, EnvelopeIcon } from '@heroicons/react/24/solid';
+import { CogIcon, UserIcon, EnvelopeIcon, CreditCardIcon } from '@heroicons/react/24/solid';
 import Link from 'next/link';
 import { useIntl } from 'react-intl';
 import { useToasts } from 'react-toast-notifications';
 import Modal from '@app/components/Common/Modal';
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import { Transition } from '@headlessui/react';
+import useSettings from '@app/hooks/useSettings';
+import { format } from 'date-fns';
 
 const messages = defineMessages('components.UserProfile.ProfileHeader', {
   settings: 'Edit Settings',
@@ -24,6 +26,17 @@ const messages = defineMessages('components.UserProfile.ProfileHeader', {
   welcomeMailSuccess: 'Welcome email sent successfully',
   welcomeMailError: 'Failed to send welcome email',
   resendWelcomeMailConfirm: 'Are you sure you want to resend the welcome email to {username}?',
+  subscriptionModalTitle: "{subscriptionPrice}€ per year, that's all.",
+  subscriptionModalTitleExpired: 'Your annual subscription has expired, renew it for {subscriptionPrice}€, only.',
+  subscriptionModalMessage: 'You are about to subscribe to Jellyfin and Jellyseerr.<br/><br/> Ensure that the name on your PayPal account matches the name on your Jellyseerr account and that the subscription price is exactly {subscriptionPrice}€ to avoid any payment automatic detection issues.<br />Upon subscribing, you will have the ability to request new content on Jellyseerr and stream all these media directly on Jellyfin.',
+  subscriptionModalMessageExpired: 'You will renew your subscription expired on {expirationDate}.<br/><br/> Ensure your PayPal account name matches your Jellyseerr account name and that the amount is exactly {subscriptionPrice}€ to avoid any payment automatic detection issues.<br />Once renewed, you will regain the ability to request content on Jellyseerr and stream media on Jellyfin seamlessly.',
+  subscriptionModalClose: 'Close',
+  subscriptionModalRenew: 'Renew Subscription',
+  subscriptionModalSubscribe: 'Subscribe Now',
+  subscriptionModalProcessing: "If your payment isn't detected automatically within the next few minutes, don't worry. We'll process it manually.",
+  buttonRenew: 'Renew Subscription',
+  buttonSubscribe: 'Subscribe',
+  buttonAlreadySubscribed: 'You are already subscribed'
 });
 
 interface ProfileHeaderProps {
@@ -36,6 +49,8 @@ const ProfileHeader = ({ user, isSettingsPage }: ProfileHeaderProps) => {
   const { user: loggedInUser, hasPermission } = useUser();
   const { addToast } = useToasts();
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const { currentSettings } = useSettings();
 
   const subtextItems: React.ReactNode[] = [
     intl.formatMessage(messages.joindate, {
@@ -97,6 +112,17 @@ const ProfileHeader = ({ user, isSettingsPage }: ProfileHeaderProps) => {
     }
   };
 
+  const getSubscriptionButtonText = () => {
+    if (user.subscriptionStatus === 'expired') {
+      return intl.formatMessage(messages.buttonRenew);
+    } else if (user.subscriptionStatus === 'active' || user.subscriptionStatus === 'lifetime') {
+      return intl.formatMessage(messages.buttonAlreadySubscribed);
+    }
+    return intl.formatMessage(messages.buttonSubscribe);
+  };
+
+  type SubscriptionStatus = 'active' | 'expired' | 'lifetime' | null | undefined;
+
   return (
     <>
       <div className="relative z-40 mt-6 mb-12 lg:flex lg:items-end lg:justify-between lg:space-x-5">
@@ -156,6 +182,76 @@ const ProfileHeader = ({ user, isSettingsPage }: ProfileHeaderProps) => {
               <EnvelopeIcon />
               <span>{intl.formatMessage(messages.resendWelcomeMail)}</span>
             </Button>
+          )}
+          {user.id === loggedInUser?.id && (
+            <>
+              <Button
+                buttonType="default"
+                onClick={() => setShowSubscriptionModal(true)}
+                disabled={
+                  (user.subscriptionStatus as SubscriptionStatus) === 'active' ||
+                  (user.subscriptionStatus as SubscriptionStatus) === 'lifetime'
+                }
+                className="mr-4"
+              >
+                <CreditCardIcon />
+                <span>{getSubscriptionButtonText()}</span>
+              </Button>
+
+              <Transition
+                show={showSubscriptionModal}
+                as={Fragment}
+                enter="transition-opacity duration-300"
+                enterFrom="opacity-0"
+                enterTo="opacity-100"
+                leave="transition-opacity duration-300"
+                leaveFrom="opacity-100"
+                leaveTo="opacity-0"
+              >
+                <Modal
+                  title={user.subscriptionStatus === 'expired'
+                    ? intl.formatMessage(messages.subscriptionModalTitleExpired, {
+                        subscriptionPrice: currentSettings.subscriptionPrice
+                      })
+                    : intl.formatMessage(messages.subscriptionModalTitle, {
+                        subscriptionPrice: currentSettings.subscriptionPrice
+                      })
+                  }
+                  onCancel={() => setShowSubscriptionModal(false)}
+                  cancelText={intl.formatMessage(messages.subscriptionModalClose)}
+                  onOk={() => {
+                    window.open(`${currentSettings.paypalMeLink}/${currentSettings.subscriptionPrice}`, '_blank');
+                    setShowSubscriptionModal(false);
+                  }}
+                  okText={user.subscriptionStatus === 'expired'
+                    ? intl.formatMessage(messages.subscriptionModalRenew)
+                    : intl.formatMessage(messages.subscriptionModalSubscribe)
+                  }
+                  backgroundClickable={false}
+                >
+                  <div className="mt-6">
+                    <p
+                      className="text-white"
+                      dangerouslySetInnerHTML={{
+                        __html: user.subscriptionStatus === 'expired'
+                          ? intl.formatMessage(messages.subscriptionModalMessageExpired, {
+                              expirationDate: user.subscriptionExpirationDate
+                                ? format(new Date(user.subscriptionExpirationDate), 'PP')
+                                : format(new Date(), 'PP'),
+                              subscriptionPrice: currentSettings.subscriptionPrice
+                            })
+                          : intl.formatMessage(messages.subscriptionModalMessage, {
+                              subscriptionPrice: currentSettings.subscriptionPrice
+                            })
+                      }}
+                    />
+                    <p className="text-gray-400 mt-6 mb-6">
+                      {intl.formatMessage(messages.subscriptionModalProcessing)}
+                    </p>
+                  </div>
+                </Modal>
+              </Transition>
+            </>
           )}
           {(loggedInUser?.id === user.id ||
             (user.id !== 1 && hasPermission(Permission.MANAGE_USERS))) &&

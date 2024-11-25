@@ -36,16 +36,17 @@ With more features on the way! Check out our [issue tracker](https://github.com/
 
 ## Custom Features
 
-### Upcoming Features
+### TO DO
 
 - Translate existing email layout.
+- Add missing translation from new functionnalities.
 - Add a new email layout to send it to an user when subscription expires and is renewed.
-- Add popup for expired or never subscribed user to subscribe.
-- Track Paypal email incoming when an user renew his subscription to automaticly change his subscription status to active.
 - Fix welcome mail layout.
 
-### Completed Features
+### DONE
 
+- Track Paypal email incoming when an user renew his subscription to automaticly change his subscription status to active.
+- Add popup for expired or never subscribed user to subscribe and a popup in profile header.
 - Add confirmation message before rensend welcome email button actives.
 - Add restriction system that will allow request for the user only if he's subscribed or lifetime and remove it when expired.
 - Add epsiode locale support in new slider.
