@@ -39,12 +39,12 @@ With more features on the way! Check out our [issue tracker](https://github.com/
 ### TO DO
 
 - Translate existing email layout.
-- Add missing translation from new functionnalities.
 - Add a new email layout to send it to an user when subscription expires and is renewed.
 - Fix welcome mail layout.
 
 ### DONE
 
+- Add missing translation from new functionnalities.
 - Track Paypal email incoming when an user renew his subscription to automaticly change his subscription status to active.
 - Add popup for expired or never subscribed user to subscribe and a popup in profile header.
 - Add confirmation message before rensend welcome email button actives.
