@@ -28,6 +28,12 @@ const getIPv6Prefix = (ip: string): string => {
   return segments.slice(0, 4).join(':');
 };
 
+// Add this helper function
+function isLocalSubnet(ipAddress: string): boolean {
+  // Check if IP starts with 192.168.0.
+  return ipAddress.startsWith('192.168.0.');
+}
+
 const jellyfinSuspiciousActivity = {
   async run() {
     try {
@@ -51,13 +57,18 @@ const jellyfinSuspiciousActivity = {
       // Track IPs/Prefixes per user
       const userIPs = new Map();
 
-      // First pass - collect all IPs/Prefixes per user
+      // First pass
       for (const session of sessions) {
         const jellyfinUserId = session.UserId;
+        const ipAddress = session.RemoteEndPoint;
+
+        // Skip IPs from 192.168.0.0/24 subnet
+        if (isLocalSubnet(ipAddress)) continue;
+
         if (!userIPs.has(jellyfinUserId)) {
           userIPs.set(jellyfinUserId, new Set());
         }
-        const ipAddress = session.RemoteEndPoint;
+
         // Store prefix for IPv6, full address for IPv4
         userIPs.get(jellyfinUserId).add(
           isIPv6(ipAddress) ? getIPv6Prefix(ipAddress) : ipAddress
