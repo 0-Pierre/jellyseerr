@@ -19,7 +19,7 @@ const jellyfinStreams = {
       const settings = getSettings();
       const jellyfinSettings = settings.jellyfin;
 
-      if (!jellyfinSettings.ip || !jellyfinSettings.apiKey) {
+      if (!jellyfinSettings?.ip || !jellyfinSettings?.apiKey) {
         logger.error('Jellyfin is not configured properly.');
         return;
       }
@@ -33,9 +33,18 @@ const jellyfinStreams = {
 
       const sessions = await jellyfin.getActiveSessions();
 
+      if (!Array.isArray(sessions)) {
+        logger.error('Failed to get valid sessions from Jellyfin');
+        return;
+      }
+
       const userRepository = getRepository(User);
 
       for (const session of sessions) {
+        if (!session?.Id || !session?.UserId) {
+          continue;
+        }
+
         const jellyfinUserId = session.UserId;
 
         const user = await userRepository.findOne({
@@ -45,7 +54,7 @@ const jellyfinStreams = {
 
         const userLocale = user?.settings?.locale || 'en';
 
-        if (!user) {
+        if (!user?.subscriptionStatus) {
           try {
             const message = getTranslation(
               messages,
@@ -61,8 +70,11 @@ const jellyfinStreams = {
           user.subscriptionStatus !== 'lifetime'
         ) {
           try {
-            const rawMessage = getTranslation(messages, 'subscriptionExpired', userLocale);
-            const message = rawMessage
+            const message = getTranslation(
+              messages,
+              'subscriptionExpired',
+              userLocale
+            );
             await jellyfin.stopSession(session.Id, message);
           } catch (error) {
             logger.error('Failed to stop session', { error });
