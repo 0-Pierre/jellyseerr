@@ -45,15 +45,65 @@ const Setup = () => {
   const intl = useIntl();
   const [isUpdating, setIsUpdating] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
-  const [mediaServerSettingsComplete, setMediaServerSettingsComplete] =
-    useState(false);
-  const [mediaServerType, setMediaServerType] = useState(
-    MediaServerType.NOT_CONFIGURED
-  );
+  const [mediaServerSettingsComplete, setMediaServerSettingsComplete] = useState(false);
+  const [mediaServerType, setMediaServerType] = useState(MediaServerType.NOT_CONFIGURED);
   const router = useRouter();
   const { locale } = useLocale();
   const settings = useSettings();
   const toasts = useToasts();
+
+  useEffect(() => {
+    const storedState = localStorage.getItem('mediaServerSettingsComplete') === 'true';
+    setMediaServerSettingsComplete(storedState);
+  }, []);
+
+  useEffect(() => {
+    if (settings.currentSettings.initialized) {
+      router.push('/');
+      return;
+    }
+
+    if (settings.currentSettings.mediaServerType !== MediaServerType.NOT_CONFIGURED) {
+      setCurrentStep(3);
+      setMediaServerType(settings.currentSettings.mediaServerType);
+    }
+  }, [settings.currentSettings, router]);
+
+  const handleComplete = async () => {
+    try {
+      const endpoint = settings.currentSettings.mediaServerType === MediaServerType.JELLYFIN ||
+                      settings.currentSettings.mediaServerType === MediaServerType.EMBY
+        ? '/api/v1/settings/jellyfin'
+        : '/api/v1/settings/plex';
+
+      const res = await fetch(endpoint);
+      if (!res.ok) throw new Error('Fetch failed');
+
+      const data = await res.json();
+      const hasEnabledLibraries = data?.libraries?.some(
+        (library: Library) => library.enabled
+      );
+
+      if (hasEnabledLibraries) {
+        setMediaServerSettingsComplete(true);
+        localStorage.setItem('mediaServerSettingsComplete', 'true');
+      } else {
+        setMediaServerSettingsComplete(false);
+        localStorage.removeItem('mediaServerSettingsComplete');
+        toasts.addToast(intl.formatMessage(messages.librarieserror), {
+          autoDismiss: true,
+          appearance: 'warning',
+        });
+      }
+    } catch (e) {
+      setMediaServerSettingsComplete(false);
+      localStorage.removeItem('mediaServerSettingsComplete');
+      toasts.addToast(intl.formatMessage(messages.librarieserror), {
+        autoDismiss: true,
+        appearance: 'error',
+      });
+    }
+  };
 
   const finishSetup = async () => {
     setIsUpdating(true);
@@ -87,74 +137,6 @@ const Setup = () => {
     refreshWhenHidden: false,
     revalidateOnFocus: false,
   });
-
-  useEffect(() => {
-    if (settings.currentSettings.initialized) {
-      router.push('/');
-    }
-
-    if (
-      settings.currentSettings.mediaServerType !==
-      MediaServerType.NOT_CONFIGURED
-    ) {
-      setCurrentStep(3);
-      setMediaServerType(settings.currentSettings.mediaServerType);
-    }
-
-    if (currentStep === 3) {
-      const validateLibraries = async () => {
-        try {
-          const endpoint =
-            settings.currentSettings.mediaServerType ===
-              MediaServerType.JELLYFIN || MediaServerType.EMBY
-              ? '/api/v1/settings/jellyfin'
-              : '/api/v1/settings/plex';
-
-          const res = await fetch(endpoint);
-          if (!res.ok) throw new Error('Fetch failed');
-          const data = await res.json();
-
-          const hasEnabledLibraries = data?.libraries?.some(
-            (library: Library) => library.enabled
-          );
-
-          setMediaServerSettingsComplete(hasEnabledLibraries);
-          if (hasEnabledLibraries) {
-            localStorage.setItem('mediaServerSettingsComplete', 'true');
-          } else {
-            localStorage.removeItem('mediaServerSettingsComplete');
-          }
-        } catch (e) {
-          toasts.addToast(intl.formatMessage(messages.librarieserror), {
-            autoDismiss: true,
-            appearance: 'error',
-          });
-
-          setMediaServerSettingsComplete(false);
-          localStorage.removeItem('mediaServerSettingsComplete');
-        }
-      };
-
-      validateLibraries();
-    } else {
-      // Initialize from localStorage on mount
-      const storedState =
-        localStorage.getItem('mediaServerSettingsComplete') === 'true';
-      setMediaServerSettingsComplete(storedState);
-    }
-  }, [
-    settings.currentSettings.mediaServerType,
-    settings.currentSettings.initialized,
-    router,
-    currentStep,
-    toasts,
-    intl,
-  ]);
-
-  const handleComplete = () => {
-    setMediaServerSettingsComplete(true);
-    localStorage.setItem('mediaServerSettingsComplete', 'true');
-  };
 
   if (settings.currentSettings.initialized) return <></>;
 

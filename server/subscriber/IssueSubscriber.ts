@@ -12,6 +12,8 @@ import type {
   UpdateEvent,
 } from 'typeorm';
 import { EventSubscriber } from 'typeorm';
+import LidarrAPI from '@server/api/servarr/lidarr';
+import { getSettings } from '@server/lib/settings';
 
 @EventSubscriber()
 export class IssueSubscriber implements EntitySubscriberInterface<Issue> {
@@ -20,8 +22,8 @@ export class IssueSubscriber implements EntitySubscriberInterface<Issue> {
   }
 
   private async sendIssueNotification(entity: Issue, type: Notification) {
-    let title: string;
-    let image: string;
+    let title = '';
+    let image = '';
     const tmdb = new TheMovieDb();
 
     try {
@@ -32,13 +34,33 @@ export class IssueSubscriber implements EntitySubscriberInterface<Issue> {
           movie.release_date ? ` (${movie.release_date.slice(0, 4)})` : ''
         }`;
         image = `https://image.tmdb.org/t/p/w600_and_h900_bestv2${movie.poster_path}`;
-      } else {
+      } else if (entity.media.mediaType === MediaType.TV) {
         const tvshow = await tmdb.getTvShow({ tvId: entity.media.tmdbId });
 
         title = `${tvshow.name}${
           tvshow.first_air_date ? ` (${tvshow.first_air_date.slice(0, 4)})` : ''
         }`;
         image = `https://image.tmdb.org/t/p/w600_and_h900_bestv2${tvshow.poster_path}`;
+      } else if (entity.media.mediaType === MediaType.MUSIC) {
+        const settings = getSettings();
+        if (!settings.lidarr[0]) {
+          throw new Error('No Lidarr server configured');
+        }
+
+        const lidarr = new LidarrAPI({
+          apiKey: settings.lidarr[0].apiKey,
+          url: LidarrAPI.buildUrl(settings.lidarr[0], '/api/v1')
+        });
+
+        if (!entity.media.mbId) {
+          throw new Error('MusicBrainz ID is undefined');
+        }
+        const album = await lidarr.getAlbumByMusicBrainzId(entity.media.mbId);
+
+        const artist = await lidarr.getArtist({ id: album.artistId });
+
+        title = `${artist.artistName} - ${album.title}`;
+        image = album.images?.[0]?.url ?? '';
       }
 
       const [firstComment] = sortBy(entity.comments, 'id');
