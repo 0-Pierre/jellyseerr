@@ -168,7 +168,7 @@ class MusicBrainz extends ExternalAPI {
         if (!extract) return null;
 
         const decoded = extract
-            .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+            .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, '')
             .replace(/\\u[\dA-F]{4}/gi, match =>
                 String.fromCharCode(parseInt(match.replace(/\\u/g, ''), 16))
             )

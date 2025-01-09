@@ -897,7 +897,7 @@ discoverRoutes.get('/music', async (req, res, next) => {
       }
     });
 
-    let results = await Promise.all(albumDetailsPromises);
+    const results = await Promise.all(albumDetailsPromises);
 
     switch (sortBy) {
       case 'listen_count.asc':
