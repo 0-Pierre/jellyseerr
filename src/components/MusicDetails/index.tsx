@@ -46,6 +46,7 @@ const messages = defineMessages('components.MusicDetails', {
   managemusic: 'Manage Music',
   biographyunavailable: 'Biography unavailable.',
   trackstitle: 'Tracks',
+  tracksunavailable: 'No tracks available.',
   watchlistSuccess: '<strong>{title}</strong> added to watchlist successfully!',
   watchlistDeleted: '<strong>{title}</strong> removed from watchlist successfully!',
   watchlistError: 'Something went wrong try again.',
@@ -512,35 +513,39 @@ const MusicDetails = ({ music }: MusicDetailsProps) => {
               : intl.formatMessage(messages.biographyunavailable)}
           </p>
           <h2 className="py-4">{intl.formatMessage(messages.trackstitle)}</h2>
-          {data.releases[0].tracks && (
+          {data.releases?.[0]?.tracks?.length > 0 ? (
             <div className="divide-y divide-gray-700 rounded-lg border border-gray-700">
               {data.releases[0].tracks.map((track, index) => (
                 <div
-                  key={track.id}
+                  key={track.id ?? index}
                   className="flex items-center justify-between px-4 py-2 text-sm transition duration-150 hover:bg-gray-700"
                 >
                   <div className="flex flex-1 items-center space-x-4">
                     <span className="w-8 text-gray-500">{index + 1}</span>
                     <span className="flex-1 truncate text-gray-300">{track.trackName}</span>
                     <span className="text-right text-gray-500">
-                      {Math.floor((track.durationMs / 1000) / 60)}:
-                      {String(Math.floor((track.durationMs / 1000) % 60)).padStart(2, '0')}
+                      {Math.floor((track.durationMs ?? 0) / 1000 / 60)}:
+                      {String(Math.floor((track.durationMs ?? 0) / 1000 % 60)).padStart(2, '0')}
                     </span>
                   </div>
                 </div>
               ))}
             </div>
+          ) : (
+            <div className="text-gray-400">
+              {intl.formatMessage(messages.tracksunavailable)}
+            </div>
           )}
         </div>
         <div className="media-overview-right">
           <div className="media-facts">
-            {data.releases[0].status && (
+            {data.releases?.[0]?.status && (
               <div className="media-fact">
                 <span>{intl.formatMessage(globalMessages.status)}</span>
                 <span className="media-fact-value">{data.releases[0].status}</span>
               </div>
             )}
-            {data.releases[0].label?.length > 0 && (
+            {data.releases?.[0]?.label?.length > 0 && (
               <div className="media-fact">
                 <span>{intl.formatMessage(messages.label)}</span>
                 <span className="media-fact-value">

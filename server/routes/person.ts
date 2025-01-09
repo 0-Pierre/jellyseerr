@@ -71,6 +71,7 @@ personRoutes.get('/:id', async (req, res, next) => {
 
 personRoutes.get('/:id/discography', async (req, res, next) => {
   const musicBrainz = new MusicBrainz();
+  const tmdb = new TheMovieDb();
   const coverArtArchive = new CoverArtArchive();
   const artistId = req.query.artistId as string;
   const type = req.query.type as string;
@@ -81,6 +82,19 @@ personRoutes.get('/:id/discography', async (req, res, next) => {
     return next({
       status: 400,
       message: 'Artist ID is required'
+    });
+  }
+
+  const person = await tmdb.getPerson({
+    personId: Number(req.params.id),
+    language: (req.query.language as string) ?? req.locale,
+  });
+
+  if (!person.birthday) {
+    return res.status(200).json({
+      page: 1,
+      pageInfo: { total: 0, totalPages: 0 },
+      results: [],
     });
   }
 

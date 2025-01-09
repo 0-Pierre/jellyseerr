@@ -47,7 +47,7 @@ const settingsRoutes = Router();
 settingsRoutes.use('/notifications', notificationRoutes);
 settingsRoutes.use('/radarr', radarrRoutes);
 settingsRoutes.use('/sonarr', sonarrRoutes);
-settingsRoutes.use('/lidarr', lidarrRoutes)
+settingsRoutes.use('/lidarr', lidarrRoutes);
 settingsRoutes.use('/discover', discoverSettingRoutes);
 
 const filteredMainSettings = (

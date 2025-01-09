@@ -25,7 +25,6 @@ searchRoutes.get('/', async (req, res, next) => {
         language: (req.query.language as string) ?? req.locale,
         query: queryString,
       });
-      combinedResults = results.results;
     } else {
       const tmdb = new TheMovieDb();
       const tmdbResults = await tmdb.searchMulti({

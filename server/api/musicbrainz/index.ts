@@ -107,14 +107,12 @@ class MusicBrainz extends ExternalAPI {
             ? await this.get<MbAlbumDetails>(`/album/${id}`, { language }, 43200)
             : await this.get<MbArtistDetails>(`/artist/${id}`, { language }, 43200);
 
-        // Get the appropriate links
         let targetLinks: MbLink[] | undefined;
         if (type === 'album') {
             const albumData = data as MbAlbumDetails;
             const artistId = albumData.artists?.[0]?.id;
             if (!artistId) return null;
 
-            // Get artist details to access links
             const artistData = await this.get<MbArtistDetails>(`/artist/${artistId}`, { language }, 43200);
             targetLinks = artistData.links;
         } else {
@@ -170,6 +168,7 @@ class MusicBrainz extends ExternalAPI {
         if (!extract) return null;
 
         const decoded = extract
+            .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
             .replace(/\\u[\dA-F]{4}/gi, match =>
                 String.fromCharCode(parseInt(match.replace(/\\u/g, ''), 16))
             )

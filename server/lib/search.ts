@@ -24,10 +24,6 @@ import {
   isMovie,
   isMovieDetails,
   isTvDetails,
-  isArtist,
-  isAlbum,
-  isArtistDetails,
-  isAlbumDetails
 } from '@server/utils/typeHelpers';
 
 

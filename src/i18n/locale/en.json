@@ -329,6 +329,7 @@
   "components.MusicDetails.managemusic": "Manage Music",
   "components.MusicDetails.biographyunavailable": "Biography unavailable.",
   "components.MusicDetails.trackstitle": "Tracks",
+  "components.MusicDetails.tracksunavailable": "No tracks available.",
   "components.MusicDetails.watchlistSuccess": "<strong>{title}</strong> added to watchlist successfully!",
   "components.MusicDetails.watchlistDeleted": "<strong>{title}</strong> removed from watchlist successfully!",
   "components.MusicDetails.watchlistError": "Something went wrong try again.",
