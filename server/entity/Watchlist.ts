@@ -101,7 +101,9 @@ export class Watchlist implements WatchlistItem {
         .leftJoinAndSelect('watchlist.requestedBy', 'user')
         .where('user.id = :userId', { userId: user.id })
         .andWhere('watchlist.mbId = :mbId', { mbId: watchlistRequest.mbId })
-        .andWhere('watchlist.mediaType = :mediaType', { mediaType: watchlistRequest.mediaType })
+        .andWhere('watchlist.mediaType = :mediaType', {
+          mediaType: watchlistRequest.mediaType,
+        })
         .getMany();
 
       if (existing && existing.length > 0) {
@@ -114,13 +116,13 @@ export class Watchlist implements WatchlistItem {
       }
 
       media = await mediaRepository.findOne({
-        where: { mbId: watchlistRequest.mbId, mediaType: MediaType.MUSIC }
+        where: { mbId: watchlistRequest.mbId, mediaType: MediaType.MUSIC },
       });
 
       if (!media) {
         media = new Media({
           mbId: watchlistRequest.mbId,
-          mediaType: MediaType.MUSIC
+          mediaType: MediaType.MUSIC,
         });
       }
     } else {
@@ -129,16 +131,21 @@ export class Watchlist implements WatchlistItem {
         throw new Error('TMDB ID is required for movie/TV media types');
       }
 
-      const tmdbMedia = watchlistRequest.mediaType === MediaType.MOVIE
-        ? await tmdb.getMovie({ movieId: watchlistRequest.tmdbId })
-        : await tmdb.getTvShow({ tvId: watchlistRequest.tmdbId });
+      const tmdbMedia =
+        watchlistRequest.mediaType === MediaType.MOVIE
+          ? await tmdb.getMovie({ movieId: watchlistRequest.tmdbId })
+          : await tmdb.getTvShow({ tvId: watchlistRequest.tmdbId });
 
       const existing = await watchlistRepository
         .createQueryBuilder('watchlist')
         .leftJoinAndSelect('watchlist.requestedBy', 'user')
         .where('user.id = :userId', { userId: user.id })
-        .andWhere('watchlist.tmdbId = :tmdbId', { tmdbId: watchlistRequest.tmdbId })
-        .andWhere('watchlist.mediaType = :mediaType', { mediaType: watchlistRequest.mediaType })
+        .andWhere('watchlist.tmdbId = :tmdbId', {
+          tmdbId: watchlistRequest.tmdbId,
+        })
+        .andWhere('watchlist.mediaType = :mediaType', {
+          mediaType: watchlistRequest.mediaType,
+        })
         .getMany();
 
       if (existing && existing.length > 0) {
@@ -151,7 +158,10 @@ export class Watchlist implements WatchlistItem {
       }
 
       media = await mediaRepository.findOne({
-        where: { tmdbId: watchlistRequest.tmdbId, mediaType: watchlistRequest.mediaType }
+        where: {
+          tmdbId: watchlistRequest.tmdbId,
+          mediaType: watchlistRequest.mediaType,
+        },
       });
 
       if (!media) {
@@ -181,9 +191,10 @@ export class Watchlist implements WatchlistItem {
     const watchlistRepository = getRepository(this);
 
     // Check if the ID is a number (TMDB) or string (MusicBrainz)
-    const whereClause = typeof id === 'number'
-      ? { tmdbId: id, requestedBy: { id: user.id } }
-      : { mbId: id, requestedBy: { id: user.id } };
+    const whereClause =
+      typeof id === 'number'
+        ? { tmdbId: id, requestedBy: { id: user.id } }
+        : { mbId: id, requestedBy: { id: user.id } };
 
     const watchlist = await watchlistRepository.findOneBy(whereClause);
 

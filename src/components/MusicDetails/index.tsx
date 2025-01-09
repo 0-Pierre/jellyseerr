@@ -48,7 +48,8 @@ const messages = defineMessages('components.MusicDetails', {
   trackstitle: 'Tracks',
   tracksunavailable: 'No tracks available.',
   watchlistSuccess: '<strong>{title}</strong> added to watchlist successfully!',
-  watchlistDeleted: '<strong>{title}</strong> removed from watchlist successfully!',
+  watchlistDeleted:
+    '<strong>{title}</strong> removed from watchlist successfully!',
   watchlistError: 'Something went wrong try again.',
   removefromwatchlist: 'Remove From Watchlist',
   addtowatchlist: 'Add To Watchlist',
@@ -89,7 +90,7 @@ const MusicDetails = ({ music }: MusicDetailsProps) => {
     refreshInterval: refreshIntervalHelper(
       {
         downloadStatus: music?.mediaInfo?.downloadStatus,
-        downloadStatus4k: undefined
+        downloadStatus4k: undefined,
       },
       15000
     ),
@@ -110,7 +111,6 @@ const MusicDetails = ({ music }: MusicDetailsProps) => {
     iOSPlexUrl: data?.mediaInfo?.iOSPlexUrl,
     iOSPlexUrl4k: data?.mediaInfo?.iOSPlexUrl4k,
   });
-
 
   if (!data && !error) {
     return <LoadingSpinner />;
@@ -138,7 +138,7 @@ const MusicDetails = ({ music }: MusicDetailsProps) => {
   const formatDuration = (milliseconds: number): string => {
     if (!milliseconds) return '';
 
-    const totalMinutes = Math.floor((milliseconds / 1000) / 60);
+    const totalMinutes = Math.floor(milliseconds / 1000 / 60);
 
     return `${totalMinutes} Minute${totalMinutes > 1 ? 's' : ''}`;
   };
@@ -307,7 +307,15 @@ const MusicDetails = ({ music }: MusicDetailsProps) => {
         <CachedImage
           type="music"
           alt=""
-          src={data.artist.images?.find(img => img.CoverType === 'Fanart')?.Url || data.artist.images?.find(img => img.CoverType === 'Poster')?.Url || data.images?.find(img => img.CoverType.toLowerCase() === 'cover')?.Url || '/images/overseerr_poster_not_found.png'}
+          src={
+            data.artist.images?.find((img) => img.CoverType === 'Fanart')
+              ?.Url ||
+            data.artist.images?.find((img) => img.CoverType === 'Poster')
+              ?.Url ||
+            data.images?.find((img) => img.CoverType.toLowerCase() === 'cover')
+              ?.Url ||
+            '/images/overseerr_poster_not_found.png'
+          }
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           fill
           priority
@@ -352,7 +360,11 @@ const MusicDetails = ({ music }: MusicDetailsProps) => {
         <div className="media-poster">
           <CachedImage
             type="music"
-            src={data.images?.find(img => img.CoverType.toLowerCase() === 'cover')?.Url || '/images/overseerr_poster_not_found.png'}
+            src={
+              data.images?.find(
+                (img) => img.CoverType.toLowerCase() === 'cover'
+              )?.Url || '/images/overseerr_poster_not_found.png'
+            }
             alt=""
             sizes="100vw"
             style={{ width: '100%', height: 'auto' }}
@@ -382,11 +394,11 @@ const MusicDetails = ({ music }: MusicDetailsProps) => {
             )}
           </h1>
           <span className="media-attributes">
-          {[
-            <span className="rounded-md border p-0.5 py-0">{data.type}</span>,
-            totalDurationMs ? formatDuration(totalDurationMs) : null,
-            data.genres.length > 0 ? data.genres.join(', ') : null,
-          ]
+            {[
+              <span className="rounded-md border p-0.5 py-0">{data.type}</span>,
+              totalDurationMs ? formatDuration(totalDurationMs) : null,
+              data.genres.length > 0 ? data.genres.join(', ') : null,
+            ]
               .filter(Boolean)
               .map((t, k) => <span key={k}>{t}</span>)
               .reduce((prev, curr) => (
@@ -435,7 +447,9 @@ const MusicDetails = ({ music }: MusicDetailsProps) => {
                   </Button>
                 </Tooltip>
               ) : (
-                <Tooltip content={intl.formatMessage(messages.removefromwatchlist)}>
+                <Tooltip
+                  content={intl.formatMessage(messages.removefromwatchlist)}
+                >
                   <Button
                     className="z-40 mr-2"
                     buttonSize="md"
@@ -488,17 +502,20 @@ const MusicDetails = ({ music }: MusicDetailsProps) => {
                   className="relative ml-2 first:ml-0"
                 >
                   <CogIcon className="!mr-0" />
-                  {hasPermission([Permission.MANAGE_ISSUES, Permission.VIEW_ISSUES], {
-                    type: 'or',
-                  }) &&
-                    ((data.mediaInfo?.issues ?? []).filter(
+                  {hasPermission(
+                    [Permission.MANAGE_ISSUES, Permission.VIEW_ISSUES],
+                    {
+                      type: 'or',
+                    }
+                  ) &&
+                    (data.mediaInfo?.issues ?? []).filter(
                       (issue) => issue.status === IssueStatus.OPEN
-                    )).length > 0 && (
-                    <>
-                      <div className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-red-600" />
-                      <div className="absolute -right-1 -top-1 h-3 w-3 animate-ping rounded-full bg-red-600" />
-                    </>
-                  )}
+                    ).length > 0 && (
+                      <>
+                        <div className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-red-600" />
+                        <div className="absolute -right-1 -top-1 h-3 w-3 animate-ping rounded-full bg-red-600" />
+                      </>
+                    )}
                 </Button>
               </Tooltip>
             )}
@@ -522,10 +539,14 @@ const MusicDetails = ({ music }: MusicDetailsProps) => {
                 >
                   <div className="flex flex-1 items-center space-x-4">
                     <span className="w-8 text-gray-500">{index + 1}</span>
-                    <span className="flex-1 truncate text-gray-300">{track.trackName}</span>
+                    <span className="flex-1 truncate text-gray-300">
+                      {track.trackName}
+                    </span>
                     <span className="text-right text-gray-500">
                       {Math.floor((track.durationMs ?? 0) / 1000 / 60)}:
-                      {String(Math.floor((track.durationMs ?? 0) / 1000 % 60)).padStart(2, '0')}
+                      {String(
+                        Math.floor(((track.durationMs ?? 0) / 1000) % 60)
+                      ).padStart(2, '0')}
                     </span>
                   </div>
                 </div>
@@ -542,7 +563,9 @@ const MusicDetails = ({ music }: MusicDetailsProps) => {
             {data.releases?.[0]?.status && (
               <div className="media-fact">
                 <span>{intl.formatMessage(globalMessages.status)}</span>
-                <span className="media-fact-value">{data.releases[0].status}</span>
+                <span className="media-fact-value">
+                  {data.releases[0].status}
+                </span>
               </div>
             )}
             {data.releases?.[0]?.label?.length > 0 && (
@@ -567,7 +590,8 @@ const MusicDetails = ({ music }: MusicDetailsProps) => {
               <div className="media-fact">
                 <span>{intl.formatMessage(messages.artiststatus)}</span>
                 <span className="media-fact-value">
-                  {data.artist.status.charAt(0).toUpperCase() + data.artist.status.slice(1)}
+                  {data.artist.status.charAt(0).toUpperCase() +
+                    data.artist.status.slice(1)}
                 </span>
               </div>
             )}
@@ -576,8 +600,8 @@ const MusicDetails = ({ music }: MusicDetailsProps) => {
       </div>
       <MediaSlider
         sliderKey="artist-discography"
-        title=  {intl.formatMessage(messages.discography, {
-          artistName: data?.artist.artistName ?? ''
+        title={intl.formatMessage(messages.discography, {
+          artistName: data?.artist.artistName ?? '',
         })}
         url={`/api/v1/music/${router.query.musicId}/discography`}
         linkUrl={`/music/${data.id}/discography`}
@@ -591,7 +615,7 @@ const MusicDetails = ({ music }: MusicDetailsProps) => {
         hideWhenEmpty
       />
       <div className="extra-bottom-space relative" />
-  </div>
+    </div>
   );
 };
 

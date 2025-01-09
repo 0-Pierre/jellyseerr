@@ -1,6 +1,6 @@
+import LidarrAPI from '@server/api/servarr/lidarr';
 import RadarrAPI from '@server/api/servarr/radarr';
 import SonarrAPI from '@server/api/servarr/sonarr';
-import LidarrAPI from '@server/api/servarr/lidarr';
 import { MediaType } from '@server/constants/media';
 import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';

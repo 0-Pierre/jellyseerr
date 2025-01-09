@@ -45,15 +45,19 @@ const Setup = () => {
   const intl = useIntl();
   const [isUpdating, setIsUpdating] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
-  const [mediaServerSettingsComplete, setMediaServerSettingsComplete] = useState(false);
-  const [mediaServerType, setMediaServerType] = useState(MediaServerType.NOT_CONFIGURED);
+  const [mediaServerSettingsComplete, setMediaServerSettingsComplete] =
+    useState(false);
+  const [mediaServerType, setMediaServerType] = useState(
+    MediaServerType.NOT_CONFIGURED
+  );
   const router = useRouter();
   const { locale } = useLocale();
   const settings = useSettings();
   const toasts = useToasts();
 
   useEffect(() => {
-    const storedState = localStorage.getItem('mediaServerSettingsComplete') === 'true';
+    const storedState =
+      localStorage.getItem('mediaServerSettingsComplete') === 'true';
     setMediaServerSettingsComplete(storedState);
   }, []);
 
@@ -63,7 +67,10 @@ const Setup = () => {
       return;
     }
 
-    if (settings.currentSettings.mediaServerType !== MediaServerType.NOT_CONFIGURED) {
+    if (
+      settings.currentSettings.mediaServerType !==
+      MediaServerType.NOT_CONFIGURED
+    ) {
       setCurrentStep(3);
       setMediaServerType(settings.currentSettings.mediaServerType);
     }
@@ -71,10 +78,11 @@ const Setup = () => {
 
   const handleComplete = async () => {
     try {
-      const endpoint = settings.currentSettings.mediaServerType === MediaServerType.JELLYFIN ||
-                      settings.currentSettings.mediaServerType === MediaServerType.EMBY
-        ? '/api/v1/settings/jellyfin'
-        : '/api/v1/settings/plex';
+      const endpoint =
+        settings.currentSettings.mediaServerType === MediaServerType.JELLYFIN ||
+        settings.currentSettings.mediaServerType === MediaServerType.EMBY
+          ? '/api/v1/settings/jellyfin'
+          : '/api/v1/settings/plex';
 
       const res = await fetch(endpoint);
       if (!res.ok) throw new Error('Fetch failed');

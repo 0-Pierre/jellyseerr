@@ -386,7 +386,9 @@ export class User {
           ? Math.max(0, musicQuotaLimit - musicQuotaUsed)
           : undefined,
         restricted:
-          musicQuotaLimit && musicQuotaLimit - musicQuotaUsed <= 0 ? true : false,
+          musicQuotaLimit && musicQuotaLimit - musicQuotaUsed <= 0
+            ? true
+            : false,
       },
     };
   }

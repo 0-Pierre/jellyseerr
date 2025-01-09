@@ -1,5 +1,11 @@
+import MusicBrainz from '@server/api/musicbrainz';
+import type {
+  MbAlbumResult,
+  MbArtistResult,
+} from '@server/api/musicbrainz/interfaces';
 import TheMovieDb from '@server/api/themoviedb';
 import type {
+  TmdbCollectionResult,
   TmdbMovieDetails,
   TmdbMovieResult,
   TmdbPersonDetails,
@@ -8,14 +14,8 @@ import type {
   TmdbSearchTvResponse,
   TmdbTvDetails,
   TmdbTvResult,
-  TmdbCollectionResult
 } from '@server/api/themoviedb/interfaces';
-import MusicBrainz from '@server/api/musicbrainz';
-import type {
-  MbAlbumResult,
-  MbArtistResult,
-} from '@server/api/musicbrainz/interfaces';
- import {
+import {
   mapMovieDetailsToResult,
   mapPersonDetailsToResult,
   mapTvDetailsToResult,
@@ -25,7 +25,6 @@ import {
   isMovieDetails,
   isTvDetails,
 } from '@server/utils/typeHelpers';
-
 
 export type CombinedSearchResponse = {
   page: number;
@@ -241,41 +240,42 @@ searchProviders.push({
 
     try {
       const response = await musicbrainz.searchMulti({
-        query: query || ''
+        query: query || '',
       });
 
-      const results: CombinedSearchResponse['results'] = response.map(result => {
-        if (result.artist) {
-          return {
-            ...result.artist,
-            media_type: 'artist',
-          } as MbArtistResult;
-        }
+      const results: CombinedSearchResponse['results'] = response.map(
+        (result) => {
+          if (result.artist) {
+            return {
+              ...result.artist,
+              media_type: 'artist',
+            } as MbArtistResult;
+          }
 
-        if (result.album) {
-          return {
-            ...result.album,
-            media_type: 'album',
-          } as MbAlbumResult;
-        }
+          if (result.album) {
+            return {
+              ...result.album,
+              media_type: 'album',
+            } as MbAlbumResult;
+          }
 
-        throw new Error('Invalid search result type');
-      });
+          throw new Error('Invalid search result type');
+        }
+      );
 
       return {
         page: 1,
         total_pages: 1,
         total_results: results.length,
-        results
+        results,
       };
-
     } catch (e) {
       return {
         page: 1,
         total_pages: 1,
         total_results: 0,
-        results: []
+        results: [],
       };
     }
-  }
+  },
 });

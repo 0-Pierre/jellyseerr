@@ -22,7 +22,14 @@ const messages = defineMessages('components.TitleCard', {
   cleardata: 'Clear Data',
 });
 
-const ErrorCard = ({ id, tmdbId, tvdbId, mbId, type, canExpand }: ErrorCardProps) => {
+const ErrorCard = ({
+  id,
+  tmdbId,
+  tvdbId,
+  mbId,
+  type,
+  canExpand,
+}: ErrorCardProps) => {
   const intl = useIntl();
 
   const deleteMedia = async () => {
@@ -104,12 +111,16 @@ const ErrorCard = ({ id, tmdbId, tvdbId, mbId, type, canExpand }: ErrorCardProps
               >
                 {type === 'music' ? (
                   <div className="px-2 text-xs">
-                    <span className="font-bold">{intl.formatMessage(messages.mbId)}:</span>{' '}
+                    <span className="font-bold">
+                      {intl.formatMessage(messages.mbId)}:
+                    </span>{' '}
                     {mbId}
                   </div>
                 ) : (
                   <div className="px-2 text-xs">
-                    <span className="font-bold">{intl.formatMessage(messages.tmdbid)}:</span>{' '}
+                    <span className="font-bold">
+                      {intl.formatMessage(messages.tmdbid)}:
+                    </span>{' '}
                     {tmdbId}
                     {tvdbId && (
                       <>

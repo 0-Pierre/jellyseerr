@@ -1,8 +1,14 @@
-import TheMovieDb from '@server/api/themoviedb';
 import MusicBrainz from '@server/api/musicbrainz';
-import type { MbAlbumResult, MbArtistResult } from '@server/api/musicbrainz/interfaces';
+import type {
+  MbAlbumResult,
+  MbArtistResult,
+} from '@server/api/musicbrainz/interfaces';
+import TheMovieDb from '@server/api/themoviedb';
 import Media from '@server/entity/Media';
-import { findSearchProvider, type CombinedSearchResponse } from '@server/lib/search';
+import {
+  findSearchProvider,
+  type CombinedSearchResponse,
+} from '@server/lib/search';
 import logger from '@server/logger';
 import { mapSearchResults } from '@server/models/Search';
 import { Router } from 'express';
@@ -38,7 +44,7 @@ searchRoutes.get('/', async (req, res, next) => {
       const mbResults = await musicbrainz.searchMulti({ query: queryString });
 
       if (mbResults.length > 0) {
-        const mbMappedResults = mbResults.map(result => {
+        const mbMappedResults = mbResults.map((result) => {
           if (result.artist) {
             return {
               ...result.artist,
@@ -67,10 +73,7 @@ searchRoutes.get('/', async (req, res, next) => {
 
     const media = await Media.getRelatedMedia(
       req.user,
-      results.results.map((result) =>
-        'id' in result ? result.id :
-        0
-      )
+      results.results.map((result) => ('id' in result ? result.id : 0))
     );
 
     const mappedResults = await mapSearchResults(results.results, media);

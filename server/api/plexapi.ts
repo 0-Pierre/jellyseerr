@@ -152,7 +152,10 @@ class PlexAPI {
       const newLibraries: Library[] = libraries
         // Remove libraries that are not movie or show
         .filter(
-          (library) => library.type === 'movie' || library.type === 'show' || library.type === 'music'
+          (library) =>
+            library.type === 'movie' ||
+            library.type === 'show' ||
+            library.type === 'music'
         )
         // Remove libraries that do not have a metadata agent set (usually personal video libraries)
         .filter((library) => library.agent !== 'com.plexapp.agents.none')

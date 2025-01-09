@@ -1,5 +1,5 @@
-import type Media from '@server/entity/Media';
 import type { MbArtistDetails } from '@server/api/musicbrainz/interfaces';
+import type Media from '@server/entity/Media';
 
 export interface ArtistDetailsType {
   id: string;
@@ -31,7 +31,9 @@ export interface ArtistDetailsType {
   }[];
 }
 
-export const mapArtistDetails = (artist: MbArtistDetails): ArtistDetailsType => ({
+export const mapArtistDetails = (
+  artist: MbArtistDetails
+): ArtistDetailsType => ({
   id: artist.id,
   name: artist.artistname,
   type: artist.type,
@@ -41,11 +43,11 @@ export const mapArtistDetails = (artist: MbArtistDetails): ArtistDetailsType => 
   genres: artist.genres,
   images: artist.images,
   links: artist.links,
-  Albums: artist.Albums?.map(album => ({
+  Albums: artist.Albums?.map((album) => ({
     id: album.Id.toLowerCase(),
     title: album.Title,
     type: album.Type,
     releasedate: '',
-    images: []
+    images: [],
   })),
 });

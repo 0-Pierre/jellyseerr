@@ -3,8 +3,8 @@ import globalMessages from '@app/i18n/globalMessages';
 import defineMessages from '@app/utils/defineMessages';
 import { Transition } from '@headlessui/react';
 import type { MovieDetails } from '@server/models/Movie';
-import type { TvDetails } from '@server/models/Tv';
 import type { MusicDetails } from '@server/models/Music';
+import type { TvDetails } from '@server/models/Tv';
 import { useEffect, useState } from 'react';
 import { useIntl } from 'react-intl';
 
@@ -26,7 +26,9 @@ const isMovie = (
   media: MovieDetails | TvDetails | MusicDetails | null
 ): media is MovieDetails => {
   if (!media) return false;
-  return (media as MovieDetails).title !== undefined && !('artistName' in media);
+  return (
+    (media as MovieDetails).title !== undefined && !('artistName' in media)
+  );
 };
 
 const isMusic = (
@@ -46,7 +48,9 @@ const BlacklistModal = ({
   isUpdating,
 }: BlacklistModalProps) => {
   const intl = useIntl();
-  const [data, setData] = useState<MovieDetails | TvDetails | MusicDetails | null>(null);
+  const [data, setData] = useState<
+    MovieDetails | TvDetails | MusicDetails | null
+  >(null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -54,7 +58,9 @@ const BlacklistModal = ({
       if (!show) return;
       try {
         setError(null);
-        const response = await fetch(`/api/v1/${type}/${type === 'music' ? mbId : tmdbId}`);
+        const response = await fetch(
+          `/api/v1/${type}/${type === 'music' ? mbId : tmdbId}`
+        );
         if (!response.ok) {
           throw new Error();
         }
@@ -84,7 +90,7 @@ const BlacklistModal = ({
 
   const getBackdrop = () => {
     if (isMusic(data)) {
-      return data.artist.images?.find(img => img.CoverType === 'Fanart')?.Url
+      return data.artist.images?.find((img) => img.CoverType === 'Fanart')?.Url;
     }
     return `https://image.tmdb.org/t/p/w1920_and_h800_multi_faces/${data?.backdropPath}`;
   };
@@ -103,7 +109,9 @@ const BlacklistModal = ({
       <Modal
         loading={!data && !error}
         backgroundClickable
-        title={`${intl.formatMessage(globalMessages.blacklist)} ${getMediaType()}`}
+        title={`${intl.formatMessage(
+          globalMessages.blacklist
+        )} ${getMediaType()}`}
         subTitle={getTitle()}
         onCancel={onCancel}
         onOk={onComplete}

@@ -1,6 +1,9 @@
 import Button from '@app/components/Common/Button';
 import Modal from '@app/components/Common/Modal';
-import { issueOptions, getIssueOptionsForMediaType } from '@app/components/IssueModal/constants';
+import {
+  getIssueOptionsForMediaType,
+  issueOptions,
+} from '@app/components/IssueModal/constants';
 import useSettings from '@app/hooks/useSettings';
 import { Permission, useUser } from '@app/hooks/useUser';
 import globalMessages from '@app/i18n/globalMessages';
@@ -10,8 +13,8 @@ import { ArrowRightCircleIcon } from '@heroicons/react/24/solid';
 import { MediaStatus } from '@server/constants/media';
 import type Issue from '@server/entity/Issue';
 import type { MovieDetails } from '@server/models/Movie';
-import type { TvDetails } from '@server/models/Tv';
 import type { MusicDetails } from '@server/models/Music';
+import type { TvDetails } from '@server/models/Tv';
 import { Field, Formik } from 'formik';
 import Link from 'next/link';
 import { useIntl } from 'react-intl';
@@ -39,11 +42,15 @@ const messages = defineMessages('components.IssueModal.CreateIssueModal', {
   submitissue: 'Submit Issue',
 });
 
-const isMovie = (media: MovieDetails | TvDetails | MusicDetails): media is MovieDetails => {
+const isMovie = (
+  media: MovieDetails | TvDetails | MusicDetails
+): media is MovieDetails => {
   return (media as MovieDetails).title !== undefined && !('artist' in media);
 };
 
-const isMusic = (media: MovieDetails | TvDetails | MusicDetails): media is MusicDetails => {
+const isMusic = (
+  media: MovieDetails | TvDetails | MusicDetails
+): media is MusicDetails => {
   return 'artist' in media;
 };
 
@@ -136,12 +143,13 @@ const CreateIssueModal = ({
               <>
                 <div>
                   {intl.formatMessage(messages.toastSuccessCreate, {
-                    title: data &&
-                    (isMusic(data)
-                      ? `${data.artist.artistName} - ${data.title}`
-                      : isMovie(data)
-                      ? data.title
-                      : data.name),
+                    title:
+                      data &&
+                      (isMusic(data)
+                        ? `${data.artist.artistName} - ${data.title}`
+                        : isMovie(data)
+                        ? data.title
+                        : data.name),
                     strong: (msg: React.ReactNode) => <strong>{msg}</strong>,
                   })}
                 </div>
@@ -191,11 +199,11 @@ const CreateIssueModal = ({
             backdrop={
               data
                 ? isMusic(data)
-                  ? (data.images?.find(image => image.CoverType === 'Cover')?.Url ??
-                     '/images/overseerr_poster_not_found.png')
+                  ? data.images?.find((image) => image.CoverType === 'Cover')
+                      ?.Url ?? '/images/overseerr_poster_not_found.png'
                   : data.backdropPath
-                    ? `https://image.tmdb.org/t/p/w1920_and_h800_multi_faces/${data.backdropPath}`
-                    : '/images/overseerr_poster_not_found.png'
+                  ? `https://image.tmdb.org/t/p/w1920_and_h800_multi_faces/${data.backdropPath}`
+                  : '/images/overseerr_poster_not_found.png'
                 : undefined
             }
           >
@@ -251,22 +259,26 @@ const CreateIssueModal = ({
                           <option value={0}>
                             {intl.formatMessage(messages.allepisodes)}
                           </option>
-                          {data && !isMusic(data) && [...Array(
-                            data.seasons.find(
-                              (season) =>
-                                Number(values.problemSeason) ===
-                                season.seasonNumber
-                            )?.episodeCount ?? 0
-                          )].map((i, index) => (
-                            <option
-                              value={index + 1}
-                              key={`problem-episode-${index + 1}`}
-                            >
-                              {intl.formatMessage(messages.episode, {
-                                episodeNumber: index + 1,
-                              })}
-                            </option>
-                          ))}
+                          {data &&
+                            !isMusic(data) &&
+                            [
+                              ...Array(
+                                data.seasons.find(
+                                  (season) =>
+                                    Number(values.problemSeason) ===
+                                    season.seasonNumber
+                                )?.episodeCount ?? 0
+                              ),
+                            ].map((i, index) => (
+                              <option
+                                value={index + 1}
+                                key={`problem-episode-${index + 1}`}
+                              >
+                                {intl.formatMessage(messages.episode, {
+                                  episodeNumber: index + 1,
+                                })}
+                              </option>
+                            ))}
                         </Field>
                       </div>
                     </div>

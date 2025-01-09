@@ -41,12 +41,18 @@ const MusicArtistDiscography = () => {
   return (
     <>
       <PageTitle
-        title={[intl.formatMessage(messages.artistalbums), musicData?.artist.artistName]}
+        title={[
+          intl.formatMessage(messages.artistalbums),
+          musicData?.artist.artistName,
+        ]}
       />
       <div className="mt-1 mb-5">
         <Header
           subtext={
-            <Link href={`/music/${musicData?.mbId}`} className="hover:underline">
+            <Link
+              href={`/music/${musicData?.mbId}`}
+              className="hover:underline"
+            >
               {musicData?.artist.artistName}
             </Link>
           }

@@ -25,10 +25,14 @@ import {
 } from '@server/constants/media';
 import { MediaServerType } from '@server/constants/server';
 import type { MediaWatchDataResponse } from '@server/interfaces/api/mediaInterfaces';
-import type { RadarrSettings, SonarrSettings, LidarrSettings } from '@server/lib/settings';
+import type {
+  LidarrSettings,
+  RadarrSettings,
+  SonarrSettings,
+} from '@server/lib/settings';
 import type { MovieDetails } from '@server/models/Movie';
-import type { TvDetails } from '@server/models/Tv';
 import type { MusicDetails } from '@server/models/Music';
+import type { TvDetails } from '@server/models/Tv';
 import Link from 'next/link';
 import { useIntl } from 'react-intl';
 import useSWR from 'swr';
@@ -65,12 +69,18 @@ const messages = defineMessages('components.ManageSlideOver', {
   tvshow: 'series',
 });
 
-const isMovie = (media: MovieDetails | TvDetails | MusicDetails): media is MovieDetails => {
-  return (media as MovieDetails).title !== undefined &&
-         (media as MusicDetails).artist === undefined;
+const isMovie = (
+  media: MovieDetails | TvDetails | MusicDetails
+): media is MovieDetails => {
+  return (
+    (media as MovieDetails).title !== undefined &&
+    (media as MusicDetails).artist === undefined
+  );
 };
 
-const isMusic = (media: MovieDetails | TvDetails | MusicDetails): media is MusicDetails => {
+const isMusic = (
+  media: MovieDetails | TvDetails | MusicDetails
+): media is MusicDetails => {
   return (media as MusicDetails).artist !== undefined;
 };
 
@@ -102,7 +112,10 @@ const ManageSlideOver = ({
   onClose,
   data,
   revalidate,
-}: ManageSlideOverMovieProps | ManageSlideOverTvProps | ManageSlideOverMusicProps) => {
+}:
+  | ManageSlideOverMovieProps
+  | ManageSlideOverTvProps
+  | ManageSlideOverMusicProps) => {
   const { user: currentUser, hasPermission } = useUser();
   const intl = useIntl();
   const settings = useSettings();
@@ -154,17 +167,26 @@ const ManageSlideOver = ({
   const isDefaultService = () => {
     if (data.mediaInfo) {
       if (data.mediaInfo.mediaType === MediaType.MOVIE) {
-        return radarrData?.find(
-          (radarr) => radarr.isDefault && radarr.id === data.mediaInfo?.serviceId
-        ) !== undefined;
+        return (
+          radarrData?.find(
+            (radarr) =>
+              radarr.isDefault && radarr.id === data.mediaInfo?.serviceId
+          ) !== undefined
+        );
       } else if (data.mediaInfo.mediaType === MediaType.MUSIC) {
-        return lidarrData?.find(
-          (lidarr) => lidarr.isDefault && lidarr.id === data.mediaInfo?.serviceId
-        ) !== undefined;
+        return (
+          lidarrData?.find(
+            (lidarr) =>
+              lidarr.isDefault && lidarr.id === data.mediaInfo?.serviceId
+          ) !== undefined
+        );
       } else {
-        return sonarrData?.find(
-          (sonarr) => sonarr.isDefault && sonarr.id === data.mediaInfo?.serviceId
-        ) !== undefined;
+        return (
+          sonarrData?.find(
+            (sonarr) =>
+              sonarr.isDefault && sonarr.id === data.mediaInfo?.serviceId
+          ) !== undefined
+        );
       }
     }
     return false;
@@ -438,11 +460,12 @@ const ManageSlideOver = ({
                       <ServerIcon />
                       <span>
                         {intl.formatMessage(messages.openarr, {
-                          arr: mediaType === 'movie'
-                            ? 'Radarr'
-                            : mediaType === 'music'
-                            ? 'Lidarr'
-                            : 'Sonarr',
+                          arr:
+                            mediaType === 'movie'
+                              ? 'Radarr'
+                              : mediaType === 'music'
+                              ? 'Lidarr'
+                              : 'Sonarr',
                         })}
                       </span>
                     </Button>
@@ -463,11 +486,12 @@ const ManageSlideOver = ({
                         <TrashIcon />
                         <span>
                           {intl.formatMessage(messages.removearr, {
-                            arr: mediaType === 'movie'
-                              ? 'Radarr'
-                              : mediaType === 'music'
-                              ? 'Lidarr'
-                              : 'Sonarr',
+                            arr:
+                              mediaType === 'movie'
+                                ? 'Radarr'
+                                : mediaType === 'music'
+                                ? 'Lidarr'
+                                : 'Sonarr',
                           })}
                         </span>
                       </ConfirmButton>

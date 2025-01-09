@@ -10,7 +10,13 @@ interface IssueModalProps {
   issueId?: never;
 }
 
-const IssueModal = ({ show, mediaType, onCancel, tmdbId, mbId }: IssueModalProps) => (
+const IssueModal = ({
+  show,
+  mediaType,
+  onCancel,
+  tmdbId,
+  mbId,
+}: IssueModalProps) => (
   <Transition
     as="div"
     enter="transition-opacity duration-300"

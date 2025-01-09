@@ -1,6 +1,6 @@
+import LidarrAPI from '@server/api/servarr/lidarr';
 import RadarrAPI from '@server/api/servarr/radarr';
 import SonarrAPI from '@server/api/servarr/sonarr';
-import LidarrAPI from '@server/api/servarr/lidarr';
 import { MediaStatus, MediaType } from '@server/constants/media';
 import { MediaServerType } from '@server/constants/server';
 import { getRepository } from '@server/datasource';
@@ -66,7 +66,6 @@ class Media {
 
       const media = await queryBuilder.getMany();
       return media;
-
     } catch (e) {
       logger.error(e.message);
       return [];
@@ -80,10 +79,10 @@ class Media {
     const mediaRepository = getRepository(Media);
 
     try {
-
-      const whereClause = typeof id === 'string'
-        ? { mbId: id, mediaType }
-        : { tmdbId: id, mediaType };
+      const whereClause =
+        typeof id === 'string'
+          ? { mbId: id, mediaType }
+          : { tmdbId: id, mediaType };
 
       const media = await mediaRepository.findOne({
         where: whereClause,
@@ -97,257 +96,257 @@ class Media {
     }
   }
 
-    @PrimaryGeneratedColumn()
-    public id: number;
+  @PrimaryGeneratedColumn()
+  public id: number;
 
-    @Column({ type: 'varchar' })
-    public mediaType: MediaType;
+  @Column({ type: 'varchar' })
+  public mediaType: MediaType;
 
-    @Column({ nullable: true })
-    @Index()
-    public tmdbId: number;
+  @Column({ nullable: true })
+  @Index()
+  public tmdbId: number;
 
-    @Column({ unique: true, nullable: true })
-    @Index()
-    public tvdbId?: number;
+  @Column({ unique: true, nullable: true })
+  @Index()
+  public tvdbId?: number;
 
-    @Column({ nullable: true })
-    @Index()
-    public imdbId?: string;
+  @Column({ nullable: true })
+  @Index()
+  public imdbId?: string;
 
-    @Column({ nullable: true })
-    @Index()
-    public mbId?: string;
+  @Column({ nullable: true })
+  @Index()
+  public mbId?: string;
 
-    @Column({ type: 'int', default: MediaStatus.UNKNOWN })
-    public status: MediaStatus;
+  @Column({ type: 'int', default: MediaStatus.UNKNOWN })
+  public status: MediaStatus;
 
-    @Column({ type: 'int', default: MediaStatus.UNKNOWN })
-    public status4k: MediaStatus;
+  @Column({ type: 'int', default: MediaStatus.UNKNOWN })
+  public status4k: MediaStatus;
 
-    @OneToMany(() => MediaRequest, (request) => request.media, { cascade: true })
-    public requests: MediaRequest[];
+  @OneToMany(() => MediaRequest, (request) => request.media, { cascade: true })
+  public requests: MediaRequest[];
 
-    @OneToMany(() => Watchlist, (watchlist) => watchlist.media)
-    public watchlists: null | Watchlist[];
+  @OneToMany(() => Watchlist, (watchlist) => watchlist.media)
+  public watchlists: null | Watchlist[];
 
-    @OneToMany(() => Season, (season) => season.media, {
-      cascade: true,
-      eager: true,
-    })
-    public seasons: Season[];
+  @OneToMany(() => Season, (season) => season.media, {
+    cascade: true,
+    eager: true,
+  })
+  public seasons: Season[];
 
-    @OneToMany(() => Issue, (issue) => issue.media, { cascade: true })
-    public issues: Issue[];
+  @OneToMany(() => Issue, (issue) => issue.media, { cascade: true })
+  public issues: Issue[];
 
-    @OneToOne(() => Blacklist, (blacklist) => blacklist.media)
-    public blacklist: Promise<Blacklist>;
+  @OneToOne(() => Blacklist, (blacklist) => blacklist.media)
+  public blacklist: Promise<Blacklist>;
 
-    @CreateDateColumn()
-    public createdAt: Date;
+  @CreateDateColumn()
+  public createdAt: Date;
 
-    @UpdateDateColumn()
-    public updatedAt: Date;
+  @UpdateDateColumn()
+  public updatedAt: Date;
 
-    /**
-     * The `lastSeasonChange` column stores the date and time when the media was added to the library.
-     * It needs to be database-aware because SQLite supports `datetime` while PostgreSQL supports `timestamp with timezone (timestampz)`.
-     */
-    @DbAwareColumn({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
-    public lastSeasonChange: Date;
+  /**
+   * The `lastSeasonChange` column stores the date and time when the media was added to the library.
+   * It needs to be database-aware because SQLite supports `datetime` while PostgreSQL supports `timestamp with timezone (timestampz)`.
+   */
+  @DbAwareColumn({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
+  public lastSeasonChange: Date;
 
-    /**
-     * The `mediaAddedAt` column stores the date and time when the media was added to the library.
-     * It needs to be database-aware because SQLite supports `datetime` while PostgreSQL supports `timestamp with timezone (timestampz)`.
-     * This column is nullable because it can be null when the media is not yet synced to the library.
-     */
-    @DbAwareColumn({
-      type: 'datetime',
-      default: () => 'CURRENT_TIMESTAMP',
-      nullable: true,
-    })
-    public mediaAddedAt: Date;
+  /**
+   * The `mediaAddedAt` column stores the date and time when the media was added to the library.
+   * It needs to be database-aware because SQLite supports `datetime` while PostgreSQL supports `timestamp with timezone (timestampz)`.
+   * This column is nullable because it can be null when the media is not yet synced to the library.
+   */
+  @DbAwareColumn({
+    type: 'datetime',
+    default: () => 'CURRENT_TIMESTAMP',
+    nullable: true,
+  })
+  public mediaAddedAt: Date;
 
-    @Column({ nullable: true, type: 'int' })
-    public serviceId?: number | null;
+  @Column({ nullable: true, type: 'int' })
+  public serviceId?: number | null;
 
-    @Column({ nullable: true, type: 'int' })
-    public serviceId4k?: number | null;
+  @Column({ nullable: true, type: 'int' })
+  public serviceId4k?: number | null;
 
-    @Column({ nullable: true, type: 'int' })
-    public externalServiceId?: number | null;
+  @Column({ nullable: true, type: 'int' })
+  public externalServiceId?: number | null;
 
-    @Column({ nullable: true, type: 'int' })
-    public externalServiceId4k?: number | null;
+  @Column({ nullable: true, type: 'int' })
+  public externalServiceId4k?: number | null;
 
-    @Column({ nullable: true, type: 'varchar' })
-    public externalServiceSlug?: string | null;
+  @Column({ nullable: true, type: 'varchar' })
+  public externalServiceSlug?: string | null;
 
-    @Column({ nullable: true, type: 'varchar' })
-    public externalServiceSlug4k?: string | null;
+  @Column({ nullable: true, type: 'varchar' })
+  public externalServiceSlug4k?: string | null;
 
-    @Column({ nullable: true, type: 'varchar' })
-    public ratingKey?: string | null;
+  @Column({ nullable: true, type: 'varchar' })
+  public ratingKey?: string | null;
 
-    @Column({ nullable: true, type: 'varchar' })
-    public ratingKey4k?: string | null;
+  @Column({ nullable: true, type: 'varchar' })
+  public ratingKey4k?: string | null;
 
-    @Column({ nullable: true, type: 'varchar' })
-    public jellyfinMediaId?: string | null;
+  @Column({ nullable: true, type: 'varchar' })
+  public jellyfinMediaId?: string | null;
 
-    @Column({ nullable: true, type: 'varchar' })
-    public jellyfinMediaId4k?: string | null;
+  @Column({ nullable: true, type: 'varchar' })
+  public jellyfinMediaId4k?: string | null;
 
-    public serviceUrl?: string;
-    public serviceUrl4k?: string;
-    public downloadStatus?: DownloadingItem[] = [];
-    public downloadStatus4k?: DownloadingItem[] = [];
+  public serviceUrl?: string;
+  public serviceUrl4k?: string;
+  public downloadStatus?: DownloadingItem[] = [];
+  public downloadStatus4k?: DownloadingItem[] = [];
 
-    public mediaUrl?: string;
-    public mediaUrl4k?: string;
+  public mediaUrl?: string;
+  public mediaUrl4k?: string;
 
-    public iOSPlexUrl?: string;
-    public iOSPlexUrl4k?: string;
+  public iOSPlexUrl?: string;
+  public iOSPlexUrl4k?: string;
 
-    public tautulliUrl?: string;
-    public tautulliUrl4k?: string;
+  public tautulliUrl?: string;
+  public tautulliUrl4k?: string;
 
-    constructor(init?: Partial<Media>) {
-      Object.assign(this, init);
-    }
+  constructor(init?: Partial<Media>) {
+    Object.assign(this, init);
+  }
 
-    @AfterLoad()
-    public setPlexUrls(): void {
-      const { machineId, webAppUrl } = getSettings().plex;
-      const { externalUrl: tautulliUrl } = getSettings().tautulli;
+  @AfterLoad()
+  public setPlexUrls(): void {
+    const { machineId, webAppUrl } = getSettings().plex;
+    const { externalUrl: tautulliUrl } = getSettings().tautulli;
 
-      if (getSettings().main.mediaServerType == MediaServerType.PLEX) {
-        if (this.ratingKey) {
-          this.mediaUrl = `${
+    if (getSettings().main.mediaServerType == MediaServerType.PLEX) {
+      if (this.ratingKey) {
+        this.mediaUrl = `${
+          webAppUrl ? webAppUrl : 'https://app.plex.tv/desktop'
+        }#!/server/${machineId}/details?key=%2Flibrary%2Fmetadata%2F${
+          this.ratingKey
+        }`;
+
+        this.iOSPlexUrl = `plex://preplay/?metadataKey=%2Flibrary%2Fmetadata%2F${this.ratingKey}&server=${machineId}`;
+
+        if (tautulliUrl) {
+          this.tautulliUrl = `${tautulliUrl}/info?rating_key=${this.ratingKey}`;
+        }
+
+        if (this.ratingKey4k) {
+          this.mediaUrl4k = `${
             webAppUrl ? webAppUrl : 'https://app.plex.tv/desktop'
           }#!/server/${machineId}/details?key=%2Flibrary%2Fmetadata%2F${
-            this.ratingKey
+            this.ratingKey4k
           }`;
 
-          this.iOSPlexUrl = `plex://preplay/?metadataKey=%2Flibrary%2Fmetadata%2F${this.ratingKey}&server=${machineId}`;
+          this.iOSPlexUrl4k = `plex://preplay/?metadataKey=%2Flibrary%2Fmetadata%2F${this.ratingKey4k}&server=${machineId}`;
 
           if (tautulliUrl) {
-            this.tautulliUrl = `${tautulliUrl}/info?rating_key=${this.ratingKey}`;
-          }
-
-          if (this.ratingKey4k) {
-            this.mediaUrl4k = `${
-              webAppUrl ? webAppUrl : 'https://app.plex.tv/desktop'
-            }#!/server/${machineId}/details?key=%2Flibrary%2Fmetadata%2F${
-              this.ratingKey4k
-            }`;
-
-            this.iOSPlexUrl4k = `plex://preplay/?metadataKey=%2Flibrary%2Fmetadata%2F${this.ratingKey4k}&server=${machineId}`;
-
-            if (tautulliUrl) {
-              this.tautulliUrl4k = `${tautulliUrl}/info?rating_key=${this.ratingKey4k}`;
-            }
+            this.tautulliUrl4k = `${tautulliUrl}/info?rating_key=${this.ratingKey4k}`;
           }
         }
-      } else {
-        const pageName =
-          getSettings().main.mediaServerType == MediaServerType.EMBY
-            ? 'item'
-            : 'details';
-        const { serverId, externalHostname } = getSettings().jellyfin;
-        const jellyfinHost =
-          externalHostname && externalHostname.length > 0
-            ? externalHostname
-            : getHostname();
+      }
+    } else {
+      const pageName =
+        getSettings().main.mediaServerType == MediaServerType.EMBY
+          ? 'item'
+          : 'details';
+      const { serverId, externalHostname } = getSettings().jellyfin;
+      const jellyfinHost =
+        externalHostname && externalHostname.length > 0
+          ? externalHostname
+          : getHostname();
 
-        if (this.jellyfinMediaId) {
-          this.mediaUrl = `${jellyfinHost}/web/index.html#!/${pageName}?id=${this.jellyfinMediaId}&context=home&serverId=${serverId}`;
+      if (this.jellyfinMediaId) {
+        this.mediaUrl = `${jellyfinHost}/web/index.html#!/${pageName}?id=${this.jellyfinMediaId}&context=home&serverId=${serverId}`;
+      }
+      if (this.jellyfinMediaId4k) {
+        this.mediaUrl4k = `${jellyfinHost}/web/index.html#!/${pageName}?id=${this.jellyfinMediaId4k}&context=home&serverId=${serverId}`;
+      }
+    }
+  }
+
+  @AfterLoad()
+  public setServiceUrl(): void {
+    if (this.mediaType === MediaType.MOVIE) {
+      if (this.serviceId !== null && this.externalServiceSlug !== null) {
+        const settings = getSettings();
+        const server = settings.radarr.find(
+          (radarr) => radarr.id === this.serviceId
+        );
+
+        if (server) {
+          this.serviceUrl = server.externalUrl
+            ? `${server.externalUrl}/movie/${this.externalServiceSlug}`
+            : RadarrAPI.buildUrl(server, `/movie/${this.externalServiceSlug}`);
         }
-        if (this.jellyfinMediaId4k) {
-          this.mediaUrl4k = `${jellyfinHost}/web/index.html#!/${pageName}?id=${this.jellyfinMediaId4k}&context=home&serverId=${serverId}`;
+      }
+
+      if (this.serviceId4k !== null && this.externalServiceSlug4k !== null) {
+        const settings = getSettings();
+        const server = settings.radarr.find(
+          (radarr) => radarr.id === this.serviceId4k
+        );
+
+        if (server) {
+          this.serviceUrl4k = server.externalUrl
+            ? `${server.externalUrl}/movie/${this.externalServiceSlug4k}`
+            : RadarrAPI.buildUrl(
+                server,
+                `/movie/${this.externalServiceSlug4k}`
+              );
         }
       }
     }
 
-    @AfterLoad()
-    public setServiceUrl(): void {
-      if (this.mediaType === MediaType.MOVIE) {
-        if (this.serviceId !== null && this.externalServiceSlug !== null) {
-          const settings = getSettings();
-          const server = settings.radarr.find(
-            (radarr) => radarr.id === this.serviceId
-          );
+    if (this.mediaType === MediaType.TV) {
+      if (this.serviceId !== null && this.externalServiceSlug !== null) {
+        const settings = getSettings();
+        const server = settings.sonarr.find(
+          (sonarr) => sonarr.id === this.serviceId
+        );
 
-          if (server) {
-            this.serviceUrl = server.externalUrl
-              ? `${server.externalUrl}/movie/${this.externalServiceSlug}`
-              : RadarrAPI.buildUrl(server, `/movie/${this.externalServiceSlug}`);
-          }
-        }
-
-        if (this.serviceId4k !== null && this.externalServiceSlug4k !== null) {
-          const settings = getSettings();
-          const server = settings.radarr.find(
-            (radarr) => radarr.id === this.serviceId4k
-          );
-
-          if (server) {
-            this.serviceUrl4k = server.externalUrl
-              ? `${server.externalUrl}/movie/${this.externalServiceSlug4k}`
-              : RadarrAPI.buildUrl(
-                  server,
-                  `/movie/${this.externalServiceSlug4k}`
-                );
-          }
+        if (server) {
+          this.serviceUrl = server.externalUrl
+            ? `${server.externalUrl}/series/${this.externalServiceSlug}`
+            : SonarrAPI.buildUrl(server, `/series/${this.externalServiceSlug}`);
         }
       }
 
-      if (this.mediaType === MediaType.TV) {
-        if (this.serviceId !== null && this.externalServiceSlug !== null) {
-          const settings = getSettings();
-          const server = settings.sonarr.find(
-            (sonarr) => sonarr.id === this.serviceId
-          );
+      if (this.serviceId4k !== null && this.externalServiceSlug4k !== null) {
+        const settings = getSettings();
+        const server = settings.sonarr.find(
+          (sonarr) => sonarr.id === this.serviceId4k
+        );
 
-          if (server) {
-            this.serviceUrl = server.externalUrl
-              ? `${server.externalUrl}/series/${this.externalServiceSlug}`
-              : SonarrAPI.buildUrl(server, `/series/${this.externalServiceSlug}`);
-          }
-        }
-
-        if (this.serviceId4k !== null && this.externalServiceSlug4k !== null) {
-          const settings = getSettings();
-          const server = settings.sonarr.find(
-            (sonarr) => sonarr.id === this.serviceId4k
-          );
-
-          if (server) {
-            this.serviceUrl4k = server.externalUrl
-              ? `${server.externalUrl}/series/${this.externalServiceSlug4k}`
-              : SonarrAPI.buildUrl(
-                  server,
-                  `/series/${this.externalServiceSlug4k}`
-                );
-          }
-        }
-      }
-
-      if (this.mediaType === MediaType.MUSIC) {
-        if (this.serviceId !== null && this.externalServiceSlug !== null) {
-          const settings = getSettings();
-          const server = settings.lidarr.find(
-            (lidarr) => lidarr.id === this.serviceId
-          );
-
-          if (server) {
-            this.serviceUrl = server.externalUrl
-              ? `${server.externalUrl}/album/${this.externalServiceSlug}`
-              : LidarrAPI.buildUrl(server, `/album/${this.externalServiceSlug}`);
-          }
+        if (server) {
+          this.serviceUrl4k = server.externalUrl
+            ? `${server.externalUrl}/series/${this.externalServiceSlug4k}`
+            : SonarrAPI.buildUrl(
+                server,
+                `/series/${this.externalServiceSlug4k}`
+              );
         }
       }
     }
+
+    if (this.mediaType === MediaType.MUSIC) {
+      if (this.serviceId !== null && this.externalServiceSlug !== null) {
+        const settings = getSettings();
+        const server = settings.lidarr.find(
+          (lidarr) => lidarr.id === this.serviceId
+        );
+
+        if (server) {
+          this.serviceUrl = server.externalUrl
+            ? `${server.externalUrl}/album/${this.externalServiceSlug}`
+            : LidarrAPI.buildUrl(server, `/album/${this.externalServiceSlug}`);
+        }
+      }
+    }
+  }
 
   @AfterLoad()
   public getDownloadingItem(): void {
@@ -377,46 +376,46 @@ class Media {
       }
     }
 
-      if (this.mediaType === MediaType.TV) {
-        if (
-          this.externalServiceId !== undefined &&
-          this.externalServiceId !== null &&
-          this.serviceId !== undefined &&
-          this.serviceId !== null
-        ) {
-          this.downloadStatus = downloadTracker.getSeriesProgress(
-            this.serviceId,
-            this.externalServiceId
-          );
-        }
-
-        if (
-          this.externalServiceId4k !== undefined &&
-          this.externalServiceId4k !== null &&
-          this.serviceId4k !== undefined &&
-          this.serviceId4k !== null
-        ) {
-          this.downloadStatus4k = downloadTracker.getSeriesProgress(
-            this.serviceId4k,
-            this.externalServiceId4k
-          );
-        }
+    if (this.mediaType === MediaType.TV) {
+      if (
+        this.externalServiceId !== undefined &&
+        this.externalServiceId !== null &&
+        this.serviceId !== undefined &&
+        this.serviceId !== null
+      ) {
+        this.downloadStatus = downloadTracker.getSeriesProgress(
+          this.serviceId,
+          this.externalServiceId
+        );
       }
 
-      if (this.mediaType === MediaType.MUSIC) {
-        if (
-          this.externalServiceId !== undefined &&
-          this.externalServiceId !== null &&
-          this.serviceId !== undefined &&
-          this.serviceId !== null
-        ) {
-          this.downloadStatus = downloadTracker.getMusicProgress(
-            this.serviceId,
-            this.externalServiceId
-          );
-        }
+      if (
+        this.externalServiceId4k !== undefined &&
+        this.externalServiceId4k !== null &&
+        this.serviceId4k !== undefined &&
+        this.serviceId4k !== null
+      ) {
+        this.downloadStatus4k = downloadTracker.getSeriesProgress(
+          this.serviceId4k,
+          this.externalServiceId4k
+        );
+      }
+    }
+
+    if (this.mediaType === MediaType.MUSIC) {
+      if (
+        this.externalServiceId !== undefined &&
+        this.externalServiceId !== null &&
+        this.serviceId !== undefined &&
+        this.serviceId !== null
+      ) {
+        this.downloadStatus = downloadTracker.getMusicProgress(
+          this.serviceId,
+          this.externalServiceId
+        );
       }
     }
   }
+}
 
 export default Media;

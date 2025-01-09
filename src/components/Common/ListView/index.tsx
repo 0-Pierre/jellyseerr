@@ -1,24 +1,31 @@
+import AddedCard from '@app/components/AddedCard';
+import GroupCard from '@app/components/GroupCard';
 import PersonCard from '@app/components/PersonCard';
 import TitleCard from '@app/components/TitleCard';
-import AddedCard from '@app/components/AddedCard';
 import { Permission, useUser } from '@app/hooks/useUser';
 import useVerticalScroll from '@app/hooks/useVerticalScroll';
 import globalMessages from '@app/i18n/globalMessages';
 import { MediaStatus } from '@server/constants/media';
 import type { WatchlistItem } from '@server/interfaces/api/discoverInterfaces';
 import type {
+  AlbumResult,
+  ArtistResult,
   CollectionResult,
   MovieResult,
   PersonResult,
   TvResult,
-  ArtistResult,
-  AlbumResult,
 } from '@server/models/Search';
 import { useIntl } from 'react-intl';
-import GroupCard from '@app/components/GroupCard';
 
 type ListViewProps = {
-  items?: (TvResult | MovieResult | PersonResult | CollectionResult | ArtistResult | AlbumResult)[];
+  items?: (
+    | TvResult
+    | MovieResult
+    | PersonResult
+    | CollectionResult
+    | ArtistResult
+    | AlbumResult
+  )[];
   plexItems?: WatchlistItem[];
   isEmpty?: boolean;
   isLoading?: boolean;
@@ -72,8 +79,8 @@ const ListView = ({
           ?.filter((title) => {
             if (!blacklistVisibility)
               return (
-                (title as TvResult | MovieResult | AlbumResult).mediaInfo?.status !==
-                MediaStatus.BLACKLISTED
+                (title as TvResult | MovieResult | AlbumResult).mediaInfo
+                  ?.status !== MediaStatus.BLACKLISTED
               );
             return title;
           })
@@ -155,7 +162,10 @@ const ListView = ({
                     isAddedToWatchlist={
                       title.mediaInfo?.watchlists?.length ?? 0
                     }
-                    image={title.images?.find(image => image.CoverType === 'Cover')?.Url}
+                    image={
+                      title.images?.find((image) => image.CoverType === 'Cover')
+                        ?.Url
+                    }
                     status={title.mediaInfo?.status}
                     title={title.title}
                     artist={title.artistname}
@@ -169,25 +179,28 @@ const ListView = ({
                   />
                 );
                 break;
-                case 'artist':
-                  return title.type === 'Group' ? (
-                      <GroupCard
-                          key={title.id}
-                          groupId={title.id}
-                          name={title.artistname}
-                          image={title.images.find((image) => image.CoverType === 'Poster')?.Url ?? title.artistimage}
-                          canExpand
-                      />
-                  ) : (
-                      <PersonCard
-                          key={title.id}
-                          personId={title.id}
-                          name={title.artistname}
-                          mediaType="artist"
-                          profilePath={title.artistimage}
-                          canExpand
-                      />
-                  );
+              case 'artist':
+                return title.type === 'Group' ? (
+                  <GroupCard
+                    key={title.id}
+                    groupId={title.id}
+                    name={title.artistname}
+                    image={
+                      title.images.find((image) => image.CoverType === 'Poster')
+                        ?.Url ?? title.artistimage
+                    }
+                    canExpand
+                  />
+                ) : (
+                  <PersonCard
+                    key={title.id}
+                    personId={title.id}
+                    name={title.artistname}
+                    mediaType="artist"
+                    profilePath={title.artistimage}
+                    canExpand
+                  />
+                );
             }
 
             return <li key={`${title.id}-${index}`}>{titleCard}</li>;

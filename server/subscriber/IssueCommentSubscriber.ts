@@ -1,6 +1,5 @@
-import TheMovieDb from '@server/api/themoviedb';
 import LidarrAPI from '@server/api/servarr/lidarr';
-import { getSettings } from '@server/lib/settings';
+import TheMovieDb from '@server/api/themoviedb';
 import { IssueType, IssueTypeName } from '@server/constants/issue';
 import { MediaType } from '@server/constants/media';
 import { getRepository } from '@server/datasource';
@@ -9,6 +8,7 @@ import Media from '@server/entity/Media';
 import { User } from '@server/entity/User';
 import notificationManager, { Notification } from '@server/lib/notifications';
 import { Permission } from '@server/lib/permissions';
+import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
 import { sortBy } from 'lodash';
 import type { EntitySubscriberInterface, InsertEvent } from 'typeorm';
@@ -65,7 +65,7 @@ export class IssueCommentSubscriber
 
         const lidarr = new LidarrAPI({
           apiKey: settings.lidarr[0].apiKey,
-          url: LidarrAPI.buildUrl(settings.lidarr[0], '/api/v1')
+          url: LidarrAPI.buildUrl(settings.lidarr[0], '/api/v1'),
         });
 
         if (!media.mbId) {

@@ -1,8 +1,6 @@
 import ExternalAPI from '@server/api/externalapi';
 import cacheManager from '@server/lib/cache';
-import type {
-  CoverArtResponse,
-} from './interfaces';
+import type { CoverArtResponse } from './interfaces';
 
 class CoverArtArchive extends ExternalAPI {
   constructor() {
@@ -28,7 +26,9 @@ class CoverArtArchive extends ExternalAPI {
       );
       return data;
     } catch (e) {
-      throw new Error(`[CoverArtArchive] Failed to fetch cover art: ${e.message}`);
+      throw new Error(
+        `[CoverArtArchive] Failed to fetch cover art: ${e.message}`
+      );
     }
   }
 }

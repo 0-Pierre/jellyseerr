@@ -44,7 +44,11 @@ const BlacklistBlock = ({
       : null
   );
 
-  const removeFromBlacklist = async (tmdbId?: number, mbId?: string, title?: string) => {
+  const removeFromBlacklist = async (
+    tmdbId?: number,
+    mbId?: string,
+    title?: string
+  ) => {
     setIsUpdating(true);
 
     const url = mbId
@@ -116,11 +120,7 @@ const BlacklistBlock = ({
             <Button
               buttonType="danger"
               onClick={() =>
-                removeFromBlacklist(
-                  data.tmdbId,
-                  data.mbId,
-                  data.title
-                )
+                removeFromBlacklist(data.tmdbId, data.mbId, data.title)
               }
               disabled={isUpdating}
             >

@@ -1,5 +1,5 @@
-import Button from '@app/components/Common/Button';
 import Ellipsis from '@app/assets/ellipsis.svg';
+import Button from '@app/components/Common/Button';
 import CachedImage from '@app/components/Common/CachedImage';
 import ImageFader from '@app/components/Common/ImageFader';
 import LoadingSpinner from '@app/components/Common/LoadingSpinner';
@@ -60,7 +60,10 @@ const GroupDetails = () => {
     setSize: setAlbumSize,
     isValidating: isLoadingAlbums,
   } = useSWRInfinite<DiscographyResponse>(
-    (index) => `/api/v1/group/${router.query.groupId}/discography?page=${index + 1}&type=Album`,
+    (index) =>
+      `/api/v1/group/${router.query.groupId}/discography?page=${
+        index + 1
+      }&type=Album`,
     { revalidateFirstPage: false }
   );
 
@@ -70,7 +73,10 @@ const GroupDetails = () => {
     setSize: setSinglesSize,
     isValidating: isLoadingSingles,
   } = useSWRInfinite<DiscographyResponse>(
-    (index) => `/api/v1/group/${router.query.groupId}/discography?page=${index + 1}&type=Single`,
+    (index) =>
+      `/api/v1/group/${router.query.groupId}/discography?page=${
+        index + 1
+      }&type=Single`,
     { revalidateFirstPage: false }
   );
 
@@ -80,7 +86,10 @@ const GroupDetails = () => {
     setSize: setEpsSize,
     isValidating: isLoadingEps,
   } = useSWRInfinite<DiscographyResponse>(
-    (index) => `/api/v1/group/${router.query.groupId}/discography?page=${index + 1}&type=EP`,
+    (index) =>
+      `/api/v1/group/${router.query.groupId}/discography?page=${
+        index + 1
+      }&type=EP`,
     { revalidateFirstPage: false }
   );
 
@@ -90,7 +99,10 @@ const GroupDetails = () => {
     setSize: setOtherSize,
     isValidating: isLoadingOther,
   } = useSWRInfinite<DiscographyResponse>(
-    (index) => `/api/v1/group/${router.query.groupId}/discography?page=${index + 1}&type=Other`,
+    (index) =>
+      `/api/v1/group/${router.query.groupId}/discography?page=${
+        index + 1
+      }&type=Other`,
     { revalidateFirstPage: false }
   );
 
@@ -180,10 +192,10 @@ const GroupDetails = () => {
             <Button
               onClick={onLoadMore}
               disabled={isLoading}
-              className="w-32 h-9 flex items-center justify-center"
+              className="flex h-9 w-32 items-center justify-center"
             >
               {isLoading ? (
-                <div className="w-5 h-5">
+                <div className="h-5 w-5">
                   <LoadingSpinner />
                 </div>
               ) : (
@@ -218,7 +230,10 @@ const GroupDetails = () => {
           <div className="relative mb-6 mr-0 h-36 w-36 flex-shrink-0 overflow-hidden rounded-full ring-1 ring-gray-700 lg:mb-0 lg:mr-6 lg:h-44 lg:w-44">
             <CachedImage
               type="music"
-              src={data.images.find(img => img.CoverType === "Poster")?.Url ?? data.images[0]?.Url}
+              src={
+                data.images.find((img) => img.CoverType === 'Poster')?.Url ??
+                data.images[0]?.Url
+              }
               alt=""
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               fill
@@ -232,17 +247,17 @@ const GroupDetails = () => {
           </div>
           {data.overview && (
             <div className="relative text-left">
-                <div
-                  className="group outline-none ring-0"
-                  onClick={() => setShowBio((show) => !show)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === 'Space') {
-                      setShowBio((show) => !show);
-                    }
-                  }}
-                  role="button"
-                  tabIndex={0}
-                >
+              <div
+                className="group outline-none ring-0"
+                onClick={() => setShowBio((show) => !show)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === 'Space') {
+                    setShowBio((show) => !show);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+              >
                 <TruncateMarkup
                   lines={showBio ? 200 : 6}
                   ellipsis={
@@ -261,28 +276,39 @@ const GroupDetails = () => {
         intl.formatMessage(messages.albums),
         albumData ? albumData.flatMap((page) => page.results) : [],
         isLoadingAlbums ?? false,
-        (albumData?.[0]?.results.length === 0 || (albumData && albumData[albumData.length - 1]?.results.length < 20)) ?? false,
+        (albumData?.[0]?.results.length === 0 ||
+          (albumData &&
+            albumData[albumData.length - 1]?.results.length < 20)) ??
+          false,
         () => setAlbumSize(albumSize + 1)
       )}
       {renderAlbumSection(
         intl.formatMessage(messages.singles),
         singlesData ? singlesData.flatMap((page) => page.results) : [],
         isLoadingSingles ?? false,
-        (singlesData?.[0]?.results.length === 0 || (singlesData && singlesData[singlesData.length - 1]?.results.length < 20)) ?? false,
+        (singlesData?.[0]?.results.length === 0 ||
+          (singlesData &&
+            singlesData[singlesData.length - 1]?.results.length < 20)) ??
+          false,
         () => setSinglesSize(singlesSize + 1)
       )}
       {renderAlbumSection(
         intl.formatMessage(messages.eps),
         epsData ? epsData.flatMap((page) => page.results) : [],
         isLoadingEps,
-        (epsData?.[0]?.results.length === 0 || (epsData && epsData[epsData.length - 1]?.results.length < 20)) ?? false,
+        (epsData?.[0]?.results.length === 0 ||
+          (epsData && epsData[epsData.length - 1]?.results.length < 20)) ??
+          false,
         () => setEpsSize(epsSize + 1)
       )}
       {renderAlbumSection(
         intl.formatMessage(messages.other),
         otherData ? otherData.flatMap((page) => page.results) : [],
         isLoadingOther,
-        (otherData?.[0]?.results.length === 0 || (otherData && otherData[otherData.length - 1]?.results.length < 20)) ?? false,
+        (otherData?.[0]?.results.length === 0 ||
+          (otherData &&
+            otherData[otherData.length - 1]?.results.length < 20)) ??
+          false,
         () => setOtherSize(otherSize + 1)
       )}
     </>

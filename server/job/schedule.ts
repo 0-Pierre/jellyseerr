@@ -7,10 +7,10 @@ import {
   jellyfinFullScanner,
   jellyfinRecentScanner,
 } from '@server/lib/scanners/jellyfin';
+import { lidarrScanner } from '@server/lib/scanners/lidarr';
 import { plexFullScanner, plexRecentScanner } from '@server/lib/scanners/plex';
 import { radarrScanner } from '@server/lib/scanners/radarr';
 import { sonarrScanner } from '@server/lib/scanners/sonarr';
-import { lidarrScanner } from '@server/lib/scanners/lidarr';
 import type { JobId } from '@server/lib/settings';
 import { getSettings } from '@server/lib/settings';
 import watchlistSync from '@server/lib/watchlistsync';

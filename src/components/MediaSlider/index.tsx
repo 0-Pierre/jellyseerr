@@ -1,19 +1,19 @@
+import GroupCard from '@app/components/GroupCard';
 import ShowMoreCard from '@app/components/MediaSlider/ShowMoreCard';
 import PersonCard from '@app/components/PersonCard';
 import Slider from '@app/components/Slider';
 import TitleCard from '@app/components/TitleCard';
-import GroupCard from '@app/components/GroupCard';
 import useSettings from '@app/hooks/useSettings';
 import { useUser } from '@app/hooks/useUser';
 import { ArrowRightCircleIcon } from '@heroicons/react/24/outline';
 import { MediaStatus } from '@server/constants/media';
 import { Permission } from '@server/lib/permissions';
 import type {
+  AlbumResult,
+  ArtistResult,
   MovieResult,
   PersonResult,
   TvResult,
-  AlbumResult,
-  ArtistResult,
 } from '@server/models/Search';
 import Link from 'next/link';
 import { useEffect } from 'react';
@@ -23,9 +23,14 @@ interface MixedResult {
   page: number;
   totalResults: number;
   totalPages: number;
-  results: (MovieResult | TvResult | PersonResult | AlbumResult | ArtistResult)[];
+  results: (
+    | MovieResult
+    | TvResult
+    | PersonResult
+    | AlbumResult
+    | ArtistResult
+  )[];
 }
-
 
 interface MediaSliderProps {
   title: string;
@@ -160,7 +165,9 @@ const MediaSlider = ({
               key={title.id}
               id={title.id}
               isAddedToWatchlist={title.mediaInfo?.watchlists?.length ?? 0}
-              image={title.images?.find(image => image.CoverType === 'Cover')?.Url}
+              image={
+                title.images?.find((image) => image.CoverType === 'Cover')?.Url
+              }
               status={title.mediaInfo?.status}
               title={title.title}
               year={title.releasedate}
@@ -170,23 +177,23 @@ const MediaSlider = ({
               inProgress={(title.mediaInfo?.downloadStatus ?? []).length > 0}
             />
           );
-          case 'artist':
-            return title.type === 'Group' ? (
-                <GroupCard
-                    key={title.id}
-                    groupId={title.id}
-                    name={title.artistname}
-                    image={title.artistimage}
-                />
-            ) : (
-                <PersonCard
-                    key={title.id}
-                    personId={title.id}
-                    name={title.artistname}
-                    mediaType="artist"
-                    profilePath={title.artistimage}
-                />
-            );
+        case 'artist':
+          return title.type === 'Group' ? (
+            <GroupCard
+              key={title.id}
+              groupId={title.id}
+              name={title.artistname}
+              image={title.artistimage}
+            />
+          ) : (
+            <PersonCard
+              key={title.id}
+              personId={title.id}
+              name={title.artistname}
+              mediaType="artist"
+              profilePath={title.artistimage}
+            />
+          );
       }
     });
 

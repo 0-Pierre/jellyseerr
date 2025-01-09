@@ -26,7 +26,8 @@ export const messages = defineMessages('components.PermissionEdit', {
   requestTvDescription:
     'Grant permission to submit requests for non-4K series.',
   requestMusic: 'Request Music',
-  requestMusicDescription: 'Grant permission to submit requests for music albums.',
+  requestMusicDescription:
+    'Grant permission to submit requests for music albums.',
   autoapprove: 'Auto-Approve',
   autoapproveDescription:
     'Grant automatic approval for all non-4K media requests.',
@@ -37,7 +38,8 @@ export const messages = defineMessages('components.PermissionEdit', {
   autoapproveSeriesDescription:
     'Grant automatic approval for non-4K series requests.',
   autoapproveMusic: 'Auto-Approve Music',
-  autoapproveMusicDescription: 'Grant automatic approval for music album requests.',
+  autoapproveMusicDescription:
+    'Grant automatic approval for music album requests.',
   autoapprove4k: 'Auto-Approve 4K',
   autoapprove4kDescription:
     'Grant automatic approval for all 4K media requests.',
@@ -235,9 +237,7 @@ export const PermissionEdit = ({
         {
           id: 'autoapprovemusic',
           name: intl.formatMessage(messages.autoapproveMusic),
-          description: intl.formatMessage(
-            messages.autoapproveMusicDescription
-          ),
+          description: intl.formatMessage(messages.autoapproveMusicDescription),
           permission: Permission.AUTO_APPROVE_MUSIC,
           requires: [
             {
@@ -286,9 +286,7 @@ export const PermissionEdit = ({
         {
           id: 'autorequestmusic',
           name: intl.formatMessage(messages.autorequestMusic),
-          description: intl.formatMessage(
-            messages.autorequestMusicDescription
-          ),
+          description: intl.formatMessage(messages.autorequestMusicDescription),
           permission: Permission.AUTO_REQUEST_MUSIC,
           requires: [
             {

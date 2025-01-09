@@ -115,9 +115,7 @@ const TitleCard = ({
       const requestBody = {
         mediaType: mediaType === 'album' ? 'music' : mediaType,
         title,
-        ...(mediaType === 'album'
-          ? { mbId: id }
-          : { tmdbId: Number(id) })
+        ...(mediaType === 'album' ? { mbId: id } : { tmdbId: Number(id) }),
       };
 
       const res = await fetch('/api/v1/watchlist', {
@@ -194,9 +192,7 @@ const TitleCard = ({
       const requestBody = {
         mediaType: mediaType === 'album' ? 'music' : mediaType,
         title,
-        ...(mediaType === 'album'
-          ? { mbId: id }
-          : { tmdbId: Number(id) }),
+        ...(mediaType === 'album' ? { mbId: id } : { tmdbId: Number(id) }),
         user: user?.id,
       };
 
@@ -310,23 +306,23 @@ const TitleCard = ({
       data-testid="title-card"
       ref={cardRef}
     >
-    <RequestModal
-      tmdbId={typeof id === 'number' ? id : undefined}
-      mbId={typeof id === 'string' ? id : undefined}
-      show={showRequestModal}
-      type={
-        mediaType === 'movie'
-          ? 'movie'
-          : mediaType === 'collection'
-          ? 'collection'
-          : mediaType === 'tv'
-          ? 'tv'
-          : 'music'
-      }
-      onComplete={requestComplete}
-      onUpdating={requestUpdating}
-      onCancel={closeModal}
-    />
+      <RequestModal
+        tmdbId={typeof id === 'number' ? id : undefined}
+        mbId={typeof id === 'string' ? id : undefined}
+        show={showRequestModal}
+        type={
+          mediaType === 'movie'
+            ? 'movie'
+            : mediaType === 'collection'
+            ? 'collection'
+            : mediaType === 'tv'
+            ? 'tv'
+            : 'music'
+        }
+        onComplete={requestComplete}
+        onUpdating={requestUpdating}
+        onCancel={closeModal}
+      />
       <BlacklistModal
         tmdbId={typeof id === 'number' ? id : undefined}
         mbId={typeof id === 'string' ? id : undefined}
@@ -376,41 +372,43 @@ const TitleCard = ({
                   type="music"
                   className="h-full w-full rounded object-contain"
                   alt=""
-                  src={image ?? '/images/overseerr_poster_not_found_logo_top.png'}
+                  src={
+                    image ?? '/images/overseerr_poster_not_found_logo_top.png'
+                  }
                   fill
                 />
               </div>
-                <div className="mt-2">
-                  <div className="w-full truncate text-center font-bold text-white">
-                    {title}
-                  </div>
-                  {artist && (
-                    <div
-                      className="overflow-hidden whitespace-normal text-center text-xs text-gray-300"
-                      style={{
-                        WebkitLineClamp: 2,
-                        display: '-webkit-box',
-                        overflow: 'hidden',
-                        WebkitBoxOrient: 'vertical',
-                      }}
-                    >
-                      {artist}
-                    </div>
-                  )}
-                  {type && (
-                      <div
-                        className="overflow-hidden whitespace-normal text-center text-xs text-gray-500 mt-4"
-                        style={{
-                          WebkitLineClamp: 1,
-                          display: '-webkit-box',
-                          overflow: 'hidden',
-                          WebkitBoxOrient: 'vertical',
-                        }}
-                      >
-                        {type}
-                      </div>
-                    )}
+              <div className="mt-2">
+                <div className="w-full truncate text-center font-bold text-white">
+                  {title}
                 </div>
+                {artist && (
+                  <div
+                    className="overflow-hidden whitespace-normal text-center text-xs text-gray-300"
+                    style={{
+                      WebkitLineClamp: 2,
+                      display: '-webkit-box',
+                      overflow: 'hidden',
+                      WebkitBoxOrient: 'vertical',
+                    }}
+                  >
+                    {artist}
+                  </div>
+                )}
+                {type && (
+                  <div
+                    className="mt-4 overflow-hidden whitespace-normal text-center text-xs text-gray-500"
+                    style={{
+                      WebkitLineClamp: 1,
+                      display: '-webkit-box',
+                      overflow: 'hidden',
+                      WebkitBoxOrient: 'vertical',
+                    }}
+                  >
+                    {type}
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <CachedImage
@@ -437,13 +435,13 @@ const TitleCard = ({
               }`}
             >
               <div className="flex h-4 items-center px-2 py-2 text-center text-xs font-medium uppercase tracking-wider text-white sm:h-5">
-              {mediaType === 'movie'
-                ? intl.formatMessage(globalMessages.movie)
-                : mediaType === 'collection'
-                ? intl.formatMessage(globalMessages.collection)
-                : mediaType === 'album'
-                ? intl.formatMessage(globalMessages.music)
-                : intl.formatMessage(globalMessages.tvshow)}
+                {mediaType === 'movie'
+                  ? intl.formatMessage(globalMessages.movie)
+                  : mediaType === 'collection'
+                  ? intl.formatMessage(globalMessages.collection)
+                  : mediaType === 'album'
+                  ? intl.formatMessage(globalMessages.music)
+                  : intl.formatMessage(globalMessages.tvshow)}
               </div>
             </div>
             {showDetail && currentStatus !== MediaStatus.BLACKLISTED && (

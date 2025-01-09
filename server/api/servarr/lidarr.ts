@@ -187,7 +187,7 @@ export interface LidarrAlbumOptions {
 }
 
 export interface LidarrArtistOptions {
-  [key: string]: unknown
+  [key: string]: unknown;
   artistName: string;
   qualityProfileId: number;
   profileId: number;
@@ -255,7 +255,9 @@ class LidarrAPI extends ServarrBase<{ albumId: number }> {
     }
   }
 
-  public async getAlbumByMusicBrainzId(mbId: string): Promise<LidarrAlbumDetails> {
+  public async getAlbumByMusicBrainzId(
+    mbId: string
+  ): Promise<LidarrAlbumDetails> {
     try {
       const data = await this.get<LidarrAlbumDetails[]>('/album/lookup', {
         term: `lidarr:${mbId}`,
@@ -280,7 +282,7 @@ class LidarrAPI extends ServarrBase<{ albumId: number }> {
     try {
       await this.delete(`/album/${albumId}`, {
         deleteFiles: 'true',
-        addImportExclusion: 'false'
+        addImportExclusion: 'false',
       });
       logger.info(`[Lidarr] Removed album ${albumId}`);
     } catch (e) {
@@ -288,7 +290,9 @@ class LidarrAPI extends ServarrBase<{ albumId: number }> {
     }
   }
 
-  public async getArtistByMusicBrainzId(mbId: string): Promise<LidarrArtistDetails> {
+  public async getArtistByMusicBrainzId(
+    mbId: string
+  ): Promise<LidarrArtistDetails> {
     try {
       const data = await this.get<LidarrArtistDetails[]>('/artist/lookup', {
         term: `lidarr:${mbId}`,
@@ -309,7 +313,9 @@ class LidarrAPI extends ServarrBase<{ albumId: number }> {
     }
   }
 
-  public async addAlbum(options: LidarrAlbumOptions): Promise<LidarrAlbumDetails> {
+  public async addAlbum(
+    options: LidarrAlbumOptions
+  ): Promise<LidarrAlbumDetails> {
     try {
       const data = await this.post<LidarrAlbumDetails>('/album', options);
       return data;
@@ -318,7 +324,7 @@ class LidarrAPI extends ServarrBase<{ albumId: number }> {
         logger.info('Album already exists in Lidarr, monitoring it in Lidarr', {
           label: 'Lidarr',
           albumTitle: options.title,
-          mbId: options.mbId
+          mbId: options.mbId,
         });
         throw e;
       }
@@ -332,7 +338,9 @@ class LidarrAPI extends ServarrBase<{ albumId: number }> {
     }
   }
 
-  public async addArtist(options: LidarrArtistOptions): Promise<LidarrArtistDetails> {
+  public async addArtist(
+    options: LidarrArtistOptions
+  ): Promise<LidarrArtistDetails> {
     try {
       const data = await this.post<LidarrArtistDetails>('/artist', options);
       return data;
@@ -348,44 +356,51 @@ class LidarrAPI extends ServarrBase<{ albumId: number }> {
 
   public async searchMulti(searchTerm: string): Promise<LidarrSearchResponse> {
     try {
-      const data = await this.get<{
-        foreignId: string;
-        artist?: {
-          artistName: string;
-          overview?: string;
-          remotePoster?: string;
-          artistType?: string;
-          genres: string[];
-          foreignArtistId: string;
-        };
-        album?: {
-          title: string;
-          foreignAlbumId: string;
-          overview?: string;
-          releaseDate?: string;
-          albumType: string;
-          genres: string[];
-          images: LidarrImage[];
-          artist: {
+      const data = await this.get<
+        {
+          foreignId: string;
+          artist?: {
             artistName: string;
             overview?: string;
+            remotePoster?: string;
+            artistType?: string;
+            genres: string[];
+            foreignArtistId: string;
           };
-          remoteCover?: string;
-        };
-        id: number;
-      }[]>('/search', {
-        term: searchTerm
-      }, undefined, {
-        headers: {
-          'X-Api-Key': this.apiKey
+          album?: {
+            title: string;
+            foreignAlbumId: string;
+            overview?: string;
+            releaseDate?: string;
+            albumType: string;
+            genres: string[];
+            images: LidarrImage[];
+            artist: {
+              artistName: string;
+              overview?: string;
+            };
+            remoteCover?: string;
+          };
+          id: number;
+        }[]
+      >(
+        '/search',
+        {
+          term: searchTerm,
+        },
+        undefined,
+        {
+          headers: {
+            'X-Api-Key': this.apiKey,
+          },
         }
-      });
+      );
 
       if (!data) {
         throw new Error('No data received from Lidarr');
       }
 
-      const results = data.map(item => {
+      const results = data.map((item) => {
         if (item.album) {
           return {
             id: item.id,
@@ -399,15 +414,19 @@ class LidarrAPI extends ServarrBase<{ albumId: number }> {
               releaseDate: item.album.releaseDate || '',
               albumType: item.album.albumType,
               genres: item.album.genres,
-              images: item.album.remoteCover ? [{
-                url: item.album.remoteCover,
-                coverType: 'cover'
-              }] : item.album.images,
+              images: item.album.remoteCover
+                ? [
+                    {
+                      url: item.album.remoteCover,
+                      coverType: 'cover',
+                    },
+                  ]
+                : item.album.images,
               artist: {
                 artistName: item.album.artist.artistName,
-                overview: item.album.artist.overview || ''
-              }
-            }
+                overview: item.album.artist.overview || '',
+              },
+            },
           } satisfies LidarrAlbumResult;
         }
 
@@ -422,8 +441,8 @@ class LidarrAPI extends ServarrBase<{ albumId: number }> {
               overview: item.artist.overview || '',
               remotePoster: item.artist.remotePoster,
               artistType: item.artist.artistType || '',
-              genres: item.artist.genres
-            }
+              genres: item.artist.genres,
+            },
           } satisfies LidarrArtistResult;
         }
 
@@ -434,24 +453,24 @@ class LidarrAPI extends ServarrBase<{ albumId: number }> {
         page: 1,
         total_pages: 1,
         total_results: results.length,
-        results
+        results,
       };
-
     } catch (e) {
       logger.error('Failed to search Lidarr', {
         label: 'Lidarr API',
-        errorMessage: e.message
+        errorMessage: e.message,
       });
       throw new Error(`[Lidarr] Failed to search: ${e.message}`);
     }
   }
 
-  public async updateArtist(artist: LidarrArtistDetails): Promise<LidarrArtistDetails> {
+  public async updateArtist(
+    artist: LidarrArtistDetails
+  ): Promise<LidarrArtistDetails> {
     try {
-      const data = await this.put<LidarrArtistDetails>(
-        `/artist/${artist.id}`,
-        { ...artist } as Record<string, unknown>
-      );
+      const data = await this.put<LidarrArtistDetails>(`/artist/${artist.id}`, {
+        ...artist,
+      } as Record<string, unknown>);
       return data;
     } catch (e) {
       logger.error('Failed to update artist in Lidarr', {
@@ -465,10 +484,9 @@ class LidarrAPI extends ServarrBase<{ albumId: number }> {
 
   public async updateAlbum(album: LidarrAlbum): Promise<LidarrAlbumDetails> {
     try {
-      const data = await this.put<LidarrAlbumDetails>(
-        `/album/${album.id}`,
-        { ...album } as Record<string, unknown>
-      );
+      const data = await this.put<LidarrAlbumDetails>(`/album/${album.id}`, {
+        ...album,
+      } as Record<string, unknown>);
       return data;
     } catch (e) {
       logger.error('Failed to update album in Lidarr', {
@@ -489,14 +507,17 @@ class LidarrAPI extends ServarrBase<{ albumId: number }> {
     try {
       await this.post('/command', {
         name: 'AlbumSearch',
-        albumIds: [albumId]
+        albumIds: [albumId],
       });
     } catch (e) {
-      logger.error('Something went wrong while executing Lidarr album search.', {
-        label: 'Lidarr API',
-        errorMessage: e.message,
-        albumId,
-      });
+      logger.error(
+        'Something went wrong while executing Lidarr album search.',
+        {
+          label: 'Lidarr API',
+          errorMessage: e.message,
+          albumId,
+        }
+      );
     }
   }
 }

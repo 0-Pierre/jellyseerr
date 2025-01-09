@@ -2,7 +2,7 @@ import ExternalAPI from '@server/api/externalapi';
 import cacheManager from '@server/lib/cache';
 import type {
   LbSimilarArtistResponse,
-  LbTopAlbumsResponse
+  LbTopAlbumsResponse,
 } from './interfaces';
 
 class ListenBrainzAPI extends ExternalAPI {
@@ -44,7 +44,7 @@ class ListenBrainzAPI extends ExternalAPI {
       '/similar-artists/json',
       {
         artist_mbids: artistMbid,
-        algorithm: `session_based_days_${days}_session_${session}_contribution_${contribution}_threshold_${threshold}_limit_${limit}_skip_${skip}`
+        algorithm: `session_based_days_${days}_session_${session}_contribution_${contribution}_threshold_${threshold}_limit_${limit}_skip_${skip}`,
       },
       43200,
       undefined,

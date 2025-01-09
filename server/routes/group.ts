@@ -1,9 +1,9 @@
-import { Router } from 'express';
+import CoverArtArchive from '@server/api/coverartarchive';
 import MusicBrainz from '@server/api/musicbrainz';
+import Media from '@server/entity/Media';
 import logger from '@server/logger';
 import { mapArtistDetails } from '@server/models/Artist';
-import CoverArtArchive from '@server/api/coverartarchive';
-import Media from '@server/entity/Media';
+import { Router } from 'express';
 
 const groupRoutes = Router();
 
@@ -16,7 +16,7 @@ groupRoutes.get('/:id', async (req, res, next) => {
       musicbrainz.getArtist({
         artistId: req.params.id,
       }),
-      musicbrainz.getWikipediaExtract(req.params.id, locale, 'artist')
+      musicbrainz.getWikipediaExtract(req.params.id, locale, 'artist'),
     ]);
 
     const mappedDetails = await mapArtistDetails(artistDetails);
@@ -26,7 +26,6 @@ groupRoutes.get('/:id', async (req, res, next) => {
     }
 
     return res.status(200).json(mappedDetails);
-
   } catch (e) {
     logger.error('Something went wrong retrieving artist details', {
       label: 'Group API',
@@ -62,7 +61,7 @@ groupRoutes.get('/:id/discography', async (req, res, next) => {
           total: 0,
           totalPages: 0,
         },
-        results: []
+        results: [],
       });
     }
 
@@ -70,11 +69,11 @@ groupRoutes.get('/:id/discography', async (req, res, next) => {
     if (type) {
       if (type === 'Other') {
         filteredAlbums = mappedDetails.Albums.filter(
-          album => !['Album', 'Single', 'EP'].includes(album.type)
+          (album) => !['Album', 'Single', 'EP'].includes(album.type)
         );
       } else {
         filteredAlbums = mappedDetails.Albums.filter(
-          album => album.type === type
+          (album) => album.type === type
         );
       }
     }
@@ -92,9 +91,9 @@ groupRoutes.get('/:id/discography', async (req, res, next) => {
             try {
               const coverArtData = await coverArtArchive.getCoverArt(album.id);
               if (coverArtData.images?.length) {
-                images = coverArtData.images.map(img => ({
+                images = coverArtData.images.map((img) => ({
                   CoverType: img.front ? 'Cover' : 'Poster',
-                  Url: img.image
+                  Url: img.image,
                 }));
               }
             } catch (e) {
@@ -105,13 +104,13 @@ groupRoutes.get('/:id/discography', async (req, res, next) => {
           return {
             ...album,
             images: images || [],
-            releasedate: albumDetails.releasedate || ''
+            releasedate: albumDetails.releasedate || '',
           };
         } catch (e) {
           return {
             ...album,
             images: [],
-            releasedate: ''
+            releasedate: '',
           };
         }
       })
@@ -121,7 +120,9 @@ groupRoutes.get('/:id/discography', async (req, res, next) => {
       if (!a.releasedate && !b.releasedate) return 0;
       if (!a.releasedate) return 1;
       if (!b.releasedate) return -1;
-      return new Date(b.releasedate).getTime() - new Date(a.releasedate).getTime();
+      return (
+        new Date(b.releasedate).getTime() - new Date(a.releasedate).getTime()
+      );
     });
 
     const totalResults = sortedAlbums.length;
@@ -132,23 +133,22 @@ groupRoutes.get('/:id/discography', async (req, res, next) => {
 
     const media = await Media.getRelatedMedia(
       req.user,
-      paginatedAlbums.map(album => album.id)
+      paginatedAlbums.map((album) => album.id)
     );
 
-    const results = paginatedAlbums.map(album => ({
+    const results = paginatedAlbums.map((album) => ({
       ...album,
-      mediaInfo: media?.find(med => med.mbId === album.id)
+      mediaInfo: media?.find((med) => med.mbId === album.id),
     }));
 
     return res.status(200).json({
       page,
       pageInfo: {
         total: totalResults,
-        totalPages
+        totalPages,
       },
-      results
+      results,
     });
-
   } catch (e) {
     logger.error('Something went wrong retrieving artist discography', {
       label: 'Group API',
@@ -157,7 +157,7 @@ groupRoutes.get('/:id/discography', async (req, res, next) => {
     });
     return next({
       status: 500,
-      message: 'Unable to retrieve artist discography.'
+      message: 'Unable to retrieve artist discography.',
     });
   }
 });

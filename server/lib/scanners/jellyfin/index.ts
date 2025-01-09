@@ -546,9 +546,13 @@ class JellyfinScanner {
 
       // Only proceed if we have a valid ID
       if (!newMedia.mbId) {
-        this.log('No MusicBrainz Album ID found for this title. Skipping.', 'debug', {
-          title: metadata.Name,
-        });
+        this.log(
+          'No MusicBrainz Album ID found for this title. Skipping.',
+          'debug',
+          {
+            title: metadata.Name,
+          }
+        );
         return;
       }
 
@@ -583,9 +587,7 @@ class JellyfinScanner {
               'info'
             );
           } else {
-            this.log(
-              `Album already exists: ${metadata.Name}`
-            );
+            this.log(`Album already exists: ${metadata.Name}`);
           }
         } else {
           newMedia.status = MediaStatus.AVAILABLE;
@@ -596,7 +598,6 @@ class JellyfinScanner {
           this.log(`Saved new album: ${metadata.Name}`);
         }
       });
-
     } catch (e) {
       this.log(
         `Failed to process Jellyfin item, id: ${jellyfinitem.Id}`,

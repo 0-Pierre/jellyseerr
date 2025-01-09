@@ -79,10 +79,9 @@ blacklistRoutes.get(
       const blacklistRepository = getRepository(Blacklist);
 
       const blacklistItem = await blacklistRepository.findOneOrFail({
-        where:
-          !isNaN(Number(req.params.id))
+        where: !isNaN(Number(req.params.id))
           ? { tmdbId: Number(req.params.id) }
-          : { mbId: req.params.id }
+          : { mbId: req.params.id },
       });
 
       return res.status(200).send(blacklistItem);
@@ -147,10 +146,9 @@ blacklistRoutes.delete(
       const blacklistRepository = getRepository(Blacklist);
 
       const blacklistItem = await blacklistRepository.findOneOrFail({
-        where:
-          !isNaN(Number(req.params.id))
+        where: !isNaN(Number(req.params.id))
           ? { tmdbId: Number(req.params.id) }
-          : { mbId: req.params.id }
+          : { mbId: req.params.id },
       });
 
       await blacklistRepository.remove(blacklistItem);
@@ -158,10 +156,9 @@ blacklistRoutes.delete(
       const mediaRepository = getRepository(Media);
 
       const mediaItem = await mediaRepository.findOneOrFail({
-        where:
-          !isNaN(Number(req.params.id))
+        where: !isNaN(Number(req.params.id))
           ? { tmdbId: Number(req.params.id) }
-          : { mbId: req.params.id }
+          : { mbId: req.params.id },
       });
 
       await mediaRepository.remove(mediaItem);

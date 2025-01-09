@@ -30,13 +30,12 @@ const CachedImage = ({ src, type, ...props }: CachedImageProps) => {
   } else if (type === 'music') {
     // Handle CAA, Fanart and Lidarr images
     imageUrl = /^https?:\/\/coverartarchive\.org\//.test(src)
-    ? src.replace(/^https?:\/\/coverartarchive\.org\//, '/caaproxy/')
-    : /^https?:\/\/assets\.fanart\.tv\//.test(src)
+      ? src.replace(/^https?:\/\/coverartarchive\.org\//, '/caaproxy/')
+      : /^https?:\/\/assets\.fanart\.tv\//.test(src)
       ? src.replace(/^https?:\/\/assets\.fanart\.tv\//, '/fanartproxy/')
-        : currentSettings.cacheImages
-          ? src
-              .replace(/^https:\/\/imagecache\.lidarr\.audio\//, '/lidarrproxy/')
-          : src;
+      : currentSettings.cacheImages
+      ? src.replace(/^https:\/\/imagecache\.lidarr\.audio\//, '/lidarrproxy/')
+      : src;
   } else {
     return null;
   }

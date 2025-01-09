@@ -1,5 +1,9 @@
+import type {
+  MbAlbumDetails,
+  MbImage,
+  MbLink,
+} from '@server/api/musicbrainz/interfaces';
 import type Media from '@server/entity/Media';
-import type { MbAlbumDetails, MbImage, MbLink } from '@server/api/musicbrainz/interfaces';
 
 export interface MusicDetails {
   id: string;
@@ -112,10 +116,12 @@ export const mapMusicDetails = (
     status: album.artists[0].status,
     images: album.artists[0].images,
     links: album.artists[0].links,
-    rating: album.artists[0].rating ? {
-      count: album.artists[0].rating.Count,
-      value: album.artists[0].rating.Value
-    } : undefined,
+    rating: album.artists[0].rating
+      ? {
+          count: album.artists[0].rating.Count,
+          value: album.artists[0].rating.Value,
+        }
+      : undefined,
   },
   images: album.images,
   links: album.artists[0].links,

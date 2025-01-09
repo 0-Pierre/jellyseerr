@@ -1,5 +1,5 @@
-import Slider from '@app/components/Slider';
 import AddedCard from '@app/components/AddedCard';
+import Slider from '@app/components/Slider';
 import { Permission, useUser } from '@app/hooks/useUser';
 import defineMessages from '@app/utils/defineMessages';
 import type { MediaResultsResponse } from '@server/interfaces/api/mediaInterfaces';

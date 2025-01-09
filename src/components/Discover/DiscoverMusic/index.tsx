@@ -2,9 +2,7 @@ import Header from '@app/components/Common/Header';
 import ListView from '@app/components/Common/ListView';
 import PageTitle from '@app/components/Common/PageTitle';
 import type { FilterOptions } from '@app/components/Discover/constants';
-import {
-  prepareFilterValues,
-} from '@app/components/Discover/constants';
+import { prepareFilterValues } from '@app/components/Discover/constants';
 import useDiscover from '@app/hooks/useDiscover';
 import { useUpdateQueryParams } from '@app/hooks/useUpdateQueryParams';
 import Error from '@app/pages/_error';

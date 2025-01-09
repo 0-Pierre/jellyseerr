@@ -1,3 +1,5 @@
+import type { LidarrAlbumDetails } from '@server/api/servarr/lidarr';
+import LidarrAPI from '@server/api/servarr/lidarr';
 import type { RadarrMovieOptions } from '@server/api/servarr/radarr';
 import RadarrAPI from '@server/api/servarr/radarr';
 import type {
@@ -6,8 +8,6 @@ import type {
 } from '@server/api/servarr/sonarr';
 import SonarrAPI from '@server/api/servarr/sonarr';
 import TheMovieDb from '@server/api/themoviedb';
-import LidarrAPI from '@server/api/servarr/lidarr';
-import type { LidarrAlbumDetails } from '@server/api/servarr/lidarr';
 import { ANIME_KEYWORD_ID } from '@server/api/themoviedb/constants';
 import type {
   TmdbMovieDetails,
@@ -146,7 +146,10 @@ export class MediaRequest {
       throw new QuotaRestrictedError('Movie Quota exceeded.');
     } else if (requestBody.mediaType === MediaType.TV && quotas.tv.restricted) {
       throw new QuotaRestrictedError('Series Quota exceeded.');
-    } else if (requestBody.mediaType === MediaType.MUSIC && quotas.music.restricted) {
+    } else if (
+      requestBody.mediaType === MediaType.MUSIC &&
+      quotas.music.restricted
+    ) {
       throw new QuotaRestrictedError('Music Quota exceeded.');
     }
 
@@ -159,12 +162,14 @@ export class MediaRequest {
 
     let media = await mediaRepository.findOne({
       where: {
-        mbId: requestBody.mediaType === MediaType.MUSIC
-          ? requestBody.mediaId.toString()
-          : undefined,
-        tmdbId: requestBody.mediaType !== MediaType.MUSIC
-          ? requestBody.mediaId
-          : undefined,
+        mbId:
+          requestBody.mediaType === MediaType.MUSIC
+            ? requestBody.mediaId.toString()
+            : undefined,
+        tmdbId:
+          requestBody.mediaType !== MediaType.MUSIC
+            ? requestBody.mediaId
+            : undefined,
         mediaType: requestBody.mediaType,
       },
       relations: ['requests'],
@@ -172,19 +177,27 @@ export class MediaRequest {
 
     if (!media) {
       media = new Media({
-        mbId: requestBody.mediaType === MediaType.MUSIC
-          ? requestBody.mediaId.toString()
-          : undefined,
-        tmdbId: requestBody.mediaType !== MediaType.MUSIC
-          ? requestBody.mediaId
-          : undefined,
-        mediaType: requestBody.mediaType
+        mbId:
+          requestBody.mediaType === MediaType.MUSIC
+            ? requestBody.mediaId.toString()
+            : undefined,
+        tmdbId:
+          requestBody.mediaType !== MediaType.MUSIC
+            ? requestBody.mediaId
+            : undefined,
+        mediaType: requestBody.mediaType,
       });
     } else {
       if (media.status === MediaStatus.BLACKLISTED) {
         logger.warn('Request for media blocked due to being blacklisted', {
-          mbId: requestBody.mediaType === MediaType.MUSIC ? requestBody.mediaId : undefined,
-          tmdbId: requestBody.mediaType !== MediaType.MUSIC ? tmdbMedia.id : undefined,
+          mbId:
+            requestBody.mediaType === MediaType.MUSIC
+              ? requestBody.mediaId
+              : undefined,
+          tmdbId:
+            requestBody.mediaType !== MediaType.MUSIC
+              ? tmdbMedia.id
+              : undefined,
           mediaType: requestBody.mediaType,
           label: 'Media Request',
         });
@@ -201,9 +214,10 @@ export class MediaRequest {
       .createQueryBuilder('request')
       .leftJoin('request.media', 'media')
       .leftJoinAndSelect('request.requestedBy', 'user')
-      .where(requestBody.mediaType === MediaType.MUSIC
-        ? 'media.mbId = :mbId'
-        : 'media.tmdbId = :tmdbId',
+      .where(
+        requestBody.mediaType === MediaType.MUSIC
+          ? 'media.mbId = :mbId'
+          : 'media.tmdbId = :tmdbId',
         requestBody.mediaType === MediaType.MUSIC
           ? { mbId: requestBody.mediaId }
           : { tmdbId: tmdbMedia.id }
@@ -278,26 +292,34 @@ export class MediaRequest {
               rule.language &&
               !rule.language
                 .split('|')
-                .some((languageId) => languageId === tmdbMedia.original_language)
+                .some(
+                  (languageId) => languageId === tmdbMedia.original_language
+                )
             ) {
               return false;
             }
 
             if (rule.keywords) {
-              const keywordList = 'results' in tmdbMedia.keywords
-                ? tmdbMedia.keywords.results
-                : 'keywords' in tmdbMedia.keywords
+              const keywordList =
+                'results' in tmdbMedia.keywords
+                  ? tmdbMedia.keywords.results
+                  : 'keywords' in tmdbMedia.keywords
                   ? tmdbMedia.keywords.keywords
                   : [];
 
-              if (!rule.keywords.split(',').some((keywordId) =>
-                keywordList.map(k => k.id).includes(Number(keywordId))
-              )) {
+              if (
+                !rule.keywords
+                  .split(',')
+                  .some((keywordId) =>
+                    keywordList.map((k) => k.id).includes(Number(keywordId))
+                  )
+              ) {
                 return false;
               }
             }
 
-            const hasAnimeKeyword = 'results' in tmdbMedia.keywords &&
+            const hasAnimeKeyword =
+              'results' in tmdbMedia.keywords &&
               tmdbMedia.keywords.results.some(
                 (keyword) => keyword.id === ANIME_KEYWORD_ID
               );
@@ -306,7 +328,10 @@ export class MediaRequest {
               requestBody.mediaType === MediaType.TV &&
               hasAnimeKeyword &&
               (!rule.keywords ||
-                !rule.keywords.split(',').map(Number).includes(ANIME_KEYWORD_ID))
+                !rule.keywords
+                  .split(',')
+                  .map(Number)
+                  .includes(ANIME_KEYWORD_ID))
             ) {
               return false;
             }
@@ -325,9 +350,15 @@ export class MediaRequest {
         });
 
         prioritizedRule = appliedOverrideRules.sort((a, b) => {
-          const keys: (keyof OverrideRule)[] = ['genre', 'language', 'keywords'];
-          return keys.filter((key) => b[key] !== null).length -
-                 keys.filter((key) => a[key] !== null).length;
+          const keys: (keyof OverrideRule)[] = [
+            'genre',
+            'language',
+            'keywords',
+          ];
+          return (
+            keys.filter((key) => b[key] !== null).length -
+            keys.filter((key) => a[key] !== null).length
+          );
         })[0];
 
         if (prioritizedRule) {
@@ -380,8 +411,12 @@ export class MediaRequest {
         profileId: prioritizedRule?.profileId ?? requestBody.profileId,
         rootFolder: prioritizedRule?.rootFolder ?? requestBody.rootFolder,
         tags: prioritizedRule?.tags
-          ? [...new Set([...(requestBody.tags || []),
-              ...prioritizedRule.tags.split(',').map(Number)])]
+          ? [
+              ...new Set([
+                ...(requestBody.tags || []),
+                ...prioritizedRule.tags.split(',').map(Number),
+              ]),
+            ]
           : requestBody.tags,
         isAutoRequest: options.isAutoRequest ?? false,
       });
@@ -653,7 +688,11 @@ export class MediaRequest {
   @AfterUpdate()
   @AfterInsert()
   public async sendMedia(): Promise<void> {
-    await Promise.all([this.sendToRadarr(), this.sendToSonarr(), this.sendToLidarr()]);
+    await Promise.all([
+      this.sendToRadarr(),
+      this.sendToSonarr(),
+      this.sendToLidarr(),
+    ]);
   }
 
   @AfterInsert()
@@ -1365,22 +1404,28 @@ export class MediaRequest {
   }
 
   public async sendToLidarr(): Promise<void> {
-    if (this.status !== MediaRequestStatus.APPROVED || this.type !== MediaType.MUSIC) {
+    if (
+      this.status !== MediaRequestStatus.APPROVED ||
+      this.type !== MediaType.MUSIC
+    ) {
       return;
     }
 
     try {
       const mediaRepository = getRepository(Media);
       const settings = getSettings();
-      const media = await mediaRepository.findOne({ where: { id: this.media.id } });
+      const media = await mediaRepository.findOne({
+        where: { id: this.media.id },
+      });
 
       if (!media?.mbId) {
         throw new Error('Media data or MusicBrainz ID not found');
       }
 
-      const lidarrSettings = this.serverId !== null && this.serverId >= 0
-        ? settings.lidarr.find(l => l.id === this.serverId)
-        : settings.lidarr.find(l => l.isDefault);
+      const lidarrSettings =
+        this.serverId !== null && this.serverId >= 0
+          ? settings.lidarr.find((l) => l.id === this.serverId)
+          : settings.lidarr.find((l) => l.isDefault);
 
       if (!lidarrSettings) {
         logger.warn('No valid Lidarr server configured', {
@@ -1393,7 +1438,7 @@ export class MediaRequest {
 
       const rootFolder = this.rootFolder || lidarrSettings.activeDirectory;
       const qualityProfile = this.profileId || lidarrSettings.activeProfileId;
-      const tags = lidarrSettings.tags?.map(t => t.toString()) || [];
+      const tags = lidarrSettings.tags?.map((t) => t.toString()) || [];
 
       const lidarr = new LidarrAPI({
         apiKey: lidarrSettings.apiKey,
@@ -1417,7 +1462,7 @@ export class MediaRequest {
           metadataProfileId: qualityProfile,
           rootFolderPath: rootFolder,
           monitored: false,
-          tags: tags.map(t => Number(t)),
+          tags: tags.map((t) => Number(t)),
           searchNow: !lidarrSettings.preventSearch,
           monitorNewItems: 'none',
           monitor: 'none',
@@ -1425,11 +1470,11 @@ export class MediaRequest {
           addOptions: {
             monitor: 'none',
             monitored: false,
-            searchForMissingAlbums: false
-          }
+            searchForMissingAlbums: false,
+          },
         });
 
-        await new Promise(resolve => setTimeout(resolve, 60000));
+        await new Promise((resolve) => setTimeout(resolve, 60000));
         artistId = addedArtist.id;
       }
 
@@ -1446,14 +1491,18 @@ export class MediaRequest {
           tags,
           searchNow: false,
           artistId,
-          images: lidarrAlbum.images?.length ? lidarrAlbum.images : [{
-            url: '',
-            coverType: 'cover'
-          }],
+          images: lidarrAlbum.images?.length
+            ? lidarrAlbum.images
+            : [
+                {
+                  url: '',
+                  coverType: 'cover',
+                },
+              ],
           addOptions: {
             monitor: 'none',
             monitored: false,
-            searchForMissingAlbums: false
+            searchForMissingAlbums: false,
           },
           artist: {
             id: artistId,
@@ -1463,8 +1512,8 @@ export class MediaRequest {
             metadataProfileId: qualityProfile,
             rootFolderPath: rootFolder,
             monitored: false,
-            monitorNewItems: 'none'
-          }
+            monitorNewItems: 'none',
+          },
         });
 
         media.externalServiceId = album.id;
@@ -1484,7 +1533,9 @@ export class MediaRequest {
 
             setTimeout(async () => {
               try {
-                const finalAlbumDetails = await lidarr.getAlbum({ id: album.id });
+                const finalAlbumDetails = await lidarr.getAlbum({
+                  id: album.id,
+                });
                 if (!finalAlbumDetails.monitored) {
                   finalAlbumDetails.monitored = true;
                   await lidarr.updateAlbum(finalAlbumDetails);
@@ -1496,7 +1547,7 @@ export class MediaRequest {
                   error: err.message,
                   requestId: this.id,
                   mediaId: this.media.id,
-                  albumId: album.id
+                  albumId: album.id,
                 });
               }
             }, 20000);
@@ -1505,7 +1556,7 @@ export class MediaRequest {
               label: 'Media Request',
               requestId: this.id,
               mediaId: this.media.id,
-              albumId: album.id
+              albumId: album.id,
             });
           } catch (err) {
             logger.error('Failed to process album monitoring', {
@@ -1513,15 +1564,16 @@ export class MediaRequest {
               error: err.message,
               requestId: this.id,
               mediaId: this.media.id,
-              albumId: album.id
+              albumId: album.id,
             });
           }
         }, 60000);
-
       } catch (error) {
         if (error.message.includes('This album has already been added')) {
           const existingAlbums = await lidarr.getAlbums();
-          const existingAlbum = existingAlbums.find(a => a.foreignAlbumId === media.mbId);
+          const existingAlbum = existingAlbums.find(
+            (a) => a.foreignAlbumId === media.mbId
+          );
 
           if (existingAlbum) {
             media.externalServiceId = existingAlbum.id;
@@ -1532,8 +1584,10 @@ export class MediaRequest {
 
             setTimeout(async () => {
               try {
-                await new Promise(resolve => setTimeout(resolve, 20000));
-                const albumDetails = await lidarr.getAlbum({ id: existingAlbum.id });
+                await new Promise((resolve) => setTimeout(resolve, 20000));
+                const albumDetails = await lidarr.getAlbum({
+                  id: existingAlbum.id,
+                });
                 albumDetails.monitored = true;
                 await lidarr.updateAlbum(albumDetails);
 
@@ -1546,7 +1600,7 @@ export class MediaRequest {
                   error: err.message,
                   requestId: this.id,
                   mediaId: this.media.id,
-                  albumId: existingAlbum.id
+                  albumId: existingAlbum.id,
                 });
               }
             }, 0);
@@ -1664,7 +1718,9 @@ export class MediaRequest {
 
         const album = await lidarr.getAlbumByMusicBrainzId(media.mbId);
 
-        const coverUrl = album.images?.find(img => img.coverType === 'Cover')?.url;
+        const coverUrl = album.images?.find(
+          (img) => img.coverType === 'Cover'
+        )?.url;
 
         notificationManager.sendNotification(type, {
           media,

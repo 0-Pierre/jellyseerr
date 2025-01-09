@@ -226,8 +226,12 @@ const MusicRequestModal = ({
         backgroundClickable
         onCancel={onCancel}
         title={intl.formatMessage(messages.pendingrequest)}
-        subTitle={data ? `${data.artist.artistName} - ${data.title}` : undefined}
-        backdrop={data?.artist?.images?.find(img => img.CoverType === 'Fanart')?.Url}
+        subTitle={
+          data ? `${data.artist.artistName} - ${data.title}` : undefined
+        }
+        backdrop={
+          data?.artist?.images?.find((img) => img.CoverType === 'Fanart')?.Url
+        }
         onOk={() =>
           hasPermission(Permission.MANAGE_REQUESTS)
             ? updateRequest(true)
@@ -313,45 +317,46 @@ const MusicRequestModal = ({
       title={intl.formatMessage(messages.requestmusictitle)}
       subTitle={data ? `${data.artist.artistName} - ${data.title}` : undefined}
       okText={
-      isUpdating
-        ? intl.formatMessage(globalMessages.requesting)
-        : intl.formatMessage(globalMessages.request)
+        isUpdating
+          ? intl.formatMessage(globalMessages.requesting)
+          : intl.formatMessage(globalMessages.request)
       }
       okButtonType="primary"
       backdrop={
-      data?.artist?.images?.find(img => img.CoverType === 'Fanart')?.Url ||
-      data?.artist?.images?.find(img => img.CoverType === 'Poster')?.Url ||
-      data?.images?.find(img => img.CoverType.toLowerCase() === 'cover')?.Url
+        data?.artist?.images?.find((img) => img.CoverType === 'Fanart')?.Url ||
+        data?.artist?.images?.find((img) => img.CoverType === 'Poster')?.Url ||
+        data?.images?.find((img) => img.CoverType.toLowerCase() === 'cover')
+          ?.Url
       }
     >
       {hasAutoApprove && !quota?.music?.restricted && (
-      <div className="mt-6">
-        <Alert
-        title={intl.formatMessage(messages.requestadmin)}
-        type="info"
-        />
-      </div>
+        <div className="mt-6">
+          <Alert
+            title={intl.formatMessage(messages.requestadmin)}
+            type="info"
+          />
+        </div>
       )}
       {(quota?.music?.limit ?? 0) > 0 && (
-      <QuotaDisplay
-        mediaType="music"
-        quota={quota?.music}
-        userOverride={
-        requestOverrides?.user && requestOverrides.user.id !== user?.id
-          ? requestOverrides?.user?.id
-          : undefined
-        }
-      />
+        <QuotaDisplay
+          mediaType="music"
+          quota={quota?.music}
+          userOverride={
+            requestOverrides?.user && requestOverrides.user.id !== user?.id
+              ? requestOverrides?.user?.id
+              : undefined
+          }
+        />
       )}
       {(hasPermission(Permission.REQUEST_ADVANCED) ||
-      hasPermission(Permission.MANAGE_REQUESTS)) && (
-      <AdvancedRequester
-        type="music"
-        is4k={false}
-        onChange={(overrides) => {
-        setRequestOverrides(overrides);
-        }}
-      />
+        hasPermission(Permission.MANAGE_REQUESTS)) && (
+        <AdvancedRequester
+          type="music"
+          is4k={false}
+          onChange={(overrides) => {
+            setRequestOverrides(overrides);
+          }}
+        />
       )}
     </Modal>
   );

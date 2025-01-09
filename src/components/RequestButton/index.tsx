@@ -69,12 +69,15 @@ const RequestButton = ({
   const [editRequest, setEditRequest] = useState(false);
 
   // All pending requests
-  const activeRequests = media?.requests?.filter(
-    (request) => request.status === MediaRequestStatus.PENDING && !request.is4k
-  ) ?? [];
-  const active4kRequests = media?.requests?.filter(
-    (request) => request.status === MediaRequestStatus.PENDING && request.is4k
-  ) ?? [];
+  const activeRequests =
+    media?.requests?.filter(
+      (request) =>
+        request.status === MediaRequestStatus.PENDING && !request.is4k
+    ) ?? [];
+  const active4kRequests =
+    media?.requests?.filter(
+      (request) => request.status === MediaRequestStatus.PENDING && request.is4k
+    ) ?? [];
 
   // Current user's pending request, or the first pending request
   const activeRequest = useMemo(() => {

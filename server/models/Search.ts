@@ -1,4 +1,11 @@
 import type {
+  MbAlbumDetails,
+  MbAlbumResult,
+  MbArtistDetails,
+  MbArtistResult,
+  MbImage,
+} from '@server/api/musicbrainz/interfaces';
+import type {
   TmdbCollectionResult,
   TmdbMovieDetails,
   TmdbMovieResult,
@@ -7,16 +14,15 @@ import type {
   TmdbTvDetails,
   TmdbTvResult,
 } from '@server/api/themoviedb/interfaces';
-import type {
-  MbArtistResult,
-  MbAlbumResult,
-  MbArtistDetails,
-  MbAlbumDetails,
-  MbImage,
-} from '@server/api/musicbrainz/interfaces';
 import { MediaType as MainMediaType } from '@server/constants/media';
 import type Media from '@server/entity/Media';
-export type MediaType = 'tv' | 'movie' | 'person' | 'collection' | 'artist' | 'album';
+export type MediaType =
+  | 'tv'
+  | 'movie'
+  | 'person'
+  | 'collection'
+  | 'artist'
+  | 'album';
 
 interface TmdbSearchResult {
   id: number;
@@ -112,7 +118,13 @@ export interface AlbumResult extends MbSearchResult {
   overview?: string;
 }
 
-export type Results = MovieResult | TvResult | PersonResult | CollectionResult | ArtistResult | AlbumResult;
+export type Results =
+  | MovieResult
+  | TvResult
+  | PersonResult
+  | CollectionResult
+  | ArtistResult
+  | AlbumResult;
 
 export const mapMovieResult = (
   movieResult: TmdbMovieResult,
@@ -206,7 +218,7 @@ export const mapArtistResult = (
   genres: artistResult.genres,
   images: artistResult.images,
   rating: artistResult.rating,
-  mediaInfo: media
+  mediaInfo: media,
 });
 
 export const mapAlbumResult = (
@@ -226,41 +238,77 @@ export const mapAlbumResult = (
   images: albumResult.images,
   secondarytypes: albumResult.secondarytypes,
   mediaInfo: media,
-  overview: albumResult.artists?.[0]?.overview
+  overview: albumResult.artists?.[0]?.overview,
 });
 
 const isTmdbMovie = (
-  result: TmdbMovieResult | TmdbTvResult | TmdbPersonResult | TmdbCollectionResult | MbArtistResult | MbAlbumResult
+  result:
+    | TmdbMovieResult
+    | TmdbTvResult
+    | TmdbPersonResult
+    | TmdbCollectionResult
+    | MbArtistResult
+    | MbAlbumResult
 ): result is TmdbMovieResult => {
   return result.media_type === 'movie';
 };
 
 const isTmdbTv = (
-  result: TmdbMovieResult | TmdbTvResult | TmdbPersonResult | TmdbCollectionResult | MbArtistResult | MbAlbumResult
+  result:
+    | TmdbMovieResult
+    | TmdbTvResult
+    | TmdbPersonResult
+    | TmdbCollectionResult
+    | MbArtistResult
+    | MbAlbumResult
 ): result is TmdbTvResult => {
   return result.media_type === 'tv';
 };
 
 const isTmdbPerson = (
-  result: TmdbMovieResult | TmdbTvResult | TmdbPersonResult | TmdbCollectionResult | MbArtistResult | MbAlbumResult
+  result:
+    | TmdbMovieResult
+    | TmdbTvResult
+    | TmdbPersonResult
+    | TmdbCollectionResult
+    | MbArtistResult
+    | MbAlbumResult
 ): result is TmdbPersonResult => {
   return result.media_type === 'person';
 };
 
 const isTmdbCollection = (
-  result: TmdbMovieResult | TmdbTvResult | TmdbPersonResult | TmdbCollectionResult | MbArtistResult | MbAlbumResult
+  result:
+    | TmdbMovieResult
+    | TmdbTvResult
+    | TmdbPersonResult
+    | TmdbCollectionResult
+    | MbArtistResult
+    | MbAlbumResult
 ): result is TmdbCollectionResult => {
   return result.media_type === 'collection';
 };
 
 const isLidarrArtist = (
-  result: TmdbMovieResult | TmdbTvResult | TmdbPersonResult | TmdbCollectionResult | MbArtistResult | MbAlbumResult
+  result:
+    | TmdbMovieResult
+    | TmdbTvResult
+    | TmdbPersonResult
+    | TmdbCollectionResult
+    | MbArtistResult
+    | MbAlbumResult
 ): result is MbArtistResult => {
   return result.media_type === 'artist';
 };
 
 const isLidarrAlbum = (
-  result: TmdbMovieResult | TmdbTvResult | TmdbPersonResult | TmdbCollectionResult | MbArtistResult | MbAlbumResult
+  result:
+    | TmdbMovieResult
+    | TmdbTvResult
+    | TmdbPersonResult
+    | TmdbCollectionResult
+    | MbArtistResult
+    | MbAlbumResult
 ): result is MbAlbumResult => {
   return result.media_type === 'album';
 };
@@ -380,7 +428,7 @@ export const mapArtistDetailsToResult = (
   genres: artistDetails.genres,
   images: artistDetails.images,
   links: artistDetails.links,
-  rating: artistDetails.rating
+  rating: artistDetails.rating,
 });
 
 export const mapAlbumDetailsToResult = (
@@ -398,5 +446,5 @@ export const mapAlbumDetailsToResult = (
   genres: albumDetails.genres,
   images: albumDetails.images,
   secondarytypes: albumDetails.secondarytypes,
-  overview: albumDetails.overview || albumDetails.artists?.[0]?.overview || ''
+  overview: albumDetails.overview || albumDetails.artists?.[0]?.overview || '',
 });

@@ -3,11 +3,15 @@ import logger from '@server/logger';
 import { Router } from 'express';
 
 const router = Router();
-const lidarrImageProxy = new ImageProxy('lidarr', 'https://imagecache.lidarr.audio', {
-  rateLimitOptions: {
-    maxRPS: 50,
-  },
-});
+const lidarrImageProxy = new ImageProxy(
+  'lidarr',
+  'https://imagecache.lidarr.audio',
+  {
+    rateLimitOptions: {
+      maxRPS: 50,
+    },
+  }
+);
 
 router.get('/*', async (req, res) => {
   const imagePath = req.path;

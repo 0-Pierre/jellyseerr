@@ -601,7 +601,9 @@ const SettingsJobs = () => {
             <tr>
               <Table.TD>Lidarr Images (lidarr)</Table.TD>
               <Table.TD>
-                {intl.formatNumber(cacheData?.imageCache.lidarr.imageCount ?? 0)}
+                {intl.formatNumber(
+                  cacheData?.imageCache.lidarr.imageCount ?? 0
+                )}
               </Table.TD>
               <Table.TD>
                 {formatBytes(cacheData?.imageCache.lidarr.size ?? 0)}
@@ -610,7 +612,9 @@ const SettingsJobs = () => {
             <tr>
               <Table.TD>Fanart.tv (fanart)</Table.TD>
               <Table.TD>
-                {intl.formatNumber(cacheData?.imageCache.fanart.imageCount ?? 0)}
+                {intl.formatNumber(
+                  cacheData?.imageCache.fanart.imageCount ?? 0
+                )}
               </Table.TD>
               <Table.TD>
                 {formatBytes(cacheData?.imageCache.fanart.size ?? 0)}

@@ -1,5 +1,5 @@
-import Button from '@app/components/Common/Button';
 import Ellipsis from '@app/assets/ellipsis.svg';
+import Button from '@app/components/Common/Button';
 import CachedImage from '@app/components/Common/CachedImage';
 import ImageFader from '@app/components/Common/ImageFader';
 import LoadingSpinner from '@app/components/Common/LoadingSpinner';
@@ -78,7 +78,9 @@ const PersonDetails = () => {
   } = useSWRInfinite<DiscographyResponse>(
     (index) =>
       data?.mbArtistId
-        ? `/api/v1/person/${router.query.personId}/discography?page=${index + 1}&type=Album&artistId=${data.mbArtistId}`
+        ? `/api/v1/person/${router.query.personId}/discography?page=${
+            index + 1
+          }&type=Album&artistId=${data.mbArtistId}`
         : null,
     { revalidateFirstPage: false }
   );
@@ -91,7 +93,9 @@ const PersonDetails = () => {
   } = useSWRInfinite<DiscographyResponse>(
     (index) =>
       data?.mbArtistId
-        ? `/api/v1/person/${router.query.personId}/discography?page=${index + 1}&type=Single&artistId=${data.mbArtistId}`
+        ? `/api/v1/person/${router.query.personId}/discography?page=${
+            index + 1
+          }&type=Single&artistId=${data.mbArtistId}`
         : null,
     { revalidateFirstPage: false }
   );
@@ -104,7 +108,9 @@ const PersonDetails = () => {
   } = useSWRInfinite<DiscographyResponse>(
     (index) =>
       data?.mbArtistId
-        ? `/api/v1/person/${router.query.personId}/discography?page=${index + 1}&type=EP&artistId=${data.mbArtistId}`
+        ? `/api/v1/person/${router.query.personId}/discography?page=${
+            index + 1
+          }&type=EP&artistId=${data.mbArtistId}`
         : null,
     { revalidateFirstPage: false }
   );
@@ -117,7 +123,9 @@ const PersonDetails = () => {
   } = useSWRInfinite<DiscographyResponse>(
     (index) =>
       data?.mbArtistId
-        ? `/api/v1/person/${router.query.personId}/discography?page=${index + 1}&type=Other&artistId=${data.mbArtistId}`
+        ? `/api/v1/person/${router.query.personId}/discography?page=${
+            index + 1
+          }&type=Other&artistId=${data.mbArtistId}`
         : null,
     { revalidateFirstPage: false }
   );
@@ -287,19 +295,25 @@ const PersonDetails = () => {
   );
 
   const albumsList = albumData ? albumData.flatMap((page) => page.results) : [];
-  const isReachingEndAlbums = albumData?.[0]?.results.length === 0 ||
+  const isReachingEndAlbums =
+    albumData?.[0]?.results.length === 0 ||
     (albumData && albumData[albumData.length - 1]?.results.length < 20);
 
-  const singlesList = singlesData ? singlesData.flatMap((page) => page.results) : [];
-  const isReachingEndSingles = singlesData?.[0]?.results.length === 0 ||
+  const singlesList = singlesData
+    ? singlesData.flatMap((page) => page.results)
+    : [];
+  const isReachingEndSingles =
+    singlesData?.[0]?.results.length === 0 ||
     (singlesData && singlesData[singlesData.length - 1]?.results.length < 20);
 
   const epsList = epsData ? epsData.flatMap((page) => page.results) : [];
-  const isReachingEndEps = epsData?.[0]?.results.length === 0 ||
+  const isReachingEndEps =
+    epsData?.[0]?.results.length === 0 ||
     (epsData && epsData[epsData.length - 1]?.results.length < 20);
 
   const otherList = otherData ? otherData.flatMap((page) => page.results) : [];
-  const isReachingEndOther = otherData?.[0]?.results.length === 0 ||
+  const isReachingEndOther =
+    otherData?.[0]?.results.length === 0 ||
     (otherData && otherData[otherData.length - 1]?.results.length < 20);
 
   const renderAlbumSection = (
@@ -347,10 +361,10 @@ const PersonDetails = () => {
             <Button
               onClick={onLoadMore}
               disabled={isLoading}
-              className="w-32 h-9 flex items-center justify-center"
+              className="flex h-9 w-32 items-center justify-center"
             >
               {isLoading ? (
-                <div className="w-5 h-5">
+                <div className="h-5 w-5">
                   <LoadingSpinner />
                 </div>
               ) : (

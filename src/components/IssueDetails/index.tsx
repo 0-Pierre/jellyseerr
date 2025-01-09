@@ -26,8 +26,8 @@ import { MediaType } from '@server/constants/media';
 import { MediaServerType } from '@server/constants/server';
 import type Issue from '@server/entity/Issue';
 import type { MovieDetails } from '@server/models/Movie';
-import type { TvDetails } from '@server/models/Tv';
 import type { MusicDetails } from '@server/models/Music';
+import type { TvDetails } from '@server/models/Tv';
 import { Field, Form, Formik } from 'formik';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -73,12 +73,18 @@ const messages = defineMessages('components.IssueDetails', {
   commentplaceholder: 'Add a comment…',
 });
 
-const isMovie = (media: MovieDetails | TvDetails | MusicDetails): media is MovieDetails => {
-  return (media as MovieDetails).title !== undefined &&
-         (media as MovieDetails).releaseDate !== undefined;
+const isMovie = (
+  media: MovieDetails | TvDetails | MusicDetails
+): media is MovieDetails => {
+  return (
+    (media as MovieDetails).title !== undefined &&
+    (media as MovieDetails).releaseDate !== undefined
+  );
 };
 
-const isMusic = (media: MovieDetails | TvDetails | MusicDetails): media is MusicDetails => {
+const isMusic = (
+  media: MovieDetails | TvDetails | MusicDetails
+): media is MusicDetails => {
   return (media as MusicDetails).artist !== undefined;
 };
 
@@ -240,8 +246,14 @@ const IssueDetails = () => {
             alt=""
             src={
               isMusic(data)
-                ? (data.artist.images?.find(img => img.CoverType === 'Fanart')?.Url || data.artist.images?.find(img => img.CoverType === 'Poster')?.Url || data.images?.find(img => img.CoverType.toLowerCase() === 'cover')?.Url ||
-                  '/images/overseerr_poster_not_found.png')
+                ? data.artist.images?.find((img) => img.CoverType === 'Fanart')
+                    ?.Url ||
+                  data.artist.images?.find((img) => img.CoverType === 'Poster')
+                    ?.Url ||
+                  data.images?.find(
+                    (img) => img.CoverType.toLowerCase() === 'cover'
+                  )?.Url ||
+                  '/images/overseerr_poster_not_found.png'
                 : `https://image.tmdb.org/t/p/w1920_and_h800_multi_faces/${data.backdropPath}`
             }
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -263,7 +275,9 @@ const IssueDetails = () => {
             type={isMusic(data) ? 'music' : 'tmdb'}
             src={
               isMusic(data)
-                ? (data.images?.find(img => img.CoverType.toLowerCase() === 'cover')?.Url || '/images/overseerr_poster_not_found.png')
+                ? data.images?.find(
+                    (img) => img.CoverType.toLowerCase() === 'cover'
+                  )?.Url || '/images/overseerr_poster_not_found.png'
                 : data.posterPath
                 ? `https://image.tmdb.org/t/p/w600_and_h900_bestv2${data.posterPath}`
                 : '/images/overseerr_poster_not_found.png'
@@ -297,9 +311,13 @@ const IssueDetails = () => {
                   : issueData.media.mediaType === MediaType.TV
                   ? 'tv'
                   : 'music'
-              }/${issueData.media.mediaType === MediaType.MUSIC
-                  ? (isMusic(data) ? data.mbId : data.id)
-                  : data.id}`}
+              }/${
+                issueData.media.mediaType === MediaType.MUSIC
+                  ? isMusic(data)
+                    ? data.mbId
+                    : data.id
+                  : data.id
+              }`}
               className="hover:underline"
             >
               {title}

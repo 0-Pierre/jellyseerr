@@ -9,7 +9,7 @@ interface PersonCardProps {
   subName?: string;
   profilePath?: string;
   canExpand?: boolean;
-  mediaType?: 'person' | 'artist'
+  mediaType?: 'person' | 'artist';
 }
 
 const PersonCard = ({

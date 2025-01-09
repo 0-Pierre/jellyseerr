@@ -1,14 +1,14 @@
-import { Router } from 'express';
+import CoverArtArchive from '@server/api/coverartarchive';
+import ListenBrainzAPI from '@server/api/listenbrainz';
+import MusicBrainz from '@server/api/musicbrainz';
+import TheMovieDb from '@server/api/themoviedb';
+import { MediaType } from '@server/constants/media';
 import { getRepository } from '@server/datasource';
 import Media from '@server/entity/Media';
-import { MediaType } from '@server/constants/media';
+import { Watchlist } from '@server/entity/Watchlist';
 import logger from '@server/logger';
 import { mapMusicDetails } from '@server/models/Music';
-import { Watchlist } from '@server/entity/Watchlist';
-import MusicBrainz from '@server/api/musicbrainz';
-import ListenBrainzAPI from '@server/api/listenbrainz';
-import CoverArtArchive from '@server/api/coverartarchive';
-import TheMovieDb from '@server/api/themoviedb';
+import { Router } from 'express';
 
 const musicRoutes = Router();
 
@@ -21,16 +21,18 @@ musicRoutes.get('/:id', async (req, res, next) => {
       musicbrainz.getAlbum({
         albumId: req.params.id,
       }),
-      musicbrainz.getWikipediaExtract(req.params.id, locale)
+      musicbrainz.getWikipediaExtract(req.params.id, locale),
     ]);
 
     const [media, onUserWatchlist] = await Promise.all([
-      getRepository(Media).findOne({
-        where: {
-          mbId: req.params.id,
-          mediaType: MediaType.MUSIC
-        }
-      }).then(media => media ?? undefined),
+      getRepository(Media)
+        .findOne({
+          where: {
+            mbId: req.params.id,
+            mediaType: MediaType.MUSIC,
+          },
+        })
+        .then((media) => media ?? undefined),
 
       getRepository(Watchlist).exist({
         where: {
@@ -39,7 +41,7 @@ musicRoutes.get('/:id', async (req, res, next) => {
             id: req.user?.id,
           },
         },
-      })
+      }),
     ]);
 
     const mappedDetails = mapMusicDetails(albumDetails, media, onUserWatchlist);
@@ -49,7 +51,6 @@ musicRoutes.get('/:id', async (req, res, next) => {
     }
 
     return res.status(200).json(mappedDetails);
-
   } catch (e) {
     logger.error('Something went wrong retrieving album details', {
       label: 'Music API',
@@ -84,12 +85,13 @@ musicRoutes.get('/:id/discography', async (req, res, next) => {
       artistId: albumDetails.artists[0].id,
     });
 
-    const albums = artistData.Albums?.map((album) => ({
-      id: album.Id.toLowerCase(),
-      title: album.Title,
-      type: album.Type,
-      mediaType: 'album',
-    })) ?? [];
+    const albums =
+      artistData.Albums?.map((album) => ({
+        id: album.Id.toLowerCase(),
+        title: album.Title,
+        type: album.Type,
+        mediaType: 'album',
+      })) ?? [];
 
     const start = (page - 1) * pageSize;
     const end = start + pageSize;
@@ -108,9 +110,9 @@ musicRoutes.get('/:id/discography', async (req, res, next) => {
           try {
             const coverArtData = await coverArtArchive.getCoverArt(album.id);
             if (coverArtData.images?.length > 0) {
-              images = coverArtData.images.map(img => ({
+              images = coverArtData.images.map((img) => ({
                 CoverType: img.front ? 'Cover' : 'Poster',
-                Url: img.image
+                Url: img.image,
               }));
             }
           } catch (coverArtError) {
@@ -121,7 +123,7 @@ musicRoutes.get('/:id/discography', async (req, res, next) => {
         return {
           ...album,
           images,
-          releasedate: details.releasedate
+          releasedate: details.releasedate,
         };
       } catch (e) {
         return album;
@@ -132,31 +134,30 @@ musicRoutes.get('/:id/discography', async (req, res, next) => {
 
     const media = await Media.getRelatedMedia(
       req.user,
-      albumsWithDetails.map(album => album.id)
+      albumsWithDetails.map((album) => album.id)
     );
 
-    const resultsWithMedia = albumsWithDetails.map(album => ({
+    const resultsWithMedia = albumsWithDetails.map((album) => ({
       ...album,
-      mediaInfo: media?.find(med => med.mbId === album.id)
+      mediaInfo: media?.find((med) => med.mbId === album.id),
     }));
 
     return res.status(200).json({
       page,
       totalPages: Math.ceil(albums.length / pageSize),
       totalResults: albums.length,
-      results: resultsWithMedia
+      results: resultsWithMedia,
     });
-
   } catch (e) {
     logger.error('Something went wrong retrieving artist discography', {
       label: 'Music API',
       errorMessage: e.message,
-      albumId: req.params.id
+      albumId: req.params.id,
     });
 
     return next({
       status: 500,
-      message: 'Unable to retrieve artist discography.'
+      message: 'Unable to retrieve artist discography.',
     });
   }
 });
@@ -192,11 +193,11 @@ musicRoutes.get('/:id/similar', async (req, res, next) => {
         if (artist.type === 'Person') {
           const searchResults = await tmdb.searchPerson({
             query: artist.name,
-            page: 1
+            page: 1,
           });
 
           const match = searchResults.results.find(
-            result => result.name.toLowerCase() === artist.name.toLowerCase()
+            (result) => result.name.toLowerCase() === artist.name.toLowerCase()
           );
           if (match) {
             tmdbId = match.id;
@@ -215,7 +216,8 @@ musicRoutes.get('/:id/similar', async (req, res, next) => {
           overview: artist.comment,
           score: artist.score,
           images: details.images || [],
-          artistimage: details.images?.find(img => img.CoverType === 'Poster')?.Url
+          artistimage: details.images?.find((img) => img.CoverType === 'Poster')
+            ?.Url,
         };
       } catch (e) {
         return null;
@@ -230,19 +232,18 @@ musicRoutes.get('/:id/similar', async (req, res, next) => {
       page,
       totalPages: Math.ceil(similarArtists.length / pageSize),
       totalResults: similarArtists.length,
-      results: artistDetails
+      results: artistDetails,
     });
-
   } catch (e) {
     logger.error('Something went wrong retrieving similar artists', {
       label: 'Music API',
       errorMessage: e.message,
-      albumId: req.params.id
+      albumId: req.params.id,
     });
 
     return next({
       status: 500,
-      message: 'Unable to retrieve similar artists.'
+      message: 'Unable to retrieve similar artists.',
     });
   }
 });

@@ -14,6 +14,7 @@ import type {
   TmdbNetwork,
   TmdbPersonCombinedCredits,
   TmdbPersonDetails,
+  TmdbPersonSearchResponse,
   TmdbProductionCompany,
   TmdbRegion,
   TmdbSearchMovieResponse,
@@ -24,7 +25,6 @@ import type {
   TmdbUpcomingMoviesResponse,
   TmdbWatchProviderDetails,
   TmdbWatchProviderRegion,
-  TmdbPersonSearchResponse
 } from './interfaces';
 
 interface SearchOptions {

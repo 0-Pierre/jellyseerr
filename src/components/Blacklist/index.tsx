@@ -22,8 +22,8 @@ import type {
   BlacklistResultsResponse,
 } from '@server/interfaces/api/blacklistInterfaces';
 import type { MovieDetails } from '@server/models/Movie';
-import type { TvDetails } from '@server/models/Tv';
 import type { MusicDetails } from '@server/models/Music';
+import type { TvDetails } from '@server/models/Tv';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import type { ChangeEvent } from 'react';
@@ -44,12 +44,18 @@ const messages = defineMessages('components.Blacklist', {
   blacklistNotFoundError: '<strong>{title}</strong> is not blacklisted.',
 });
 
-const isMovie = (media: MovieDetails | TvDetails | MusicDetails): media is MovieDetails => {
-  return (media as MovieDetails).title !== undefined &&
-         !(media as MusicDetails).artist;
+const isMovie = (
+  media: MovieDetails | TvDetails | MusicDetails
+): media is MovieDetails => {
+  return (
+    (media as MovieDetails).title !== undefined &&
+    !(media as MusicDetails).artist
+  );
 };
 
-const isMusic = (media: MovieDetails | TvDetails | MusicDetails): media is MusicDetails => {
+const isMusic = (
+  media: MovieDetails | TvDetails | MusicDetails
+): media is MusicDetails => {
   return (media as MusicDetails).artistId !== undefined;
 };
 
@@ -224,15 +230,16 @@ const BlacklistedItem = ({ item, revalidateList }: BlacklistedItemProps) => {
   const intl = useIntl();
   const { hasPermission } = useUser();
 
-  const url = item.mediaType === 'music'
-    ? `/api/v1/music/${item.mbId}`
-    : item.mediaType === 'movie'
-    ? `/api/v1/movie/${item.tmdbId}`
-    : `/api/v1/tv/${item.tmdbId}`;
+  const url =
+    item.mediaType === 'music'
+      ? `/api/v1/music/${item.mbId}`
+      : item.mediaType === 'movie'
+      ? `/api/v1/movie/${item.tmdbId}`
+      : `/api/v1/tv/${item.tmdbId}`;
 
-  const { data: title, error } = useSWR<MovieDetails | TvDetails | MusicDetails>(
-    inView ? url : null
-  );
+  const { data: title, error } = useSWR<
+    MovieDetails | TvDetails | MusicDetails
+  >(inView ? url : null);
 
   if (!title && !error) {
     return (
@@ -243,7 +250,11 @@ const BlacklistedItem = ({ item, revalidateList }: BlacklistedItemProps) => {
     );
   }
 
-  const removeFromBlacklist = async (tmdbId?: number, mbId?: string, title?: string) => {
+  const removeFromBlacklist = async (
+    tmdbId?: number,
+    mbId?: string,
+    title?: string
+  ) => {
     setIsUpdating(true);
 
     const res = await fetch(`/api/v1/blacklist/${mbId ?? tmdbId}`, {
@@ -277,9 +288,20 @@ const BlacklistedItem = ({ item, revalidateList }: BlacklistedItemProps) => {
         <div className="absolute inset-0 z-0 w-full bg-cover bg-center xl:w-2/3">
           <CachedImage
             type={isMusic(title) ? 'music' : 'tmdb'}
-            src={isMusic(title)
-              ? title.artist.images?.find(img => img.CoverType === 'Fanart')?.Url || title.artist.images?.find(img => img.CoverType === 'Poster')?.Url || title.images?.find(img => img.CoverType.toLowerCase() === 'cover')?.Url || ''
-              : `https://image.tmdb.org/t/p/w1920_and_h800_multi_faces/${title.backdropPath ?? ''}`}
+            src={
+              isMusic(title)
+                ? title.artist.images?.find((img) => img.CoverType === 'Fanart')
+                    ?.Url ||
+                  title.artist.images?.find((img) => img.CoverType === 'Poster')
+                    ?.Url ||
+                  title.images?.find(
+                    (img) => img.CoverType.toLowerCase() === 'cover'
+                  )?.Url ||
+                  ''
+                : `https://image.tmdb.org/t/p/w1920_and_h800_multi_faces/${
+                    title.backdropPath ?? ''
+                  }`
+            }
             alt=""
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             fill
@@ -305,23 +327,24 @@ const BlacklistedItem = ({ item, revalidateList }: BlacklistedItemProps) => {
             }
             className="relative h-auto w-12 flex-shrink-0 scale-100 transform-gpu overflow-hidden rounded-md transition duration-300 hover:scale-105"
           >
-          <CachedImage
-            type={title && isMusic(title) ? 'music' : 'tmdb'}
-            src={
-              title
-                ? isMusic(title)
-                  ? title.images?.find(image => image.CoverType === 'Cover')?.Url ?? '/images/overseerr_poster_not_found.png'
-                  : title.posterPath
-                  ? `https://image.tmdb.org/t/p/w600_and_h900_bestv2${title.posterPath}`
+            <CachedImage
+              type={title && isMusic(title) ? 'music' : 'tmdb'}
+              src={
+                title
+                  ? isMusic(title)
+                    ? title.images?.find((image) => image.CoverType === 'Cover')
+                        ?.Url ?? '/images/overseerr_poster_not_found.png'
+                    : title.posterPath
+                    ? `https://image.tmdb.org/t/p/w600_and_h900_bestv2${title.posterPath}`
+                    : '/images/overseerr_poster_not_found.png'
                   : '/images/overseerr_poster_not_found.png'
-                : '/images/overseerr_poster_not_found.png'
-            }
-            alt=""
-            sizes="100vw"
-            style={{ width: '100%', height: 'auto', objectFit: 'cover' }}
-            width={600}
-            height={title && isMusic(title) ? 600 : 900}
-          />
+              }
+              alt=""
+              sizes="100vw"
+              style={{ width: '100%', height: 'auto', objectFit: 'cover' }}
+              width={600}
+              height={title && isMusic(title) ? 600 : 900}
+            />
           </Link>
           <div className="flex flex-col justify-center overflow-hidden pl-2 xl:pl-4">
             <div className="pt-0.5 text-xs font-medium text-white sm:pt-1">
@@ -342,11 +365,12 @@ const BlacklistedItem = ({ item, revalidateList }: BlacklistedItemProps) => {
               }
             >
               <span className="mr-2 min-w-0 truncate text-lg font-bold text-white hover:underline xl:text-xl">
-                {title && (isMusic(title)
-                  ? `${title.artist.artistName} - ${title.title}`
-                  : isMovie(title)
-                  ? title.title
-                  : title.name)}
+                {title &&
+                  (isMusic(title)
+                    ? `${title.artist.artistName} - ${title.title}`
+                    : isMovie(title)
+                    ? title.title
+                    : title.name)}
               </span>
             </Link>
           </div>
@@ -428,11 +452,12 @@ const BlacklistedItem = ({ item, revalidateList }: BlacklistedItemProps) => {
               removeFromBlacklist(
                 item.tmdbId,
                 item.mbId,
-                title && (isMusic(title)
-                  ? `${title.artist.artistName} - ${title.title}`
-                  : isMovie(title)
-                  ? title.title
-                  : title.name)
+                title &&
+                  (isMusic(title)
+                    ? `${title.artist.artistName} - ${title.title}`
+                    : isMovie(title)
+                    ? title.title
+                    : title.name)
               )
             }
             confirmText={intl.formatMessage(

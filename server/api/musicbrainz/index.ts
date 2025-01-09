@@ -1,13 +1,11 @@
 import ExternalAPI from '@server/api/externalapi';
 import cacheManager from '@server/lib/cache';
 import type {
-  MbSearchMultiResponse,
   MbAlbumDetails,
   MbArtistDetails,
   MbLink,
+  MbSearchMultiResponse,
 } from './interfaces';
-
-
 
 class MusicBrainz extends ExternalAPI {
   constructor() {
@@ -35,10 +33,9 @@ class MusicBrainz extends ExternalAPI {
         query,
       });
 
-      return data.filter(result =>
-        (!result.artist || result.artist.type === 'Group')
+      return data.filter(
+        (result) => !result.artist || result.artist.type === 'Group'
       );
-
     } catch (e) {
       return [];
     }
@@ -50,10 +47,14 @@ class MusicBrainz extends ExternalAPI {
     query: string;
   }): Promise<MbArtistDetails[]> {
     try {
-      const data = await this.get<MbArtistDetails[]>('/search', {
-        type: 'artist',
-        query,
-      }, 43200);
+      const data = await this.get<MbArtistDetails[]>(
+        '/search',
+        {
+          type: 'artist',
+          query,
+        },
+        43200
+      );
 
       return data;
     } catch (e) {
@@ -75,7 +76,9 @@ class MusicBrainz extends ExternalAPI {
 
       return data;
     } catch (e) {
-      throw new Error(`[MusicBrainz] Failed to fetch album details: ${e.message}`);
+      throw new Error(
+        `[MusicBrainz] Failed to fetch album details: ${e.message}`
+      );
     }
   }
 
@@ -93,7 +96,9 @@ class MusicBrainz extends ExternalAPI {
 
       return artistData;
     } catch (e) {
-      throw new Error(`[MusicBrainz] Failed to fetch artist details: ${e.message}`);
+      throw new Error(
+        `[MusicBrainz] Failed to fetch artist details: ${e.message}`
+      );
     }
   }
 
@@ -101,88 +106,113 @@ class MusicBrainz extends ExternalAPI {
     id: string,
     language = 'en',
     type: 'artist' | 'album' = 'album'
-): Promise<string | null> {
+  ): Promise<string | null> {
     try {
-        const data = type === 'album'
-            ? await this.get<MbAlbumDetails>(`/album/${id}`, { language }, 43200)
-            : await this.get<MbArtistDetails>(`/artist/${id}`, { language }, 43200);
+      const data =
+        type === 'album'
+          ? await this.get<MbAlbumDetails>(`/album/${id}`, { language }, 43200)
+          : await this.get<MbArtistDetails>(
+              `/artist/${id}`,
+              { language },
+              43200
+            );
 
-        let targetLinks: MbLink[] | undefined;
-        if (type === 'album') {
-            const albumData = data as MbAlbumDetails;
-            const artistId = albumData.artists?.[0]?.id;
-            if (!artistId) return null;
+      let targetLinks: MbLink[] | undefined;
+      if (type === 'album') {
+        const albumData = data as MbAlbumDetails;
+        const artistId = albumData.artists?.[0]?.id;
+        if (!artistId) return null;
 
-            const artistData = await this.get<MbArtistDetails>(`/artist/${artistId}`, { language }, 43200);
-            targetLinks = artistData.links;
-        } else {
-            const artistData = data as MbArtistDetails;
-            targetLinks = artistData.links;
-        }
-
-        const wikiLink = targetLinks?.find((l: MbLink) =>
-            l.type.toLowerCase() === 'wikidata'
-        )?.target;
-
-        if (!wikiLink) return null;
-
-        const wikiId = wikiLink.split('/').pop();
-        if (!wikiId) return null;
-
-        interface WikidataResponse {
-            entities: {
-                [key: string]: {
-                    sitelinks?: {
-                        [key: string]: {
-                            title: string;
-                        };
-                    };
-                };
-            };
-        }
-
-        interface WikipediaResponse {
-            query: {
-                pages: {
-                    [key: string]: {
-                        extract: string;
-                    };
-                };
-            };
-        }
-
-        const wikiResponse = await fetch(
-            `https://www.wikidata.org/w/api.php?action=wbgetentities&props=sitelinks&ids=${wikiId}&format=json`
+        const artistData = await this.get<MbArtistDetails>(
+          `/artist/${artistId}`,
+          { language },
+          43200
         );
-        const wikiData = await wikiResponse.json() as WikidataResponse;
+        targetLinks = artistData.links;
+      } else {
+        const artistData = data as MbArtistDetails;
+        targetLinks = artistData.links;
+      }
 
-        const wikipediaTitle = wikiData.entities[wikiId]?.sitelinks?.[`${language}wiki`]?.title;
-        if (!wikipediaTitle) return null;
+      const wikiLink = targetLinks?.find(
+        (l: MbLink) => l.type.toLowerCase() === 'wikidata'
+      )?.target;
 
-        const extractResponse = await fetch(
-            `https://${language}.wikipedia.org/w/api.php?action=query&prop=extracts&exintro&titles=${encodeURIComponent(wikipediaTitle)}&format=json&origin=*`
-        );
-        const extractData = await extractResponse.json() as WikipediaResponse;
-        const extract = Object.values(extractData.query.pages)[0]?.extract;
+      if (!wikiLink) return null;
 
-        if (!extract) return null;
+      const wikiId = wikiLink.split('/').pop();
+      if (!wikiId) return null;
 
-        const decoded = extract
-            .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, '')
-            .replace(/\\u[\dA-F]{4}/gi, match =>
-                String.fromCharCode(parseInt(match.replace(/\\u/g, ''), 16))
-            )
+      interface WikidataResponse {
+        entities: {
+          [key: string]: {
+            sitelinks?: {
+              [key: string]: {
+                title: string;
+              };
+            };
+          };
+        };
+      }
 
-            .replace(/<[^>]+>/g, '')
-            .replace(/&quot;/g, '"')
-            .replace(/&apos;/g, "'")
-            .replace(/&amp;/g, '&')
-            .replace(/\s+/g, ' ')
-            .trim();
+      interface WikipediaResponse {
+        query: {
+          pages: {
+            [key: string]: {
+              extract: string;
+            };
+          };
+        };
+      }
 
-        return decoded;
-    } catch (e) {
+      const wikiResponse = await fetch(
+        `https://www.wikidata.org/w/api.php?action=wbgetentities&props=sitelinks&ids=${wikiId}&format=json`
+      );
+      const wikiData = (await wikiResponse.json()) as WikidataResponse;
+
+      const wikipediaTitle =
+        wikiData.entities[wikiId]?.sitelinks?.[`${language}wiki`]?.title;
+      if (!wikipediaTitle) return null;
+
+      const extractResponse = await fetch(
+        `https://${language}.wikipedia.org/w/api.php?action=query&prop=extracts&exintro&titles=${encodeURIComponent(
+          wikipediaTitle
+        )}&format=json&origin=*`
+      );
+      const extractData = (await extractResponse.json()) as WikipediaResponse;
+      const extract = Object.values(extractData.query.pages)[0]?.extract;
+
+      if (!extract) return null;
+
+      const decoded = extract
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script\s*>/gi, '')
+
+        .replace(/\\u[\dA-F]{4}/gi, (match) =>
+          String.fromCharCode(parseInt(match.replace(/\\u/g, ''), 16))
+        )
+
+        .replace(/<[^>]*>/g, '')
+
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#x27;')
+
+        .replace(/&amp;quot;/g, '"')
+        .replace(/&amp;apos;/g, "'")
+        .replace(/&amp;amp;/g, '&')
+
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      if (decoded.includes('<') || decoded.includes('>')) {
         return null;
+      }
+
+      return decoded;
+    } catch (e) {
+      return null;
     }
   }
 }

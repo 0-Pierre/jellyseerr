@@ -1,9 +1,9 @@
+import ListenBrainzAPI from '@server/api/listenbrainz';
+import MusicBrainz from '@server/api/musicbrainz';
 import PlexTvAPI from '@server/api/plextv';
 import type { SortOptions } from '@server/api/themoviedb';
 import TheMovieDb from '@server/api/themoviedb';
 import type { TmdbKeyword } from '@server/api/themoviedb/interfaces';
-import ListenBrainzAPI from '@server/api/listenbrainz';
-import MusicBrainz from '@server/api/musicbrainz';
 import { MediaType } from '@server/constants/media';
 import { getRepository } from '@server/datasource';
 import Media from '@server/entity/Media';
@@ -844,58 +844,67 @@ discoverRoutes.get('/music', async (req, res, next) => {
 
     const media = await Media.getRelatedMedia(
       req.user,
-      data.payload.release_groups.map(album => album.release_group_mbid)
+      data.payload.release_groups.map((album) => album.release_group_mbid)
     );
 
-    const albumDetailsPromises = data.payload.release_groups.map(async (album) => {
-      try {
-        const details = await musicbrainz.getAlbum({
-          albumId: album.release_group_mbid,
-        });
+    const albumDetailsPromises = data.payload.release_groups.map(
+      async (album) => {
+        try {
+          const details = await musicbrainz.getAlbum({
+            albumId: album.release_group_mbid,
+          });
 
-        const images = details.images?.length > 0
-        ? details.images.filter(img => img.CoverType === 'Cover')
-        : album.caa_id
-          ? [{
-              CoverType: 'Cover',
-              Url: `https://coverartarchive.org/release/${album.caa_release_mbid}/front`
-            }]
-          : [];
+          const images =
+            details.images?.length > 0
+              ? details.images.filter((img) => img.CoverType === 'Cover')
+              : album.caa_id
+              ? [
+                  {
+                    CoverType: 'Cover',
+                    Url: `https://coverartarchive.org/release/${album.caa_release_mbid}/front`,
+                  },
+                ]
+              : [];
 
-        return {
-          id: album.release_group_mbid,
-          mediaType: 'album',
-          type: 'Album',
-          title: album.release_group_name,
-          artistname: album.artist_name,
-          artistId: album.artist_mbids[0],
-          releasedate: details.releasedate || '',
-          images,
-          mediaInfo: media?.find(
-            (med) => med.mbId === album.release_group_mbid
-          ),
-          listenCount: album.listen_count
-        };
-      } catch (e) {
-        return {
-          id: album.release_group_mbid,
-          mediaType: 'album',
-          type: 'Album',
-          title: album.release_group_name,
-          artistname: album.artist_name,
-          artistId: album.artist_mbids[0],
-          releasedate: '',
-          images: album.caa_id ? [{
-            CoverType: 'Cover',
-            Url: `https://coverartarchive.org/release/${album.caa_release_mbid}/front`
-          }] : [],
-          mediaInfo: media?.find(
-            (med) => med.mbId === album.release_group_mbid
-          ),
-          listenCount: album.listen_count
-        };
+          return {
+            id: album.release_group_mbid,
+            mediaType: 'album',
+            type: 'Album',
+            title: album.release_group_name,
+            artistname: album.artist_name,
+            artistId: album.artist_mbids[0],
+            releasedate: details.releasedate || '',
+            images,
+            mediaInfo: media?.find(
+              (med) => med.mbId === album.release_group_mbid
+            ),
+            listenCount: album.listen_count,
+          };
+        } catch (e) {
+          return {
+            id: album.release_group_mbid,
+            mediaType: 'album',
+            type: 'Album',
+            title: album.release_group_name,
+            artistname: album.artist_name,
+            artistId: album.artist_mbids[0],
+            releasedate: '',
+            images: album.caa_id
+              ? [
+                  {
+                    CoverType: 'Cover',
+                    Url: `https://coverartarchive.org/release/${album.caa_release_mbid}/front`,
+                  },
+                ]
+              : [],
+            mediaInfo: media?.find(
+              (med) => med.mbId === album.release_group_mbid
+            ),
+            listenCount: album.listen_count,
+          };
+        }
       }
-    });
+    );
 
     const results = await Promise.all(albumDetailsPromises);
 
@@ -913,10 +922,14 @@ discoverRoutes.get('/music', async (req, res, next) => {
         results.sort((a, b) => b.title.localeCompare(a.title));
         break;
       case 'release_date.asc':
-        results.sort((a, b) => (a.releasedate || '').localeCompare(b.releasedate || ''));
+        results.sort((a, b) =>
+          (a.releasedate || '').localeCompare(b.releasedate || '')
+        );
         break;
       case 'release_date.desc':
-        results.sort((a, b) => (b.releasedate || '').localeCompare(a.releasedate || ''));
+        results.sort((a, b) =>
+          (b.releasedate || '').localeCompare(a.releasedate || '')
+        );
         break;
     }
 
@@ -926,7 +939,6 @@ discoverRoutes.get('/music', async (req, res, next) => {
       totalResults: data.payload.count,
       results,
     });
-
   } catch (e) {
     logger.debug('Something went wrong retrieving popular music', {
       label: 'API',

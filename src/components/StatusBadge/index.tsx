@@ -96,7 +96,9 @@ const StatusBadge = ({
     });
   } else if (hasPermission(Permission.MANAGE_REQUESTS)) {
     if (mediaType && (tmdbId || mbId)) {
-      mediaLink = `/${mediaType}/${mediaType === 'music' ? mbId : tmdbId}?manage=1`;
+      mediaLink = `/${mediaType}/${
+        mediaType === 'music' ? mbId : tmdbId
+      }?manage=1`;
       mediaLinkDescription = intl.formatMessage(messages.managemedia, {
         mediaType: intl.formatMessage(
           mediaType === 'movie'
@@ -109,11 +111,12 @@ const StatusBadge = ({
     } else if (hasPermission(Permission.ADMIN) && serviceUrl) {
       mediaLink = serviceUrl;
       mediaLinkDescription = intl.formatMessage(messages.openinarr, {
-        arr: mediaType === 'movie'
-          ? 'Radarr'
-          : mediaType === 'tv'
-          ? 'Sonarr'
-          : 'Lidarr'
+        arr:
+          mediaType === 'movie'
+            ? 'Radarr'
+            : mediaType === 'tv'
+            ? 'Sonarr'
+            : 'Lidarr',
       });
     }
   }

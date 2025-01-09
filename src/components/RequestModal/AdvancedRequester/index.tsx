@@ -70,11 +70,7 @@ const AdvancedRequester = ({
   const { user: currentUser, hasPermission: currentHasPermission } = useUser();
   const { data, error } = useSWR<ServiceCommonServer[]>(
     `/api/v1/service/${
-      type === 'movie'
-        ? 'radarr'
-        : type === 'tv'
-        ? 'sonarr'
-        : 'lidarr'
+      type === 'movie' ? 'radarr' : type === 'tv' ? 'sonarr' : 'lidarr'
     }`,
     {
       refreshInterval: 0,
@@ -103,22 +99,19 @@ const AdvancedRequester = ({
     defaultOverrides?.tags ?? []
   );
 
-  const { data: serverData, isValidating } = useSWR<ServiceCommonServerWithDetails>(
-    selectedServer !== null
-      ? `/api/v1/service/${
-          type === 'movie'
-            ? 'radarr'
-            : type === 'tv'
-            ? 'sonarr'
-            : 'lidarr'
-        }/${selectedServer}`
-      : null,
-    {
-      refreshInterval: 0,
-      refreshWhenHidden: false,
-      revalidateOnFocus: false,
-    }
-  );
+  const { data: serverData, isValidating } =
+    useSWR<ServiceCommonServerWithDetails>(
+      selectedServer !== null
+        ? `/api/v1/service/${
+            type === 'movie' ? 'radarr' : type === 'tv' ? 'sonarr' : 'lidarr'
+          }/${selectedServer}`
+        : null,
+      {
+        refreshInterval: 0,
+        refreshWhenHidden: false,
+        revalidateOnFocus: false,
+      }
+    );
 
   const [selectedUser, setSelectedUser] = useState<User | null>(
     requestUser ?? null
@@ -140,14 +133,14 @@ const AdvancedRequester = ({
                   ? Permission.REQUEST_4K_MOVIE
                   : Permission.REQUEST_4K_TV,
               ]
-          : [
-              Permission.REQUEST,
-              type === 'movie'
-                ? Permission.REQUEST_MOVIE
-                : type === 'tv'
-                ? Permission.REQUEST_TV
-                : Permission.REQUEST_MUSIC,
-            ],
+            : [
+                Permission.REQUEST,
+                type === 'movie'
+                  ? Permission.REQUEST_MOVIE
+                  : type === 'tv'
+                  ? Permission.REQUEST_TV
+                  : Permission.REQUEST_MUSIC,
+              ],
           user.permissions,
           { type: 'or' }
         )

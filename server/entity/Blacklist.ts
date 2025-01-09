@@ -70,9 +70,10 @@ export class Blacklist implements BlacklistItem {
 
     const mediaRepository = getRepository(Media);
     let media = await mediaRepository.findOne({
-      where: blacklistRequest.mediaType === 'music'
-        ? { mbId: blacklistRequest.mbId }
-        : { tmdbId: blacklistRequest.tmdbId },
+      where:
+        blacklistRequest.mediaType === 'music'
+          ? { mbId: blacklistRequest.mbId }
+          : { tmdbId: blacklistRequest.tmdbId },
     });
 
     const blacklistRepository = getRepository(this);

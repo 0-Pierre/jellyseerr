@@ -1,6 +1,6 @@
+import LidarrAPI from '@server/api/servarr/lidarr';
 import RadarrAPI from '@server/api/servarr/radarr';
 import SonarrAPI from '@server/api/servarr/sonarr';
-import LidarrAPI from '@server/api/servarr/lidarr';
 import TautulliAPI from '@server/api/tautulli';
 import TheMovieDb from '@server/api/themoviedb';
 import { MediaStatus, MediaType } from '@server/constants/media';
@@ -198,7 +198,6 @@ mediaRoutes.delete(
             (radarr) => radarr.id === media.serviceId
           );
         }
-
       } else if (media.mediaType === MediaType.TV) {
         const is4k = media.serviceUrl4k !== undefined;
         serviceSettings = settings.sonarr.find(
@@ -214,11 +213,8 @@ mediaRoutes.delete(
             (sonarr) => sonarr.id === media.serviceId
           );
         }
-
       } else if (media.mediaType === MediaType.MUSIC) {
-        serviceSettings = settings.lidarr.find(
-          (lidarr) => lidarr.isDefault
-        );
+        serviceSettings = settings.lidarr.find((lidarr) => lidarr.isDefault);
 
         if (
           media.serviceId &&
@@ -261,7 +257,6 @@ mediaRoutes.delete(
               : (media.externalServiceSlug as string)
           )
         );
-
       } else if (media.mediaType === MediaType.TV) {
         service = new SonarrAPI({
           apiKey: serviceSettings.apiKey,
@@ -274,7 +269,6 @@ mediaRoutes.delete(
           throw new Error('TVDB ID not found');
         }
         await service.removeSerie(tvdbId);
-
       } else if (media.mediaType === MediaType.MUSIC) {
         service = new LidarrAPI({
           apiKey: serviceSettings.apiKey,

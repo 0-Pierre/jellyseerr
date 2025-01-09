@@ -39,7 +39,9 @@ export const issueOptions: IssueOption[] = [
   },
 ];
 
-export const getIssueOptionsForMediaType = (mediaType: 'movie' | 'tv' | 'music'): IssueOption[] => {
+export const getIssueOptionsForMediaType = (
+  mediaType: 'movie' | 'tv' | 'music'
+): IssueOption[] => {
   let options = [...issueOptions];
 
   if (mediaType === 'movie' || mediaType === 'tv') {

@@ -1,8 +1,8 @@
 import TitleCard from '@app/components/TitleCard';
 import { Permission, useUser } from '@app/hooks/useUser';
 import type { MovieDetails } from '@server/models/Movie';
-import type { TvDetails } from '@server/models/Tv';
 import type { MusicDetails } from '@server/models/Music';
+import type { TvDetails } from '@server/models/Tv';
 import { useInView } from 'react-intersection-observer';
 import useSWR from 'swr';
 
@@ -17,11 +17,15 @@ export interface AddedCardProps {
   mutateParent?: () => void;
 }
 
-const isMovie = (media: MovieDetails | TvDetails | MusicDetails): media is MovieDetails => {
+const isMovie = (
+  media: MovieDetails | TvDetails | MusicDetails
+): media is MovieDetails => {
   return (media as MovieDetails).title !== undefined;
 };
 
-const isMusic = (media: MovieDetails | TvDetails | MusicDetails): media is MusicDetails => {
+const isMusic = (
+  media: MovieDetails | TvDetails | MusicDetails
+): media is MusicDetails => {
   return (media as MusicDetails).artistId !== undefined;
 };
 
@@ -41,15 +45,16 @@ const AddedCard = ({
     triggerOnce: true,
   });
 
-  const url = type === 'music'
-    ? `/api/v1/music/${mbId}`
-    : type === 'movie'
-    ? `/api/v1/movie/${tmdbId}`
-    : `/api/v1/tv/${tmdbId}`;
+  const url =
+    type === 'music'
+      ? `/api/v1/music/${mbId}`
+      : type === 'movie'
+      ? `/api/v1/movie/${tmdbId}`
+      : `/api/v1/tv/${tmdbId}`;
 
-  const { data: title, error } = useSWR<MovieDetails | TvDetails | MusicDetails>(
-    inView ? url : null
-  );
+  const { data: title, error } = useSWR<
+    MovieDetails | TvDetails | MusicDetails
+  >(inView ? url : null);
 
   if (!title && !error) {
     return (
@@ -76,8 +81,10 @@ const AddedCard = ({
       <TitleCard
         key={title.id}
         id={title.id}
-        isAddedToWatchlist={title.mediaInfo?.watchlists?.length || isAddedToWatchlist}
-        image={title.images?.find(image => image.CoverType === 'Cover')?.Url}
+        isAddedToWatchlist={
+          title.mediaInfo?.watchlists?.length || isAddedToWatchlist
+        }
+        image={title.images?.find((image) => image.CoverType === 'Cover')?.Url}
         status={title.mediaInfo?.status}
         title={title.title}
         artist={title.artist.artistName}
@@ -94,7 +101,9 @@ const AddedCard = ({
     <TitleCard
       key={title.id}
       id={title.id}
-      isAddedToWatchlist={title.mediaInfo?.watchlists?.length || isAddedToWatchlist}
+      isAddedToWatchlist={
+        title.mediaInfo?.watchlists?.length || isAddedToWatchlist
+      }
       image={title.posterPath}
       status={title.mediaInfo?.status}
       summary={title.overview}
@@ -109,7 +118,9 @@ const AddedCard = ({
     <TitleCard
       key={title.id}
       id={title.id}
-      isAddedToWatchlist={title.mediaInfo?.watchlists?.length || isAddedToWatchlist}
+      isAddedToWatchlist={
+        title.mediaInfo?.watchlists?.length || isAddedToWatchlist
+      }
       image={title.posterPath}
       status={title.mediaInfo?.status}
       summary={title.overview}

@@ -37,10 +37,10 @@ import { rescheduleJob } from 'node-schedule';
 import path from 'path';
 import semver from 'semver';
 import { URL } from 'url';
+import lidarrRoutes from './lidarr';
 import notificationRoutes from './notifications';
 import radarrRoutes from './radarr';
 import sonarrRoutes from './sonarr';
-import lidarrRoutes from './lidarr';
 
 const settingsRoutes = Router();
 

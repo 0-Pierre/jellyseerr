@@ -1,10 +1,10 @@
+import AddedCard from '@app/components/AddedCard';
 import ImageFader from '@app/components/Common/ImageFader';
 import LoadingSpinner from '@app/components/Common/LoadingSpinner';
 import PageTitle from '@app/components/Common/PageTitle';
 import ProgressCircle from '@app/components/Common/ProgressCircle';
 import RequestCard from '@app/components/RequestCard';
 import Slider from '@app/components/Slider';
-import AddedCard from '@app/components/AddedCard';
 import ProfileHeader from '@app/components/UserProfile/ProfileHeader';
 import { Permission, UserType, useUser } from '@app/hooks/useUser';
 import Error from '@app/pages/_error';
@@ -17,8 +17,8 @@ import type {
   UserWatchDataResponse,
 } from '@server/interfaces/api/userInterfaces';
 import type { MovieDetails } from '@server/models/Movie';
-import type { TvDetails } from '@server/models/Tv';
 import type { MusicDetails } from '@server/models/Music';
+import type { TvDetails } from '@server/models/Tv';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useState } from 'react';
@@ -143,7 +143,15 @@ const UserProfile = () => {
                 }
                 if ('artist' in media) {
                   return (
-                    media.artist.images?.find(img => img.CoverType === 'Fanart')?.Url || media.artist.images?.find(img => img.CoverType === 'Poster')?.Url || media.images?.find(img => img.CoverType.toLowerCase() === 'cover')?.Url
+                    media.artist.images?.find(
+                      (img) => img.CoverType === 'Fanart'
+                    )?.Url ||
+                    media.artist.images?.find(
+                      (img) => img.CoverType === 'Poster'
+                    )?.Url ||
+                    media.images?.find(
+                      (img) => img.CoverType.toLowerCase() === 'cover'
+                    )?.Url
                   );
                 }
                 return false;
@@ -153,8 +161,12 @@ const UserProfile = () => {
                   return `https://image.tmdb.org/t/p/w1920_and_h800_multi_faces/${media.backdropPath}`;
                 }
                 if ('artist' in media) {
-                  const fanart = media.artist.images?.find(img => img.CoverType === 'Fanart');
-                  const cover = media.artist.images?.find(img => img.CoverType === 'Cover');
+                  const fanart = media.artist.images?.find(
+                    (img) => img.CoverType === 'Fanart'
+                  );
+                  const cover = media.artist.images?.find(
+                    (img) => img.CoverType === 'Cover'
+                  );
                   return fanart?.Url || cover?.Url || '';
                 }
                 return '';

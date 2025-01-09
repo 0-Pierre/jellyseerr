@@ -2,7 +2,7 @@ import type { LidarrAlbum } from '@server/api/servarr/lidarr';
 import LidarrAPI from '@server/api/servarr/lidarr';
 import type {
   RunnableScanner,
-  StatusBase
+  StatusBase,
 } from '@server/lib/scanners/baseScanner';
 import BaseScanner from '@server/lib/scanners/baseScanner';
 import type { LidarrSettings } from '@server/lib/settings';
@@ -87,12 +87,16 @@ class LidarrScanner
         return;
       }
 
-      const mbId = lidarrAlbum.foreignAlbumId
+      const mbId = lidarrAlbum.foreignAlbumId;
 
       if (!mbId) {
-        this.log('No MusicBrainz ID found for this title. Skipping item.', 'debug', {
-          title: lidarrAlbum.title,
-        });
+        this.log(
+          'No MusicBrainz ID found for this title. Skipping item.',
+          'debug',
+          {
+            title: lidarrAlbum.title,
+          }
+        );
         return;
       }
 
@@ -101,12 +105,12 @@ class LidarrScanner
         externalServiceId: lidarrAlbum.id,
         externalServiceSlug: lidarrAlbum.titleSlug,
         title: lidarrAlbum.title,
-        processing: lidarrAlbum.monitored &&
-                   (!lidarrAlbum.statistics ||
-                    lidarrAlbum.statistics.trackFileCount <
-                    lidarrAlbum.statistics.totalTrackCount)
+        processing:
+          lidarrAlbum.monitored &&
+          (!lidarrAlbum.statistics ||
+            lidarrAlbum.statistics.trackFileCount <
+              lidarrAlbum.statistics.totalTrackCount),
       });
-
     } catch (e) {
       this.log('Failed to process Lidarr media', 'error', {
         errorMessage: e.message,

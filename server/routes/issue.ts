@@ -173,10 +173,10 @@ issueRoutes.get('/count', async (req, res, next) => {
       .getCount();
 
     const lyricsCount = await query
-    .where('issue.issueType = :issueType', {
-      issueType: IssueType.LYRICS,
-    })
-    .getCount();
+      .where('issue.issueType = :issueType', {
+        issueType: IssueType.LYRICS,
+      })
+      .getCount();
 
     const othersCount = await query
       .where('issue.issueType = :issueType', {

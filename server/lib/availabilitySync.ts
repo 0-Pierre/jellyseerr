@@ -2,10 +2,10 @@ import type { JellyfinLibraryItem } from '@server/api/jellyfin';
 import JellyfinAPI from '@server/api/jellyfin';
 import type { PlexMetadata } from '@server/api/plexapi';
 import PlexAPI from '@server/api/plexapi';
+import LidarrAPI, { type LidarrAlbum } from '@server/api/servarr/lidarr';
 import RadarrAPI, { type RadarrMovie } from '@server/api/servarr/radarr';
 import type { SonarrSeason, SonarrSeries } from '@server/api/servarr/sonarr';
 import SonarrAPI from '@server/api/servarr/sonarr';
-import LidarrAPI, { type LidarrAlbum } from '@server/api/servarr/lidarr';
 import { MediaRequestStatus, MediaStatus } from '@server/constants/media';
 import { MediaServerType } from '@server/constants/server';
 import { getRepository } from '@server/datasource';
@@ -14,7 +14,11 @@ import MediaRequest from '@server/entity/MediaRequest';
 import type Season from '@server/entity/Season';
 import SeasonRequest from '@server/entity/SeasonRequest';
 import { User } from '@server/entity/User';
-import type { RadarrSettings, SonarrSettings, LidarrSettings } from '@server/lib/settings';
+import type {
+  LidarrSettings,
+  RadarrSettings,
+  SonarrSettings,
+} from '@server/lib/settings';
 import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
 import { getHostname } from '@server/utils/getHostname';
@@ -465,7 +469,10 @@ class AvailabilitySync {
             mediaServerType === MediaServerType.JELLYFIN ||
             mediaServerType === MediaServerType.EMBY
           ) {
-            const { existsInJellyfin } = await this.mediaExistsInJellyfin(media, false);
+            const { existsInJellyfin } = await this.mediaExistsInJellyfin(
+              media,
+              false
+            );
             if (existsInJellyfin || existsInLidarr) {
               musicExists = true;
               logger.info(
@@ -648,8 +655,10 @@ class AvailabilitySync {
       // Only delete media request if type is movie.
       // Type tv request deletion is handled
       // in the season request entity
-      if (requests.length > 0 &&
-          (media.mediaType === 'movie' || media.mediaType === 'music')) {
+      if (
+        requests.length > 0 &&
+        (media.mediaType === 'movie' || media.mediaType === 'music')
+      ) {
         await requestRepository.remove(requests);
       }
     } catch (ex) {
@@ -929,9 +938,7 @@ class AvailabilitySync {
     return seasonExists;
   }
 
-  private async mediaExistsInLidarr(
-    media: Media
-  ): Promise<boolean> {
+  private async mediaExistsInLidarr(media: Media): Promise<boolean> {
     let existsInLidarr = false;
 
     // Check for availability in all configured Lidarr servers
@@ -947,7 +954,7 @@ class AvailabilitySync {
 
         if (media.externalServiceId) {
           lidarr = await lidarrAPI.getAlbum({
-            id: media.externalServiceId
+            id: media.externalServiceId,
           });
         }
 

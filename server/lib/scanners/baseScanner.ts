@@ -540,7 +540,9 @@ class BaseScanner<T> {
       if (!existing) {
         const newMedia = new Media();
         newMedia.mbId = mbId;
-        newMedia.status = processing ? MediaStatus.PROCESSING : MediaStatus.AVAILABLE;
+        newMedia.status = processing
+          ? MediaStatus.PROCESSING
+          : MediaStatus.AVAILABLE;
         newMedia.mediaType = MediaType.MUSIC;
 
         if (mediaAddedAt) {
@@ -565,7 +567,7 @@ class BaseScanner<T> {
         } catch (err) {
           this.log('Failed to save new media', 'error', {
             title,
-            error: err.message
+            error: err.message,
           });
         }
       }

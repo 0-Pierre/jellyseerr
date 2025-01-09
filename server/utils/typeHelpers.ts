@@ -1,4 +1,10 @@
 import type {
+  LidarrAlbumDetails,
+  LidarrAlbumResult,
+  LidarrArtistDetails,
+  LidarrArtistResult,
+} from '@server/api/servarr/lidarr';
+import type {
   TmdbCollectionResult,
   TmdbMovieDetails,
   TmdbMovieResult,
@@ -7,12 +13,6 @@ import type {
   TmdbTvDetails,
   TmdbTvResult,
 } from '@server/api/themoviedb/interfaces';
-import type {
-  LidarrAlbumResult,
-  LidarrArtistResult,
-  LidarrAlbumDetails,
-  LidarrArtistDetails,
-} from '@server/api/servarr/lidarr';
 
 export const isMovie = (
   movie:
