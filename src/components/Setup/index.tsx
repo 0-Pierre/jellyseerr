@@ -55,64 +55,6 @@ const Setup = () => {
   const settings = useSettings();
   const toasts = useToasts();
 
-  useEffect(() => {
-    const storedState =
-      localStorage.getItem('mediaServerSettingsComplete') === 'true';
-    setMediaServerSettingsComplete(storedState);
-  }, []);
-
-  useEffect(() => {
-    if (settings.currentSettings.initialized) {
-      router.push('/');
-      return;
-    }
-
-    if (
-      settings.currentSettings.mediaServerType !==
-      MediaServerType.NOT_CONFIGURED
-    ) {
-      setCurrentStep(3);
-      setMediaServerType(settings.currentSettings.mediaServerType);
-    }
-  }, [settings.currentSettings, router]);
-
-  const handleComplete = async () => {
-    try {
-      const endpoint =
-        settings.currentSettings.mediaServerType === MediaServerType.JELLYFIN ||
-        settings.currentSettings.mediaServerType === MediaServerType.EMBY
-          ? '/api/v1/settings/jellyfin'
-          : '/api/v1/settings/plex';
-
-      const res = await fetch(endpoint);
-      if (!res.ok) throw new Error('Fetch failed');
-
-      const data = await res.json();
-      const hasEnabledLibraries = data?.libraries?.some(
-        (library: Library) => library.enabled
-      );
-
-      if (hasEnabledLibraries) {
-        setMediaServerSettingsComplete(true);
-        localStorage.setItem('mediaServerSettingsComplete', 'true');
-      } else {
-        setMediaServerSettingsComplete(false);
-        localStorage.removeItem('mediaServerSettingsComplete');
-        toasts.addToast(intl.formatMessage(messages.librarieserror), {
-          autoDismiss: true,
-          appearance: 'warning',
-        });
-      }
-    } catch (e) {
-      setMediaServerSettingsComplete(false);
-      localStorage.removeItem('mediaServerSettingsComplete');
-      toasts.addToast(intl.formatMessage(messages.librarieserror), {
-        autoDismiss: true,
-        appearance: 'error',
-      });
-    }
-  };
-
   const finishSetup = async () => {
     setIsUpdating(true);
     const res = await fetch('/api/v1/settings/initialize', {
