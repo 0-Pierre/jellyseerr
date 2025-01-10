@@ -449,39 +449,35 @@ const RequestItem = ({ request, revalidateList }: RequestItemProps) => {
         }}
       />
       <div className="relative flex w-full flex-col justify-between overflow-hidden rounded-xl bg-gray-800 py-2 text-gray-400 shadow-md ring-1 ring-gray-700 xl:h-28 xl:flex-row">
-        {title && (
-          <div className="absolute inset-0 z-0 w-full bg-cover bg-center xl:w-2/3">
-            <CachedImage
-              type={isMusic(title) ? 'music' : 'tmdb'}
-              src={
-                isMusic(title)
-                  ? title.artist.images?.find(
-                      (img) => img.CoverType === 'Fanart'
-                    )?.Url ||
-                    title.artist.images?.find(
-                      (img) => img.CoverType === 'Poster'
-                    )?.Url ||
-                    title.images?.find(
-                      (img) => img.CoverType.toLowerCase() === 'cover'
-                    )?.Url ||
-                    ''
-                  : `https://image.tmdb.org/t/p/w1920_and_h800_multi_faces/${
-                      title.backdropPath ?? ''
-                    }`
-              }
-              alt=""
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              fill
-            />
-            <div
-              className="absolute inset-0"
-              style={{
-                backgroundImage:
-                  'linear-gradient(90deg, rgba(31, 41, 55, 0.47) 0%, rgba(31, 41, 55, 1) 100%)',
-              }}
-            />
-          </div>
-        )}
+        <div className="absolute inset-0 z-0 w-full bg-cover bg-center xl:w-2/3">
+          <CachedImage
+            type={isMusic(title) ? 'music' : 'tmdb'}
+            src={
+              isMusic(title)
+                ? title.artist.images?.find((img) => img.CoverType === 'Fanart')
+                    ?.Url ||
+                  title.artist.images?.find((img) => img.CoverType === 'Poster')
+                    ?.Url ||
+                  title.images?.find(
+                    (img) => img.CoverType.toLowerCase() === 'cover'
+                  )?.Url ||
+                  ''
+                : `https://image.tmdb.org/t/p/w1920_and_h800_multi_faces/${
+                    title.backdropPath ?? ''
+                  }`
+            }
+            alt=""
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            fill
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage:
+                'linear-gradient(90deg, rgba(31, 41, 55, 0.47) 0%, rgba(31, 41, 55, 1) 100%)',
+            }}
+          />
+        </div>
         <div className="relative flex w-full flex-col justify-between overflow-hidden sm:flex-row">
           <div className="relative z-10 flex w-full items-center overflow-hidden pl-4 pr-4 sm:pr-0 xl:w-7/12 2xl:w-2/3">
             <Link
@@ -497,14 +493,11 @@ const RequestItem = ({ request, revalidateList }: RequestItemProps) => {
               <CachedImage
                 type={isMusic(title) ? 'music' : 'tmdb'}
                 src={
-                  title
-                    ? isMusic(title)
-                      ? title.images?.find(
-                          (image) => image.CoverType === 'Cover'
-                        )?.Url ?? '/images/overseerr_poster_not_found.png'
-                      : title.posterPath
-                      ? `https://image.tmdb.org/t/p/w600_and_h900_bestv2${title.posterPath}`
-                      : '/images/overseerr_poster_not_found.png'
+                  isMusic(title)
+                    ? title.images?.find((image) => image.CoverType === 'Cover')
+                        ?.Url ?? '/images/overseerr_poster_not_found.png'
+                    : title.posterPath
+                    ? `https://image.tmdb.org/t/p/w600_and_h900_bestv2${title.posterPath}`
                     : '/images/overseerr_poster_not_found.png'
                 }
                 alt=""
@@ -533,12 +526,11 @@ const RequestItem = ({ request, revalidateList }: RequestItemProps) => {
                 }
                 className="mr-2 min-w-0 truncate text-lg font-bold text-white hover:underline xl:text-xl"
               >
-                {title &&
-                  (isMusic(title)
-                    ? `${title.artist.artistName} - ${title.title}`
-                    : isMovie(title)
-                    ? title.title
-                    : title.name)}
+                {isMusic(title)
+                  ? `${title.artist.artistName} - ${title.title}`
+                  : isMovie(title)
+                  ? title.title
+                  : title.name}
               </Link>
               {!isMovie(title) &&
                 !isMusic(title) &&

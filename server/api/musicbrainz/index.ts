@@ -1,5 +1,6 @@
 import ExternalAPI from '@server/api/externalapi';
 import cacheManager from '@server/lib/cache';
+import DOMPurify from 'dompurify';
 import type {
   MbAlbumDetails,
   MbArtistDetails,
@@ -184,31 +185,17 @@ class MusicBrainz extends ExternalAPI {
 
       if (!extract) return null;
 
-      const decoded = extract
-        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script\s*>/gi, '')
-
-        .replace(/\\u[\dA-F]{4}/gi, (match) =>
-          String.fromCharCode(parseInt(match.replace(/\\u/g, ''), 16))
-        )
-
-        .replace(/<[^>]*>/g, '')
-
+      const decoded = DOMPurify.sanitize(extract, {
+        ALLOWED_TAGS: [], // Strip all HTML tags
+        ALLOWED_ATTR: [], // Strip all attributes
+      })
+        .trim()
+        .replace(/\s+/g, ' ')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#x27;')
-
-        .replace(/&amp;quot;/g, '"')
-        .replace(/&amp;apos;/g, "'")
-        .replace(/&amp;amp;/g, '&')
-
-        .replace(/\s+/g, ' ')
-        .trim();
-
-      if (decoded.includes('<') || decoded.includes('>')) {
-        return null;
-      }
+        .replace(/'/g, '&#x27;');
 
       return decoded;
     } catch (e) {

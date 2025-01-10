@@ -143,13 +143,11 @@ const CreateIssueModal = ({
               <>
                 <div>
                   {intl.formatMessage(messages.toastSuccessCreate, {
-                    title:
-                      data &&
-                      (isMusic(data)
-                        ? `${data.artist.artistName} - ${data.title}`
-                        : isMovie(data)
-                        ? data.title
-                        : data.name),
+                    title: isMusic(data)
+                      ? `${data.artist.artistName} - ${data.title}`
+                      : isMovie(data)
+                      ? data.title
+                      : data.name,
                     strong: (msg: React.ReactNode) => <strong>{msg}</strong>,
                   })}
                 </div>
@@ -259,8 +257,7 @@ const CreateIssueModal = ({
                           <option value={0}>
                             {intl.formatMessage(messages.allepisodes)}
                           </option>
-                          {data &&
-                            !isMusic(data) &&
+                          {!isMusic(data) &&
                             [
                               ...Array(
                                 data.seasons.find(
