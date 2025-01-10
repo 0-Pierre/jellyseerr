@@ -146,6 +146,69 @@ const Setup = () => {
     revalidateOnFocus: false,
   });
 
+  useEffect(() => {
+    if (settings.currentSettings.initialized) {
+      router.push('/');
+    }
+
+    if (
+      settings.currentSettings.mediaServerType !==
+      MediaServerType.NOT_CONFIGURED
+    ) {
+      setMediaServerType(settings.currentSettings.mediaServerType);
+      if (currentStep < 3) {
+        setCurrentStep(3);
+      }
+    }
+
+    if (currentStep === 3) {
+      validateLibraries();
+    }
+  }, [
+    settings.currentSettings.mediaServerType,
+    settings.currentSettings.initialized,
+    router,
+    toasts,
+    intl,
+    currentStep,
+    mediaServerType,
+  ]);
+
+  const validateLibraries = async () => {
+    try {
+      const endpointMap: Record<MediaServerType, string> = {
+        [MediaServerType.JELLYFIN]: '/api/v1/settings/jellyfin',
+        [MediaServerType.EMBY]: '/api/v1/settings/jellyfin',
+        [MediaServerType.PLEX]: '/api/v1/settings/plex',
+        [MediaServerType.NOT_CONFIGURED]: '',
+      };
+
+      const endpoint = endpointMap[mediaServerType];
+      if (!endpoint) return;
+
+      const res = await fetch(endpoint);
+      if (!res.ok) throw new Error('Fetch failed');
+      const data = await res.json();
+
+      const hasEnabledLibraries = data?.libraries?.some(
+        (library: Library) => library.enabled
+      );
+
+      setMediaServerSettingsComplete(hasEnabledLibraries);
+    } catch (e) {
+      toasts.addToast(intl.formatMessage(messages.librarieserror), {
+        autoDismiss: true,
+        appearance: 'error',
+      });
+
+      setMediaServerSettingsComplete(false);
+    }
+  };
+
+  const handleComplete = () => {
+    validateLibraries();
+  };
+
   if (settings.currentSettings.initialized) return <></>;
 
   return (
