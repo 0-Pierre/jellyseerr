@@ -213,8 +213,8 @@ const UserGeneralSettings = () => {
                 },
                 body: JSON.stringify({
                   permissions: values.subscriptionEnabled
-                    ? 1289765024
-                    : 1277181952,
+                    ? 1826668704
+                    : 6044024960,
                 }),
               }
             );
