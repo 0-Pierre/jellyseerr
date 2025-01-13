@@ -1,5 +1,4 @@
 import JellyfinAPI from '@server/api/jellyfin';
-import PlexTvAPI from '@server/api/plextv';
 import { ApiErrorCode } from '@server/constants/error';
 import { MediaServerType } from '@server/constants/server';
 import { UserType } from '@server/constants/user';
@@ -87,6 +86,11 @@ userSettingsRoutes.get<{ id: string }, UserSettingsGeneralResponse>(
         globalTvQuotaLimit: defaultQuotas.tv.quotaLimit,
         watchlistSyncMovies: user.settings?.watchlistSyncMovies,
         watchlistSyncTv: user.settings?.watchlistSyncTv,
+        subscriptionStatus: user.subscriptionStatus,
+        subscriptionEnabled: !!user.subscriptionStatus,
+        subscriptionType:
+          user.subscriptionStatus === 'lifetime' ? 'lifetime' : 'standard',
+        subscriptionExpirationDate: user.subscriptionExpirationDate,
       });
     } catch (e) {
       next({ status: 500, message: e.message });
@@ -99,9 +103,9 @@ userSettingsRoutes.post<
   UserSettingsGeneralResponse,
   UserSettingsGeneralResponse
 >('/main', isOwnProfileOrAdmin(), async (req, res, next) => {
-  const userRepository = getRepository(User);
-
   try {
+    const settings = getSettings();
+    const userRepository = getRepository(User);
     const user = await userRepository.findOne({
       where: { id: Number(req.params.id) },
     });
@@ -118,6 +122,19 @@ userSettingsRoutes.post<
       });
     }
 
+    if (
+      (user.id !== req.user?.id &&
+        !req.user?.hasPermission(Permission.ADMIN)) ||
+      (user.id === req.user?.id && !req.user?.hasPermission(Permission.ADMIN))
+    ) {
+      return next({
+        status: 403,
+        message:
+          "You do not have permission to modify this user's display name.",
+      });
+    }
+
+    user.username = req.body.username;
     const oldEmail = user.email;
     user.username = req.body.username;
     if (user.userType !== UserType.PLEX) {
@@ -163,6 +180,47 @@ userSettingsRoutes.post<
       user.settings.watchlistSyncTv = req.body.watchlistSyncTv;
     }
 
+    const previousSubscriptionStatus = user.subscriptionStatus;
+    const newSubscriptionStatus = req.body.subscriptionEnabled
+      ? req.body.subscriptionType === 'lifetime'
+        ? 'lifetime'
+        : 'active'
+      : null;
+
+    if (
+      previousSubscriptionStatus !== newSubscriptionStatus &&
+      user.jellyfinUserId
+    ) {
+      const hostname = getHostname();
+      const jellyfinClient = new JellyfinAPI(
+        hostname,
+        settings.jellyfin.apiKey
+      );
+
+      await jellyfinClient.updateUserPolicy(user.jellyfinUserId, {
+        IsAdministrator: false,
+        IsDisabled: false,
+        EnableUserPreferenceAccess: true,
+        EnableLiveTvAccess: newSubscriptionStatus !== null,
+        EnableLiveTvManagement: newSubscriptionStatus !== null,
+        EnableRemoteAccess: true,
+        EnableMediaPlayback: newSubscriptionStatus !== null,
+        EnableVideoPlayback: newSubscriptionStatus !== null,
+        EnableAudioPlayback: newSubscriptionStatus !== null,
+        EnableMediaConversion: newSubscriptionStatus !== null,
+        EnableVideoPlaybackTranscoding: newSubscriptionStatus !== null,
+        EnableAudioPlaybackTranscoding: newSubscriptionStatus !== null,
+        EnablePlaybackRemuxing: newSubscriptionStatus !== null,
+        EnableContentDownloading: newSubscriptionStatus !== null,
+        PasswordResetProviderId:
+          'Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider',
+        AuthenticationProviderId:
+          'Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider',
+      });
+    }
+
+    user.subscriptionStatus = newSubscriptionStatus;
+
     const savedUser = await userRepository.save(user);
 
     return res.status(200).json({
@@ -175,6 +233,11 @@ userSettingsRoutes.post<
       watchlistSyncMovies: savedUser.settings?.watchlistSyncMovies,
       watchlistSyncTv: savedUser.settings?.watchlistSyncTv,
       email: savedUser.email,
+      subscriptionEnabled: !!savedUser.subscriptionStatus,
+      subscriptionType:
+        savedUser.subscriptionStatus === 'lifetime' ? 'lifetime' : 'standard',
+      subscriptionStatus: savedUser.subscriptionStatus,
+      subscriptionExpirationDate: savedUser.subscriptionExpirationDate,
     });
   } catch (e) {
     if (e.errorCode) {

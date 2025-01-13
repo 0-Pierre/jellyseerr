@@ -125,6 +125,15 @@ export class User {
   @Column({ nullable: true })
   public tvQuotaDays?: number;
 
+  @Column({ type: 'varchar', nullable: true })
+  public subscriptionStatus: 'active' | 'expired' | 'lifetime' | null;
+
+  @Column({ type: 'datetime', nullable: true })
+  public subscriptionExpirationDate: Date | null;
+
+  @Column({ default: 0 })
+  public suspiciousActivityCount: number;
+
   @OneToOne(() => UserSettings, (settings) => settings.user, {
     cascade: true,
     eager: true,

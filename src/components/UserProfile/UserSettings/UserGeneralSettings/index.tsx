@@ -71,6 +71,9 @@ const messages = defineMessages(
     plexwatchlistsyncseries: 'Auto-Request Series',
     plexwatchlistsyncseriestip:
       'Automatically request series on your <PlexWatchlistSupportLink>Plex Watchlist</PlexWatchlistSupportLink>',
+    subscription: 'Subscription',
+    subscriptionStandard: 'Standard',
+    subscriptionLifetime: 'Lifetime',
   }
 );
 
@@ -159,38 +162,68 @@ const UserGeneralSettings = () => {
           tvQuotaDays: data?.tvQuotaDays,
           watchlistSyncMovies: data?.watchlistSyncMovies,
           watchlistSyncTv: data?.watchlistSyncTv,
+          subscriptionEnabled: Boolean(
+            data?.subscriptionStatus === 'active' ||
+              data?.subscriptionStatus === 'lifetime'
+          ),
+          subscriptionType:
+            data?.subscriptionStatus === 'lifetime' ? 'lifetime' : 'standard',
         }}
         validationSchema={UserGeneralSettingsSchema}
         enableReinitialize
         onSubmit={async (values) => {
           try {
-            const res = await fetch(`/api/v1/user/${user?.id}/settings/main`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                username: values.displayName,
-                email:
-                  values.email || user?.jellyfinUsername || user?.plexUsername,
-                discordId: values.discordId,
-                locale: values.locale,
-                discoverRegion: values.discoverRegion,
-                streamingRegion: values.streamingRegion,
-                originalLanguage: values.originalLanguage,
-                movieQuotaLimit: movieQuotaEnabled
-                  ? values.movieQuotaLimit
-                  : null,
-                movieQuotaDays: movieQuotaEnabled
-                  ? values.movieQuotaDays
-                  : null,
-                tvQuotaLimit: tvQuotaEnabled ? values.tvQuotaLimit : null,
-                tvQuotaDays: tvQuotaEnabled ? values.tvQuotaDays : null,
-                watchlistSyncMovies: values.watchlistSyncMovies,
-                watchlistSyncTv: values.watchlistSyncTv,
-              }),
-            });
-            if (!res.ok) throw new Error(res.statusText, { cause: res });
+            const mainRes = await fetch(
+              `/api/v1/user/${user?.id}/settings/main`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  username: values.displayName,
+                  email:
+                    values.email ||
+                    user?.jellyfinUsername ||
+                    user?.plexUsername,
+                  discordId: values.discordId,
+                  locale: values.locale,
+                  discoverRegion: values.discoverRegion,
+                  streamingRegion: values.streamingRegion,
+                  originalLanguage: values.originalLanguage,
+                  movieQuotaLimit: movieQuotaEnabled
+                    ? values.movieQuotaLimit
+                    : null,
+                  movieQuotaDays: movieQuotaEnabled
+                    ? values.movieQuotaDays
+                    : null,
+                  tvQuotaLimit: tvQuotaEnabled ? values.tvQuotaLimit : null,
+                  tvQuotaDays: tvQuotaEnabled ? values.tvQuotaDays : null,
+                  watchlistSyncMovies: values.watchlistSyncMovies,
+                  watchlistSyncTv: values.watchlistSyncTv,
+                  subscriptionEnabled: values.subscriptionEnabled,
+                  subscriptionType: values.subscriptionType,
+                }),
+              }
+            );
+            const permissionsRes = await fetch(
+              `/api/v1/user/${user?.id}/settings/permissions`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  permissions: values.subscriptionEnabled
+                    ? 1289765024
+                    : 1277181952,
+                }),
+              }
+            );
+
+            if (!mainRes.ok || !permissionsRes.ok) {
+              throw new Error('Failed to update settings');
+            }
 
             if (currentUser?.id === user?.id && setLocale) {
               setLocale(
@@ -307,10 +340,17 @@ const UserGeneralSettings = () => {
                       name="displayName"
                       type="text"
                       placeholder={
+                        user?.username ||
                         user?.jellyfinUsername ||
                         user?.plexUsername ||
                         user?.email
                       }
+                      disabled={!currentHasPermission(Permission.ADMIN)}
+                      style={{
+                        color: !currentHasPermission(Permission.ADMIN)
+                          ? 'rgb(170, 170, 170)'
+                          : 'inherit',
+                      }}
                     />
                   </div>
                   {errors.displayName &&
@@ -641,6 +681,45 @@ const UserGeneralSettings = () => {
                     </div>
                   </div>
                 )}
+              {currentHasPermission(Permission.ADMIN) && (
+                <div className="form-row">
+                  <label htmlFor="subscription" className="text-label">
+                    {intl.formatMessage(messages.subscription)}
+                  </label>
+                  <div className="form-input-area">
+                    <div className="flex max-w-lg items-center">
+                      <Field
+                        type="checkbox"
+                        id="subscriptionEnabled"
+                        name="subscriptionEnabled"
+                        checked={values.subscriptionEnabled}
+                        onChange={() => {
+                          setFieldValue(
+                            'subscriptionEnabled',
+                            !values.subscriptionEnabled
+                          );
+                        }}
+                      />
+                      <div className="ml-4 flex-grow">
+                        <Field
+                          as="select"
+                          id="subscriptionType"
+                          name="subscriptionType"
+                          disabled={!values.subscriptionEnabled}
+                          className="inline"
+                        >
+                          <option value="standard">
+                            {intl.formatMessage(messages.subscriptionStandard)}
+                          </option>
+                          <option value="lifetime">
+                            {intl.formatMessage(messages.subscriptionLifetime)}
+                          </option>
+                        </Field>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="actions">
                 <div className="flex justify-end">
                   <span className="ml-3 inline-flex rounded-md shadow-sm">

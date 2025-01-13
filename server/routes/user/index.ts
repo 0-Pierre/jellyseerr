@@ -17,6 +17,7 @@ import type {
   UserResultsResponse,
   UserWatchDataResponse,
 } from '@server/interfaces/api/userInterfaces';
+import PreparedEmail from '@server/lib/email';
 import { hasPermission, Permission } from '@server/lib/permissions';
 import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
@@ -25,6 +26,8 @@ import { getHostname } from '@server/utils/getHostname';
 import { Router } from 'express';
 import gravatarUrl from 'gravatar-url';
 import { findIndex, sortBy } from 'lodash';
+import path from 'path';
+import { default as generatePassword } from 'secure-random-password';
 import { In } from 'typeorm';
 import userSettingsRoutes from './usersettings';
 
@@ -629,8 +632,19 @@ router.post(
         });
 
         if (!user) {
+          let displayName = jellyfinUser?.Name ?? '';
+          if (jellyfinUser?.Name && jellyfinUser.Name.includes('.')) {
+            const [firstname, lastname] = jellyfinUser.Name.split('.');
+            if (firstname && lastname) {
+              displayName = `${firstname
+                .charAt(0)
+                .toUpperCase()}${firstname.slice(1)} ${lastname.toUpperCase()}`;
+            }
+          }
+
           const newUser = new User({
             jellyfinUsername: jellyfinUser?.Name,
+            username: displayName,
             jellyfinUserId: jellyfinUser?.Id,
             jellyfinDeviceId: Buffer.from(
               `BOT_jellyseerr_${jellyfinUser?.Name ?? ''}`
@@ -869,6 +883,83 @@ router.get<{ id: string }, WatchlistResponse>(
         tmdbId: item.tmdbId,
       })),
     });
+  }
+);
+
+router.post(
+  '/jellyfinuser',
+  isAuthenticated(Permission.MANAGE_USERS),
+  async (req, res, next) => {
+    try {
+      const settings = getSettings();
+      const userRepository = getRepository(User);
+
+      const body = req.body;
+      const hostname = getHostname();
+
+      const jellyfinClient = new JellyfinAPI(
+        hostname,
+        settings.jellyfin.apiKey
+      );
+
+      const password = body.genpassword
+        ? generatePassword.randomPassword({ length: 16 })
+        : body.password;
+
+      const jellyfinUser = await jellyfinClient.createUser({
+        Name: body.username,
+        Password: password,
+      });
+
+      if (!jellyfinUser?.Id) {
+        throw new Error('Failed to create Jellyfin user');
+      }
+
+      const user = new User({
+        email: body.email,
+        jellyfinUsername: body.username,
+        jellyfinUserId: jellyfinUser.Id,
+        jellyfinDeviceId: Buffer.from(
+          `BOT_jellyseerr_${body.username}`
+        ).toString('base64'),
+        permissions: settings.main.defaultPermissions,
+        avatar: `/avatarproxy/${jellyfinUser.Id}`,
+        userType: UserType.JELLYFIN,
+      });
+
+      if (body.genpassword) {
+        await user.setPassword(password);
+
+        const email = new PreparedEmail(settings.notifications.agents.email);
+        await email.send({
+          template: path.join(
+            __dirname,
+            '../../templates/email/generatedpassword'
+          ),
+          message: {
+            to: body.email,
+          },
+          locals: {
+            password,
+            applicationUrl: settings.main.applicationUrl,
+            applicationTitle: settings.main.applicationTitle,
+            recipientName: body.username,
+          },
+        });
+      } else {
+        await user.setPassword(body.password);
+      }
+
+      await userRepository.save(user);
+
+      return res.status(201).json(user.filter());
+    } catch (e) {
+      logger.error('Something went wrong creating the Jellyfin user', {
+        label: 'API',
+        errorMessage: e.message,
+      });
+      next({ status: 500, message: e.message });
+    }
   }
 );
 

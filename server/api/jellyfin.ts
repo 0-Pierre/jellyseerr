@@ -100,6 +100,18 @@ export interface JellyfinItemsReponse {
   StartIndex: number;
 }
 
+export interface JellyfinUser {
+  Id: string;
+  Name: string;
+  ServerId: string;
+  HasPassword?: boolean;
+  HasConfiguredPassword?: boolean;
+  Policy?: {
+    IsAdministrator: boolean;
+    IsDisabled: boolean;
+  };
+}
+
 class JellyfinAPI extends ExternalAPI {
   private userId?: string;
   private mediaServerType: MediaServerType;
@@ -449,6 +461,116 @@ class JellyfinAPI extends ExternalAPI {
       throw new ApiError(e.response?.status, ApiErrorCode.InvalidAuthToken);
     }
   }
-}
 
+  public async createUser(options: {
+    Name: string;
+    Password?: string;
+  }): Promise<JellyfinUser> {
+    try {
+      const newUser = await this.post<JellyfinUser>('/Users/New', {
+        Name: options.Name,
+        Password: options.Password,
+      });
+
+      if (!newUser?.Id) {
+        throw new Error('Failed to create Jellyfin user - no user ID returned');
+      }
+
+      await this.post(`/Users/${newUser.Id}/Policy`, {
+        IsAdministrator: false,
+        IsDisabled: false,
+        EnableUserPreferenceAccess: true,
+        EnableRemoteAccess: true,
+        EnableMediaPlayback: false,
+        EnableVideoPlayback: false,
+        EnableAudioPlayback: false,
+        EnableAudioPlaybackTranscoding: false,
+        EnableVideoPlaybackTranscoding: false,
+        EnablePlaybackRemuxing: false,
+        ForceRemoteSourceTranscoding: false,
+        EnableMediaConversion: false,
+        EnableSyncTranscoding: false,
+        EnableAllDevices: true,
+        EnabledDevices: [],
+        EnableAllChannels: true,
+        EnabledChannels: [],
+        EnableAllFolders: true,
+        EnabledFolders: [],
+        EnableContentDownloading: false,
+        EnableLiveTvAccess: false,
+        EnableLiveTvManagement: false,
+        AuthenticationProviderId:
+          'Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider',
+        PasswordResetProviderId:
+          'Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider',
+      });
+
+      return newUser;
+    } catch (e) {
+      logger.error(`Failed to create Jellyfin user: ${e.message}`, {
+        label: 'Jellyfin API',
+      });
+      throw new ApiError(e.response?.status, ApiErrorCode.InvalidJellyfinUser);
+    }
+  }
+
+  public async deleteUser(userId: string): Promise<void> {
+    try {
+      await this.delete<void>(`/Users/${userId}`);
+    } catch (e) {
+      logger.error(`Failed to delete user from Jellyfin: ${e.message}`, {
+        label: 'Jellyfin API',
+      });
+      throw new ApiError(e.response?.status, ApiErrorCode.InvalidJellyfinUser);
+    }
+  }
+
+  public async resetUserPassword(
+    userId: string,
+    newPassword: string
+  ): Promise<void> {
+    try {
+      await this.post<void>(`/Users/${userId}/Password`, {
+        NewPw: newPassword,
+      });
+    } catch (e) {
+      logger.error(`Failed to reset password for Jellyfin user: ${e.message}`, {
+        label: 'Jellyfin API',
+      });
+      throw new ApiError(e.response?.status, ApiErrorCode.InvalidJellyfinUser);
+    }
+  }
+
+  public async updateUserPolicy(
+    userId: string,
+    policy: {
+      IsAdministrator: boolean;
+      IsDisabled: boolean;
+      EnableUserPreferenceAccess: boolean;
+      EnableLiveTvAccess: boolean;
+      EnableLiveTvManagement: boolean;
+      EnableRemoteAccess: boolean;
+      EnableMediaPlayback: boolean;
+      EnableVideoPlayback: boolean;
+      EnableAudioPlayback: boolean;
+      EnableMediaConversion: boolean;
+      EnableVideoPlaybackTranscoding: boolean;
+      EnableAudioPlaybackTranscoding: boolean;
+      EnableContentDownloading: boolean;
+      EnablePlaybackRemuxing: boolean;
+      PasswordResetProviderId: string;
+      AuthenticationProviderId: string;
+    }
+  ): Promise<void> {
+    await this.post(`/Users/${userId}/Policy`, {
+      ...policy,
+      PasswordResetProviderId:
+        policy.PasswordResetProviderId ??
+        'Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider',
+      AuthenticationProviderId:
+        policy.AuthenticationProviderId ??
+        'Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider',
+    });
+  }
+}
 export default JellyfinAPI;

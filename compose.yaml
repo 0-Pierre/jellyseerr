@@ -9,3 +9,11 @@ services:
       - .:/app:rw,cached
       - /app/node_modules
       - /app/.next
+    environment:
+      # - NODE_OPTIONS=--max-old-space-size=6144
+      - WATCHPACK_POLLING=true
+      - CHOKIDAR_USEPOLLING=true
+      - NEXT_TELEMETRY_DISABLED=1
+    command: pnpm dev
+    tty: true
+    stdin_open: true
