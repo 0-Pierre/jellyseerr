@@ -296,7 +296,8 @@ export type JobId =
   | 'jellyfin-recently-added-scan'
   | 'jellyfin-full-scan'
   | 'image-cache-cleanup'
-  | 'availability-sync';
+  | 'availability-sync'
+  | 'subscription-check';
 
 export interface AllSettings {
   clientId: string;
@@ -507,6 +508,9 @@ class Settings {
         },
         'image-cache-cleanup': {
           schedule: '0 0 5 * * *',
+        },
+        'subscription-check': {
+          schedule: '0 */12 * * *',
         },
       },
     };

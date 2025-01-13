@@ -12,6 +12,11 @@ const messages = defineMessages('components.UserProfile.ProfileHeader', {
   profile: 'View Profile',
   joindate: 'Joined {joindate}',
   userid: 'User ID: {userid}',
+  noSubscription: 'No Subscription',
+  lifetimeSubscription: 'Lifetime Subscription',
+  subscriptionExpired:
+    'Your Subscription Has Expired on {subscriptionExpirationDate}',
+  subscriptionExpiresOn: 'Subscription Expires On {subscriptionExpirationDate}',
 });
 
 interface ProfileHeaderProps {
@@ -36,6 +41,33 @@ const ProfileHeader = ({ user, isSettingsPage }: ProfileHeaderProps) => {
   if (hasPermission(Permission.MANAGE_REQUESTS)) {
     subtextItems.push(intl.formatMessage(messages.userid, { userid: user.id }));
   }
+
+  const subscriptionStatus = user.subscriptionExpirationDate
+    ? new Date(user.subscriptionExpirationDate) > new Date()
+      ? intl.formatMessage(messages.subscriptionExpiresOn, {
+          subscriptionExpirationDate: intl.formatDate(
+            user.subscriptionExpirationDate,
+            {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            }
+          ),
+        })
+      : intl.formatMessage(messages.subscriptionExpired, {
+          subscriptionExpirationDate: intl.formatDate(
+            user.subscriptionExpirationDate,
+            {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            }
+          ),
+        })
+    : user.isLifetimeSubscriber
+    ? intl.formatMessage(messages.lifetimeSubscription)
+    : intl.formatMessage(messages.noSubscription);
+  subtextItems.push(subscriptionStatus);
 
   return (
     <div className="relative z-40 mt-6 mb-12 lg:flex lg:items-end lg:justify-between lg:space-x-5">

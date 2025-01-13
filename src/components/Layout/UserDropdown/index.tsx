@@ -93,9 +93,26 @@ const UserDropdown = () => {
                     {user?.displayName}
                   </span>
                   {user?.displayName?.toLowerCase() !== user?.email && (
-                    <span className="truncate text-sm text-gray-400">
-                      {user?.email}
-                    </span>
+                    <>
+                      <span className="truncate text-sm text-gray-400">
+                        {user?.username &&
+                        user.username.match(/^[A-Z][a-z]+ [A-Z][A-Z]+$/)
+                          ? `${user.username
+                              .split(' ')[0]
+                              .toLowerCase()}.${user.username
+                              .split(' ')[1]
+                              .toLowerCase()}`
+                          : user?.username
+                          ? user.username.toLowerCase()
+                          : user?.email}
+                      </span>
+                      {user?.username &&
+                        !user.username.match(/^[A-Z][a-z]+ [A-Z][A-Z]+$/) && (
+                          <span className="truncate text-sm text-gray-400">
+                            {user?.email}
+                          </span>
+                        )}
+                    </>
                   )}
                 </div>
               </div>

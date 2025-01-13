@@ -23,6 +23,9 @@ export interface User {
   updatedAt: Date;
   requestCount: number;
   settings?: UserSettings;
+  subscriptionStatus?: 'active' | 'expired' | 'lifetime' | null;
+  subscriptionExpirationDate?: Date | null;
+  isLifetimeSubscriber?: boolean;
 }
 
 type NotificationAgentTypes = Record<NotificationAgentKey, number>;

@@ -12,6 +12,7 @@ import { radarrScanner } from '@server/lib/scanners/radarr';
 import { sonarrScanner } from '@server/lib/scanners/sonarr';
 import type { JobId } from '@server/lib/settings';
 import { getSettings } from '@server/lib/settings';
+import subscriptionsSync from '@server/lib/subscriptions';
 import watchlistSync from '@server/lib/watchlistsync';
 import logger from '@server/logger';
 import schedule from 'node-schedule';
@@ -234,6 +235,20 @@ export const startJobs = (): void => {
         label: 'Jobs',
       });
       refreshToken.run();
+    }),
+  });
+
+  scheduledJobs.push({
+    id: 'subscription-check',
+    name: 'Subscription Check',
+    type: 'process',
+    interval: 'hours',
+    cronSchedule: jobs['subscription-check'].schedule,
+    job: schedule.scheduleJob(jobs['subscription-check'].schedule, () => {
+      logger.info('Starting scheduled job: Subscription Check', {
+        label: 'Jobs',
+      });
+      subscriptionsSync.run();
     }),
   });
 

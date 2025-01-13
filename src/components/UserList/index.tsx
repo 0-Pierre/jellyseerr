@@ -58,6 +58,7 @@ const messages = defineMessages('components.UserList', {
     'Are you sure you want to delete this user? All of their request data will be permanently removed.',
   localuser: 'Local User',
   mediaServerUser: '{mediaServerName} User',
+  createjellyfinuser: 'Create Jellyfin User',
   createlocaluser: 'Create Local User',
   creating: 'Creating…',
   create: 'Create',
@@ -81,9 +82,25 @@ const messages = defineMessages('components.UserList', {
   sortRequests: 'Request Count',
   localLoginDisabled:
     'The <strong>Enable Local Sign-In</strong> setting is currently disabled.',
+  subscriptionStatus: 'Subscription Status',
+  subscriptionExpirationDate: 'Subscription Expiration Date',
+  suspiciousActivity: 'Suspicious Activity',
+  expired: 'Expired',
+  lifetime: 'Lifetime',
+  active: 'Active',
+  never: 'Never',
+  validationUsernameFormat: 'Username must be in format firstname.lastname',
+  validationUsernameRequired: 'Username is required',
 });
 
-type Sort = 'created' | 'updated' | 'requests' | 'displayname';
+type Sort =
+  | 'created'
+  | 'updated'
+  | 'requests'
+  | 'displayname'
+  | 'subscriptionStatus'
+  | 'subscriptionExpirationDate'
+  | 'suspiciousActivityCount';
 
 const UserList = () => {
   const intl = useIntl();
@@ -93,6 +110,9 @@ const UserList = () => {
   const { user: currentUser, hasPermission: currentHasPermission } = useUser();
   const [currentSort, setCurrentSort] = useState<Sort>('displayname');
   const [currentPageSize, setCurrentPageSize] = useState<number>(10);
+  const [createJellyfinModal, setCreateJellyfinModal] = useState({
+    isOpen: false,
+  });
 
   const page = router.query.page ? Number(router.query.page) : 1;
   const pageIndex = page - 1;
@@ -221,6 +241,25 @@ const UserList = () => {
     ),
   });
 
+  const CreateJellyfinUserValidation = Yup.object().shape({
+    username: Yup.string()
+      .required(intl.formatMessage(messages.validationUsernameRequired))
+      .matches(
+        /^[a-zA-Z]+\.[a-zA-Z]+$/,
+        intl.formatMessage(messages.validationUsernameFormat)
+      ),
+    email: Yup.string().email(intl.formatMessage(messages.validationEmail)),
+    password: Yup.lazy((value) =>
+      !value
+        ? Yup.string()
+        : Yup.string().min(
+            8,
+            intl.formatMessage(messages.validationpasswordminchars)
+          )
+    ),
+    locale: Yup.string(),
+  });
+
   if (!data) {
     return <LoadingSpinner />;
   }
@@ -231,6 +270,35 @@ const UserList = () => {
   const passwordGenerationEnabled =
     settings.currentSettings.applicationUrl &&
     settings.currentSettings.emailEnabled;
+
+  const getStatusBadge = (status: string | null | undefined) => {
+    switch (status) {
+      case 'expired':
+        return (
+          <Badge badgeType="danger">
+            {intl.formatMessage(messages.expired)}
+          </Badge>
+        );
+      case 'lifetime':
+        return (
+          <Badge badgeType="warning">
+            {intl.formatMessage(messages.lifetime)}
+          </Badge>
+        );
+      case 'active':
+        return (
+          <Badge badgeType="default">
+            {intl.formatMessage(messages.active)}
+          </Badge>
+        );
+      default:
+        return (
+          <Badge badgeType="default">
+            {intl.formatMessage(messages.never)}
+          </Badge>
+        );
+    }
+  };
 
   return (
     <>
@@ -514,6 +582,207 @@ const UserList = () => {
         )}
       </Transition>
 
+      <Transition
+        as="div"
+        enter="transition-opacity duration-300"
+        enterFrom="opacity-0"
+        enterTo="opacity-100"
+        leave="transition-opacity duration-300"
+        leaveFrom="opacity-100"
+        leaveTo="opacity-0"
+        show={createJellyfinModal.isOpen}
+      >
+        <Formik
+          initialValues={{
+            username: '',
+            email: '',
+            password: '',
+            genpassword: false,
+          }}
+          validationSchema={CreateJellyfinUserValidation}
+          onSubmit={async (values) => {
+            try {
+              const createJellyfinRes = await fetch(
+                '/api/v1/user/jellyfinuser',
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    username: values.username,
+                    email: values.email,
+                    password: values.genpassword ? null : values.password,
+                    genpassword: values.genpassword,
+                  }),
+                }
+              );
+
+              if (!createJellyfinRes.ok) {
+                throw new Error('Failed to create Jellyfin user');
+              }
+
+              const jellyfinUser = await createJellyfinRes.json();
+
+              const importRes = await fetch(
+                '/api/v1/user/import-from-jellyfin',
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    jellyfinUserIds: [jellyfinUser.jellyfinUserId],
+                    email: values.email,
+                  }),
+                }
+              );
+
+              if (!importRes.ok) {
+                throw new Error('Failed to import Jellyfin user');
+              }
+
+              addToast(intl.formatMessage(messages.usercreatedsuccess), {
+                appearance: 'success',
+                autoDismiss: true,
+              });
+
+              setCreateJellyfinModal({ isOpen: false });
+              revalidate();
+            } catch (e) {
+              addToast(intl.formatMessage(messages.usercreatedfailed), {
+                appearance: 'error',
+                autoDismiss: true,
+              });
+            }
+          }}
+        >
+          {({
+            errors,
+            touched,
+            isSubmitting,
+            values,
+            isValid,
+            setFieldValue,
+            handleSubmit,
+          }) => {
+            return (
+              <Modal
+                title={intl.formatMessage(messages.createjellyfinuser)}
+                onOk={() => handleSubmit()}
+                okText={
+                  isSubmitting
+                    ? intl.formatMessage(messages.creating)
+                    : intl.formatMessage(messages.create)
+                }
+                okDisabled={isSubmitting || !isValid}
+                okButtonType="primary"
+                onCancel={() => setCreateJellyfinModal({ isOpen: false })}
+              >
+                {currentHasPermission(Permission.ADMIN) &&
+                  !passwordGenerationEnabled && (
+                    <Alert
+                      title={intl.formatMessage(
+                        messages.passwordinfodescription
+                      )}
+                      type="info"
+                    />
+                  )}
+                <Form className="section">
+                  <div className="form-row">
+                    <label htmlFor="username" className="text-label">
+                      {intl.formatMessage(messages.username)}
+                      <span className="label-required">*</span>
+                    </label>
+                    <div className="form-input-area">
+                      <div className="form-input-field">
+                        <Field id="username" name="username" type="text" />
+                      </div>
+                      {errors.username &&
+                        touched.username &&
+                        typeof errors.username === 'string' && (
+                          <div className="error">{errors.username}</div>
+                        )}
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <label htmlFor="email" className="text-label">
+                      {intl.formatMessage(messages.email)}
+                      <span className="label-required">*</span>
+                    </label>
+                    <div className="form-input-area">
+                      <div className="form-input-field">
+                        <Field
+                          id="email"
+                          name="email"
+                          type="text"
+                          inputMode="email"
+                        />
+                      </div>
+                      {errors.email &&
+                        touched.email &&
+                        typeof errors.email === 'string' && (
+                          <div className="error">{errors.email}</div>
+                        )}
+                    </div>
+                  </div>
+                  <div
+                    className={`form-row ${
+                      passwordGenerationEnabled ? '' : 'opacity-50'
+                    }`}
+                  >
+                    <label htmlFor="genpassword" className="checkbox-label">
+                      {intl.formatMessage(messages.autogeneratepassword)}
+                      <span className="label-tip">
+                        {intl.formatMessage(messages.autogeneratepasswordTip)}
+                      </span>
+                    </label>
+                    <div className="form-input-area">
+                      <Field
+                        type="checkbox"
+                        id="genpassword"
+                        name="genpassword"
+                        disabled={!passwordGenerationEnabled}
+                        onClick={() => setFieldValue('password', '')}
+                      />
+                    </div>
+                  </div>
+                  <div
+                    className={`form-row ${
+                      values.genpassword ? 'opacity-50' : ''
+                    }`}
+                  >
+                    <label htmlFor="password" className="text-label">
+                      {intl.formatMessage(messages.password)}
+                      {!values.genpassword && (
+                        <span className="label-required">*</span>
+                      )}
+                    </label>
+                    <div className="form-input-area">
+                      <div className="form-input-field">
+                        <SensitiveInput
+                          as="field"
+                          id="password"
+                          name="password"
+                          type="password"
+                          autoComplete="new-password"
+                          disabled={values.genpassword}
+                        />
+                      </div>
+                      {errors.password &&
+                        touched.password &&
+                        typeof errors.password === 'string' && (
+                          <div className="error">{errors.password}</div>
+                        )}
+                    </div>
+                  </div>
+                </Form>
+              </Modal>
+            );
+          }}
+        </Formik>
+      </Transition>
+
       <div className="flex flex-col justify-between lg:flex-row lg:items-end">
         <Header>{intl.formatMessage(messages.userlist)}</Header>
         <div className="mt-2 flex flex-grow flex-col lg:flex-grow-0 lg:flex-row">
@@ -525,6 +794,14 @@ const UserList = () => {
             >
               <UserPlusIcon />
               <span>{intl.formatMessage(messages.createlocaluser)}</span>
+            </Button>
+            <Button
+              className="mb-2 flex-grow sm:mb-0 sm:mr-2"
+              buttonType="primary"
+              onClick={() => setCreateJellyfinModal({ isOpen: true })}
+            >
+              <UserPlusIcon />
+              <span>{intl.formatMessage(messages.createjellyfinuser)}</span>
             </Button>
             <Button
               className="flex-grow lg:mr-2"
@@ -563,14 +840,23 @@ const UserList = () => {
               value={currentSort}
               className="rounded-r-only"
             >
+              <option value="displayname">
+                {intl.formatMessage(messages.sortDisplayName)}
+              </option>
               <option value="created">
                 {intl.formatMessage(messages.sortCreated)}
               </option>
               <option value="requests">
                 {intl.formatMessage(messages.sortRequests)}
               </option>
-              <option value="displayname">
-                {intl.formatMessage(messages.sortDisplayName)}
+              <option value="subscriptionStatus">
+                {intl.formatMessage(messages.subscriptionStatus)}
+              </option>
+              <option value="subscriptionExpirationDate">
+                {intl.formatMessage(messages.subscriptionExpirationDate)}
+              </option>
+              <option value="suspiciousActivityCount">
+                {intl.formatMessage(messages.suspiciousActivity)}
               </option>
             </select>
           </div>
@@ -597,6 +883,15 @@ const UserList = () => {
             <Table.TH>{intl.formatMessage(messages.accounttype)}</Table.TH>
             <Table.TH>{intl.formatMessage(messages.role)}</Table.TH>
             <Table.TH>{intl.formatMessage(messages.created)}</Table.TH>
+            <Table.TH>
+              {intl.formatMessage(messages.subscriptionStatus)}
+            </Table.TH>
+            <Table.TH>
+              {intl.formatMessage(messages.subscriptionExpirationDate)}
+            </Table.TH>
+            <Table.TH>
+              {intl.formatMessage(messages.suspiciousActivity)}
+            </Table.TH>
             <Table.TH className="text-right">
               {(data.results ?? []).length > 1 && (
                 <Button
@@ -657,11 +952,21 @@ const UserList = () => {
                       user.username ||
                       user.jellyfinUsername ||
                       user.plexUsername
-                    )?.toLowerCase() !== user.email && (
-                      <div className="text-sm leading-5 text-gray-300">
-                        {user.email}
-                      </div>
-                    )}
+                    )?.toLowerCase() !== user.email &&
+                      user.email && (
+                        <div className="text-sm leading-5 text-gray-300">
+                          {user.username &&
+                          user.username.match(/^[A-Z][a-z]+ [A-Z][A-Z]+$/)
+                            ? `${user.username
+                                .split(' ')[0]
+                                .toLowerCase()}.${user.username
+                                .split(' ')[1]
+                                .toLowerCase()}`
+                            : user.username
+                            ? user.username.toLowerCase()
+                            : user.email}
+                        </div>
+                      )}
                   </div>
                 </div>
               </Table.TD>
@@ -718,6 +1023,17 @@ const UserList = () => {
                   day: 'numeric',
                 })}
               </Table.TD>
+              <Table.TD>{getStatusBadge(user.subscriptionStatus)}</Table.TD>
+              <Table.TD>
+                {user.subscriptionExpirationDate
+                  ? intl.formatDate(user.subscriptionExpirationDate, {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    })
+                  : 'N/A'}
+              </Table.TD>
+              <Table.TD>{user.suspiciousActivityCount}</Table.TD>
               <Table.TD alignText="right">
                 <Button
                   buttonType="warning"
@@ -747,7 +1063,7 @@ const UserList = () => {
             </tr>
           ))}
           <tr className="bg-gray-700">
-            <Table.TD colSpan={8} noPadding>
+            <Table.TD colSpan={11} noPadding>
               <nav
                 className="flex w-screen flex-col items-center space-x-4 space-y-3 px-6 py-3 sm:flex-row sm:space-y-0 lg:w-full"
                 aria-label="Pagination"
