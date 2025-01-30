@@ -187,6 +187,14 @@ userSettingsRoutes.post<
         : 'active'
       : null;
 
+    if (newSubscriptionStatus === 'active') {
+      const oneYearFromNow = new Date();
+      oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+      user.subscriptionExpirationDate = oneYearFromNow;
+    } else {
+      user.subscriptionExpirationDate = null;
+    }
+
     if (
       previousSubscriptionStatus !== newSubscriptionStatus &&
       user.jellyfinUserId
