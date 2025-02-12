@@ -224,9 +224,9 @@ userSettingsRoutes.post<
         EnableAudioPlaybackTranscoding: newSubscriptionStatus !== null,
         EnablePlaybackRemuxing: newSubscriptionStatus !== null,
         EnableContentDownloading: newSubscriptionStatus !== null,
-        PasswordResetProviderId:
-          'Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider',
         AuthenticationProviderId:
+          'Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider',
+        PasswordResetProviderId:
           'Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider',
       });
     }
