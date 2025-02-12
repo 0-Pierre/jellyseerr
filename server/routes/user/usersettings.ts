@@ -191,6 +191,14 @@ userSettingsRoutes.post<
         : 'active'
       : null;
 
+    if (newSubscriptionStatus === 'active') {
+      const oneYearFromNow = new Date();
+      oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+      user.subscriptionExpirationDate = oneYearFromNow;
+    } else {
+      user.subscriptionExpirationDate = null;
+    }
+
     if (
       previousSubscriptionStatus !== newSubscriptionStatus &&
       user.jellyfinUserId
@@ -216,9 +224,9 @@ userSettingsRoutes.post<
         EnableAudioPlaybackTranscoding: newSubscriptionStatus !== null,
         EnablePlaybackRemuxing: newSubscriptionStatus !== null,
         EnableContentDownloading: newSubscriptionStatus !== null,
-        PasswordResetProviderId:
-          'Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider',
         AuthenticationProviderId:
+          'Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider',
+        PasswordResetProviderId:
           'Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider',
       });
     }

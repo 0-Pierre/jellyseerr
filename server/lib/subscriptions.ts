@@ -47,9 +47,9 @@ const subscriptionsSync = {
                 EnableAudioPlaybackTranscoding: false,
                 EnablePlaybackRemuxing: false,
                 EnableContentDownloading: false,
-                PasswordResetProviderId:
-                  'Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider',
                 AuthenticationProviderId:
+                  'Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider',
+                PasswordResetProviderId:
                   'Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider',
               });
               logger.info(`Updated Jellyfin permissions for user ${user.id}`);
