@@ -564,11 +564,11 @@ class JellyfinAPI extends ExternalAPI {
   ): Promise<void> {
     await this.post(`/Users/${userId}/Policy`, {
       ...policy,
-      PasswordResetProviderId:
-        policy.PasswordResetProviderId ??
-        'Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider',
       AuthenticationProviderId:
         policy.AuthenticationProviderId ??
+        'Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider',
+      PasswordResetProviderId:
+        policy.PasswordResetProviderId ??
         'Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider',
     });
   }
