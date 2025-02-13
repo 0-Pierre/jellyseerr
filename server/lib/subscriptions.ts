@@ -1,6 +1,7 @@
 import JellyfinAPI from '@server/api/jellyfin';
 import { getRepository } from '@server/datasource';
 import { User } from '@server/entity/User';
+import notificationManager, { Notification } from '@server/lib/notifications';
 import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
 import { getHostname } from '@server/utils/getHostname';
@@ -27,6 +28,8 @@ const subscriptionsSync = {
           user.subscriptionExpirationDate &&
           new Date(user.subscriptionExpirationDate) < now
         ) {
+          const oldStatus = user.subscriptionStatus;
+
           user.subscriptionStatus = 'expired';
           user.permissions = 1277181952;
 
@@ -62,6 +65,21 @@ const subscriptionsSync = {
           }
 
           await userRepository.save(user);
+
+          if (oldStatus === 'active') {
+            notificationManager.sendNotification(
+              Notification.SUBSCRIPTION_EXPIRED,
+              {
+                notifyUser: user,
+                subject: 'Subscription Expired',
+                message:
+                  'Your subscription has expired. Some features may be restricted.',
+                notifyAdmin: false,
+                notifySystem: true,
+              }
+            );
+          }
+
           logger.info(
             `User ${user.id} subscription expired, permissions updated`
           );

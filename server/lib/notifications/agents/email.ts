@@ -66,6 +66,27 @@ class EmailAgent
       };
     }
 
+    if (type === Notification.SUBSCRIPTION_EXPIRED) {
+      return {
+        template: path.join(
+          __dirname,
+          '../../../templates/email/subscriptionexpired'
+        ),
+        message: {
+          to: recipientEmail,
+        },
+        locals: {
+          applicationUrl,
+          applicationTitle,
+          recipientName,
+          recipientEmail,
+          message:
+            payload.message ||
+            `Your ${applicationTitle} subscription has expired.`,
+        },
+      };
+    }
+
     const mediaType = payload.media
       ? payload.media.mediaType === MediaType.MOVIE
         ? 'movie'
