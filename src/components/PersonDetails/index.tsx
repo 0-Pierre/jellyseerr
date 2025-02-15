@@ -11,7 +11,7 @@ import type { PersonCombinedCreditsResponse } from '@server/interfaces/api/perso
 import type { PersonDetails as PersonDetailsType } from '@server/models/Person';
 import { groupBy } from 'lodash';
 import { useRouter } from 'next/router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useIntl } from 'react-intl';
 import TruncateMarkup from 'react-truncate-markup';
 import useSWR from 'swr';
@@ -28,7 +28,7 @@ const messages = defineMessages('components.PersonDetails', {
 const PersonDetails = () => {
   const intl = useIntl();
   const router = useRouter();
-  const { data, error } = useSWR<PersonDetailsType>(
+  const { data, error, mutate } = useSWR<PersonDetailsType>(
     `/api/v1/person/${router.query.personId}`
   );
   const [showBio, setShowBio] = useState(false);
@@ -37,6 +37,73 @@ const PersonDetails = () => {
     useSWR<PersonCombinedCreditsResponse>(
       `/api/v1/person/${router.query.personId}/combined_credits`
     );
+
+  useEffect(() => {
+    const caaEventSource = new EventSource('/caaproxy/updates');
+    const tadbEventSource = new EventSource('/tadbproxy/updates');
+
+    const processCAAUpdate = (coverArtData: { id: string; url: string }) => {
+      mutate((currentData) => {
+        if (!currentData) return currentData;
+
+        return {
+          ...currentData,
+          artist: {
+            ...currentData.artist,
+            releaseGroups: currentData.artist?.releaseGroups?.map((release) => {
+              if (release.id === coverArtData.id) {
+                return {
+                  ...release,
+                  posterPath: coverArtData.url,
+                };
+              }
+              return release;
+            }),
+          },
+        };
+      }, false);
+    };
+
+    const processTADBUpdate = (tadbData: {
+      id: string;
+      urls: {
+        artistThumb: string | null;
+        artistBackground: string | null;
+      };
+    }) => {
+      mutate((currentData) => {
+        if (!currentData) return currentData;
+
+        if (
+          currentData.artist?.releaseGroups?.some(
+            (group) => group['artist-credit']?.[0]?.name === currentData.name
+          )
+        ) {
+          return {
+            ...currentData,
+            artistThumb: tadbData.urls.artistThumb,
+            artistBackdrop: tadbData.urls.artistBackground,
+          };
+        }
+        return currentData;
+      }, false);
+    };
+
+    caaEventSource.onmessage = (event) => {
+      const coverArtData = JSON.parse(event.data);
+      processCAAUpdate(coverArtData);
+    };
+
+    tadbEventSource.onmessage = (event) => {
+      const tadbData = JSON.parse(event.data);
+      processTADBUpdate(tadbData);
+    };
+
+    return () => {
+      caaEventSource.close();
+      tadbEventSource.close();
+    };
+  }, [mutate]);
 
   const sortedCast = useMemo(() => {
     const grouped = groupBy(combinedCredits?.cast ?? [], 'id');
@@ -73,6 +140,48 @@ const PersonDetails = () => {
       return 1;
     });
   }, [combinedCredits]);
+
+  const groupedReleases = useMemo(() => {
+    if (!data?.artist?.releaseGroups) {
+      return null;
+    }
+
+    return groupBy(data.artist.releaseGroups, 'primary-type');
+  }, [data?.artist?.releaseGroups]);
+
+  const renderReleaseGroup = (title: string, releases: any[]) => {
+    if (!releases?.length) {
+      return null;
+    }
+
+    return (
+      <>
+        <div className="slider-header">
+          <div className="slider-title">
+            <span>{title}</span>
+          </div>
+        </div>
+        <ul className="cards-vertical">
+          {releases.map((media) => (
+            <li key={`release-${media.id}`}>
+              <TitleCard
+                key={media.id}
+                id={media.id}
+                title={media.title}
+                year={media['first-release-date']}
+                image={media.posterPath}
+                mediaType="album"
+                artist={media['artist-credit']?.[0]?.name}
+                type={media['primary-type']}
+                status={media.mediaInfo?.status}
+                canExpand
+              />
+            </li>
+          ))}
+        </ul>
+      </>
+    );
+  };
 
   if (!data && !error) {
     return <LoadingSpinner />;
@@ -224,11 +333,15 @@ const PersonDetails = () => {
           data.biography ? 'lg:items-start' : ''
         }`}
       >
-        {data.profilePath && (
+        {(data.profilePath || data.artist?.artistThumb) && (
           <div className="relative mb-6 mr-0 h-36 w-36 flex-shrink-0 overflow-hidden rounded-full ring-1 ring-gray-700 lg:mb-0 lg:mr-6 lg:h-44 lg:w-44">
             <CachedImage
-              type="tmdb"
-              src={`https://image.tmdb.org/t/p/w600_and_h900_bestv2${data.profilePath}`}
+              type={data.profilePath ? 'tmdb' : 'music'}
+              src={
+                data.profilePath
+                  ? `https://image.tmdb.org/t/p/w600_and_h900_bestv2${data.profilePath}`
+                  : data.artist?.artistThumb ?? ''
+              }
               alt=""
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               fill
@@ -274,6 +387,14 @@ const PersonDetails = () => {
           )}
         </div>
       </div>
+      {groupedReleases && (
+        <>
+          {renderReleaseGroup('Albums', groupedReleases['Album'])}
+          {renderReleaseGroup('Singles', groupedReleases['Single'])}
+          {renderReleaseGroup('EPs', groupedReleases['EP'])}
+          {renderReleaseGroup('Other Releases', groupedReleases['Other'])}
+        </>
+      )}
       {data.knownForDepartment === 'Acting' ? [cast, crew] : [crew, cast]}
       {isLoading && <LoadingSpinner />}
     </>

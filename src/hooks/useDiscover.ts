@@ -1,4 +1,5 @@
 import { MediaStatus } from '@server/constants/media';
+import { useEffect } from 'react';
 import useSWRInfinite from 'swr/infinite';
 import useSettings from './useSettings';
 
@@ -84,6 +85,35 @@ const useDiscover = <
     }
   );
 
+  useEffect(() => {
+    const eventSource = new EventSource('/caaproxy/updates');
+
+    const processUpdate = (coverArtData: { id: string; url: string }) => {
+      mutate((currentData) => {
+        if (!currentData) return currentData;
+
+        return currentData.map((page) => ({
+          ...page,
+          results: page.results.map((result) => {
+            if (result?.id?.toString() === coverArtData.id) {
+              return { ...result, posterPath: coverArtData.url };
+            }
+            return result;
+          }),
+        }));
+      }, false);
+    };
+
+    eventSource.onmessage = (event) => {
+      const coverArtData = JSON.parse(event.data);
+      processUpdate(coverArtData);
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [mutate]);
+
   const resultIds: Set<number> = new Set<number>();
 
   const isLoadingInitialData = !data && !error;
@@ -114,7 +144,9 @@ const useDiscover = <
   if (settings.currentSettings.hideAvailable && hideAvailable) {
     titles = titles.filter(
       (i) =>
-        (i.mediaType === 'movie' || i.mediaType === 'tv') &&
+        (i.mediaType === 'movie' ||
+          i.mediaType === 'tv' ||
+          i.mediaType === 'music') &&
         i.mediaInfo?.status !== MediaStatus.AVAILABLE &&
         i.mediaInfo?.status !== MediaStatus.PARTIALLY_AVAILABLE
     );

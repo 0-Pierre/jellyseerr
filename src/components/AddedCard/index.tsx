@@ -1,43 +1,60 @@
 import TitleCard from '@app/components/TitleCard';
 import { Permission, useUser } from '@app/hooks/useUser';
 import type { MovieDetails } from '@server/models/Movie';
+import type { MusicDetails } from '@server/models/Music';
 import type { TvDetails } from '@server/models/Tv';
 import { useInView } from 'react-intersection-observer';
 import useSWR from 'swr';
 
-export interface TmdbTitleCardProps {
-  id: number;
-  tmdbId: number;
+export interface AddedCardProps {
+  id?: number | string;
+  tmdbId?: number;
   tvdbId?: number;
-  type: 'movie' | 'tv';
+  mbId?: string;
+  type: 'movie' | 'tv' | 'music';
   canExpand?: boolean;
   isAddedToWatchlist?: boolean;
   mutateParent?: () => void;
 }
 
-const isMovie = (movie: MovieDetails | TvDetails): movie is MovieDetails => {
-  return (movie as MovieDetails).title !== undefined;
+const isMovie = (
+  media: MovieDetails | TvDetails | MusicDetails
+): media is MovieDetails => {
+  return (media as MovieDetails).title !== undefined;
 };
 
-const TmdbTitleCard = ({
+const isMusic = (
+  media: MovieDetails | TvDetails | MusicDetails
+): media is MusicDetails => {
+  return (media as MusicDetails).artist !== undefined;
+};
+
+const AddedCard = ({
   id,
   tmdbId,
   tvdbId,
+  mbId,
   type,
   canExpand,
   isAddedToWatchlist = false,
   mutateParent,
-}: TmdbTitleCardProps) => {
+}: AddedCardProps) => {
   const { hasPermission } = useUser();
 
   const { ref, inView } = useInView({
     triggerOnce: true,
   });
+
   const url =
-    type === 'movie' ? `/api/v1/movie/${tmdbId}` : `/api/v1/tv/${tmdbId}`;
-  const { data: title, error } = useSWR<MovieDetails | TvDetails>(
-    inView ? `${url}` : null
-  );
+    type === 'music'
+      ? `/api/v1/music/${mbId}`
+      : type === 'movie'
+      ? `/api/v1/movie/${tmdbId}`
+      : `/api/v1/tv/${tmdbId}`;
+
+  const { data: title, error } = useSWR<
+    MovieDetails | TvDetails | MusicDetails
+  >(inView ? url : null);
 
   if (!title && !error) {
     return (
@@ -48,14 +65,36 @@ const TmdbTitleCard = ({
   }
 
   if (!title) {
-    return hasPermission(Permission.ADMIN) ? (
+    return hasPermission(Permission.ADMIN) && id ? (
       <TitleCard.ErrorCard
         id={id}
         tmdbId={tmdbId}
         tvdbId={tvdbId}
+        mbId={mbId}
         type={type}
       />
     ) : null;
+  }
+
+  if (isMusic(title)) {
+    return (
+      <TitleCard
+        key={title.id}
+        id={title.id}
+        isAddedToWatchlist={
+          title.mediaInfo?.watchlists?.length || isAddedToWatchlist
+        }
+        image={title.posterPath}
+        status={title.mediaInfo?.status}
+        title={title.title}
+        artist={title.artist.name}
+        type={title.type}
+        year={title.releaseDate}
+        mediaType={'album'}
+        canExpand={canExpand}
+        mutateParent={mutateParent}
+      />
+    );
   }
 
   return isMovie(title) ? (
@@ -95,4 +134,4 @@ const TmdbTitleCard = ({
   );
 };
 
-export default TmdbTitleCard;
+export default AddedCard;

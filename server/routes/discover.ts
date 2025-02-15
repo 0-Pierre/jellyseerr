@@ -1,3 +1,5 @@
+import CoverArtArchive from '@server/api/coverartarchive';
+import ListenBrainzAPI from '@server/api/listenbrainz';
 import PlexTvAPI from '@server/api/plextv';
 import type { SortOptions } from '@server/api/themoviedb';
 import TheMovieDb from '@server/api/themoviedb';
@@ -5,6 +7,7 @@ import type { TmdbKeyword } from '@server/api/themoviedb/interfaces';
 import { MediaType } from '@server/constants/media';
 import { getRepository } from '@server/datasource';
 import Media from '@server/entity/Media';
+import MetadataAlbum from '@server/entity/MetadataAlbum';
 import { User } from '@server/entity/User';
 import { Watchlist } from '@server/entity/Watchlist';
 import type {
@@ -24,6 +27,7 @@ import { mapNetwork } from '@server/models/Tv';
 import { isCollection, isMovie, isPerson } from '@server/utils/typeHelpers';
 import { Router } from 'express';
 import { sortBy } from 'lodash';
+import { In } from 'typeorm';
 import { z } from 'zod';
 
 export const createTmdbWithRegionLanguage = (user?: User): TheMovieDb => {
@@ -823,6 +827,99 @@ discoverRoutes.get<{ language: string }, GenreSliderItem[]>(
     }
   }
 );
+
+discoverRoutes.get('/music', async (req, res, next) => {
+  const listenbrainz = new ListenBrainzAPI();
+  const coverArtArchive = CoverArtArchive.getInstance();
+  const metadataAlbumRepository = getRepository(MetadataAlbum);
+
+  try {
+    const page = Number(req.query.page) || 1;
+    const pageSize = 20;
+    const offset = (page - 1) * pageSize;
+    const sortBy = (req.query.sortBy as string) || 'listen_count.desc';
+
+    const data = await listenbrainz.getTopAlbums({
+      offset,
+      count: pageSize,
+      range: 'week',
+    });
+
+    const mbIds = data.payload.release_groups
+      .map((album) => album.release_group_mbid)
+      .filter((id): id is string => !!id);
+
+    const [metadataAlbums, media] = await Promise.all([
+      metadataAlbumRepository.find({
+        where: {
+          mbAlbumId: In(mbIds),
+        },
+      }),
+      Media.getRelatedMedia(req.user, mbIds),
+    ]);
+
+    const results = data.payload.release_groups.map((album) => {
+      if (!album.release_group_mbid) {
+        return {
+          id: null,
+          mediaType: 'album',
+          'primary-type': 'Album',
+          title: album.release_group_name,
+          'artist-credit': [{ name: album.artist_name }],
+          listenCount: album.listen_count,
+          'first-release-date': '',
+          posterPath: undefined,
+        };
+      }
+
+      const metadata = metadataAlbums.find(
+        (ma) => ma.mbAlbumId === album.release_group_mbid
+      );
+
+      if (!metadata?.caaUrl) {
+        coverArtArchive.getCoverArt(album.release_group_mbid, true);
+      }
+
+      return {
+        id: album.release_group_mbid,
+        mediaType: 'album',
+        'primary-type': 'Album',
+        title: album.release_group_name,
+        'artist-credit': [{ name: album.artist_name }],
+        artistId: album.artist_mbids[0],
+        mediaInfo: media?.find((med) => med.mbId === album.release_group_mbid),
+        listenCount: album.listen_count,
+        'first-release-date': '',
+        posterPath: metadata?.caaUrl ?? undefined,
+      };
+    });
+
+    switch (sortBy) {
+      case 'listen_count.asc':
+        results.sort((a, b) => a.listenCount - b.listenCount);
+        break;
+      case 'listen_count.desc':
+        results.sort((a, b) => b.listenCount - a.listenCount);
+        break;
+    }
+
+    return res.json({
+      page,
+      totalPages: Math.ceil(data.payload.count / pageSize),
+      totalResults: data.payload.count,
+      results,
+    });
+  } catch (e) {
+    logger.error('Failed to retrieve popular music', {
+      label: 'API',
+      error: e.message,
+    });
+    return next({
+      status: 500,
+      message: 'Unable to retrieve popular music.',
+    });
+  }
+});
 
 discoverRoutes.get<Record<string, unknown>, WatchlistResponse>(
   '/watchlist',

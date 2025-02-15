@@ -6,7 +6,7 @@ const imageLoader: ImageLoader = ({ src }) => src;
 
 export type CachedImageProps = ImageProps & {
   src: string;
-  type: 'tmdb' | 'avatar';
+  type: 'tmdb' | 'avatar' | 'music';
 };
 
 /**
@@ -22,8 +22,17 @@ const CachedImage = ({ src, type, ...props }: CachedImageProps) => {
     // tmdb stuff
     imageUrl =
       currentSettings.cacheImages && !src.startsWith('/')
-        ? src.replace(/^https:\/\/image\.tmdb\.org\//, '/imageproxy/')
+        ? src.replace(/^https:\/\/image\.tmdb\.org\//, '/tmdbproxy/')
         : src;
+  } else if (type === 'music') {
+    // Cover Art Archive and TheAudioDB images
+    imageUrl = src.startsWith('https://archive.org/')
+      ? src.replace(/^https:\/\/archive\.org\//, '/caaproxy/')
+      : currentSettings.cacheImages &&
+        !src.startsWith('/') &&
+        src.startsWith('https://r2.theaudiodb.com/')
+      ? src.replace(/^https:\/\/r2\.theaudiodb\.com\//, '/tadbproxy/')
+      : src;
   } else if (type === 'avatar') {
     // jellyfin avatar (if any)
     imageUrl = src;
