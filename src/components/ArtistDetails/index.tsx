@@ -7,7 +7,6 @@ import TitleCard from '@app/components/TitleCard';
 import globalMessages from '@app/i18n/globalMessages';
 import Error from '@app/pages/_error';
 import defineMessages from '@app/utils/defineMessages';
-import { MediaStatus } from '@server/constants/media';
 import type { ArtistDetails as ArtistDetailsType } from '@server/models/Artist';
 import { groupBy } from 'lodash';
 import { useRouter } from 'next/router';
@@ -102,13 +101,7 @@ const ArtistDetails = () => {
                 mediaType="album"
                 artist={media['artist-credit']?.[0]?.name}
                 type={media['primary-type']}
-                status={
-                  media.mediaInfo?.status
-                    ? MediaStatus[
-                        media.mediaInfo.status as keyof typeof MediaStatus
-                      ]
-                    : undefined
-                }
+                status={media.mediaInfo?.status}
                 canExpand
               />
             </li>

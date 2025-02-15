@@ -164,7 +164,9 @@ searchRoutes.get('/', async (req, res, next) => {
 
     const media = await Media.getRelatedMedia(
       req.user,
-      results.results.map((result) => ('id' in result ? Number(result.id) : 0))
+      results.results.map((result) => {
+        return result.id.toString();
+      })
     );
 
     const mappedResults = await mapSearchResults(results.results, media);

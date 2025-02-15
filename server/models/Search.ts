@@ -198,7 +198,6 @@ export const mapPersonResult = (
 
 export const mapArtistResult = (
   artistResult: MbArtistResult,
-  media?: Media
 ): ArtistResult => ({
   id: artistResult.id,
   score: artistResult.score,
@@ -208,7 +207,6 @@ export const mapArtistResult = (
   'sort-name': artistResult['sort-name'],
   country: artistResult.country,
   disambiguation: artistResult.disambiguation,
-  mediaInfo: media,
   artistThumb: artistResult.artistThumb,
   artistBackdrop: artistResult.artistBackdrop,
 });

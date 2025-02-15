@@ -1,3 +1,5 @@
+import type Media from '@server/entity/Media';
+
 export interface ArtistDetails {
   name: string;
   area?: string;
@@ -25,8 +27,6 @@ export interface ArtistDetails {
     }[];
     'primary-type': string;
     posterPath?: string;
-    mediaInfo?: {
-      status?: string;
-    };
+    mediaInfo?: Media;
   }[];
 }
