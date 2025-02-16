@@ -197,7 +197,7 @@ export const mapPersonResult = (
 });
 
 export const mapArtistResult = (
-  artistResult: MbArtistResult,
+  artistResult: MbArtistResult
 ): ArtistResult => ({
   id: artistResult.id,
   score: artistResult.score,
