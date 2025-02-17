@@ -38,18 +38,23 @@ personRoutes.get('/:id', async (req, res, next) => {
         limit: 1,
       });
 
-      if (
-        mbArtists.length > 0 &&
-        mbArtists[0].name.toLowerCase() === person.name.toLowerCase() &&
-        mbArtists[0].type === 'Person'
-      ) {
-        artistId = mbArtists[0].id;
-        const mapping =
-          (await personMapper.getMappingFromCache(artistId)) ||
-          (await personMapper.getMapping(artistId, person.name, false));
+      if (mbArtists.length > 0) {
+        const artist = mbArtists[0];
+        const nameMatches =
+          artist.name.toLowerCase() === person.name.toLowerCase() ||
+          artist.aliases?.some(
+            (alias) => alias.name.toLowerCase() === person.name.toLowerCase()
+          );
 
-        if (mapping?.personId && mapping.personId !== person.id) {
-          artistId = null;
+        if (nameMatches && artist.type === 'Person') {
+          artistId = artist.id;
+          const mapping =
+            (await personMapper.getMappingFromCache(artistId)) ||
+            (await personMapper.getMapping(artistId, person.name, false));
+
+          if (mapping?.personId && mapping.personId !== person.id) {
+            artistId = null;
+          }
         }
       }
     } catch (error) {
