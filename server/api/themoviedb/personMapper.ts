@@ -133,14 +133,36 @@ class TmdbPersonMapper extends ExternalAPI {
       this.fetchingIds.add(artistId);
       const metadataArtistRepository = getRepository(MetadataArtist);
 
+      const cleanArtistName = artistName
+        .split(/(?:feat\.?|ft\.?|&|,)/i)[0]
+        .trim()
+        .replace(/['']/g, "'");
+
       const searchResults = await this.searchPerson({
-        query: artistName,
+        query: cleanArtistName,
         language: 'en',
       });
 
       const exactMatch = searchResults.results.find(
-        (person: TmdbPersonResult) =>
-          person.name.toLowerCase() === artistName.toLowerCase()
+        (person: TmdbPersonResult) => {
+          const normalizedPersonName = person.name
+            .toLowerCase()
+            .normalize('NFKD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/['']/g, "'")
+            .replace(/[^a-z0-9]/g, '')
+            .trim();
+
+          const normalizedArtistName = cleanArtistName
+            .toLowerCase()
+            .normalize('NFKD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/['']/g, "'")
+            .replace(/[^a-z0-9]/g, '')
+            .trim();
+
+          return normalizedPersonName === normalizedArtistName;
+        }
       );
 
       const mapping = {

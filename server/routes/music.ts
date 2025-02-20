@@ -47,16 +47,14 @@ musicRoutes.get('/:id', async (req, res, next) => {
     const artistId =
       albumDetails.release_group_metadata?.artist?.artists[0]?.artist_mbid;
 
-    const [metadataAlbum, metadataArtist] = await Promise.all([
-      getRepository(MetadataAlbum).findOne({
-        where: { mbAlbumId: req.params.id },
-      }),
-      artistId
-        ? getRepository(MetadataArtist).findOne({
-            where: { mbArtistId: artistId },
-          })
-        : undefined,
-    ]);
+    const metadataAlbum = await getRepository(MetadataAlbum).findOne({
+      where: { mbAlbumId: req.params.id },
+    });
+    let metadataArtist = artistId
+      ? await getRepository(MetadataArtist).findOne({
+          where: { mbArtistId: artistId },
+        })
+      : undefined;
 
     if (!metadataAlbum?.caaUrl) {
       coverArtArchive.getCoverArt(req.params.id, true);
@@ -71,20 +69,22 @@ musicRoutes.get('/:id', async (req, res, next) => {
       !metadataArtist?.tmdbPersonId &&
       albumDetails.release_group_metadata?.artist?.artists[0]?.type === 'Person'
     ) {
-      personMapper
-        .getMapping(
+      try {
+        await personMapper.getMapping(
           artistId,
-          albumDetails.release_group_metadata.artist.artists[0].name,
-          true
-        )
-        .catch((error) => {
-          logger.error('Failed to get TMDB person mapping', {
-            label: 'Music API',
-            artistName:
-              albumDetails.release_group_metadata.artist.artists[0].name,
-            error: error.message,
-          });
+          albumDetails.release_group_metadata.artist.artists[0].name
+        );
+        metadataArtist = await getRepository(MetadataArtist).findOne({
+          where: { mbArtistId: artistId },
         });
+      } catch (error) {
+        logger.error('Failed to get TMDB person mapping', {
+          label: 'Music API',
+          artistName:
+            albumDetails.release_group_metadata.artist.artists[0].name,
+          error: error.message,
+        });
+      }
     }
 
     const trackArtistIds = albumDetails.mediums
@@ -93,34 +93,40 @@ musicRoutes.get('/:id', async (req, res, next) => {
       .filter((artist) => artist.artist_mbid)
       .map((artist) => artist.artist_mbid);
 
-    const trackArtistMetadata = await getRepository(MetadataArtist).find({
+    let trackArtistMetadata = await getRepository(MetadataArtist).find({
       where: { mbArtistId: In(trackArtistIds) },
     });
 
-    albumDetails.mediums.forEach((medium) =>
-      medium.tracks.forEach((track) =>
+    const trackArtistPromises = albumDetails.mediums.flatMap((medium) =>
+      medium.tracks.flatMap((track) =>
         track.artists
           .filter((artist) => artist.artist_mbid)
-          .forEach((artist) => {
-            if (
+          .filter(
+            (artist) =>
               !trackArtistMetadata.some(
                 (m) => m.mbArtistId === artist.artist_mbid
               )
-            ) {
-              personMapper
-                .getMapping(artist.artist_mbid, artist.artist_credit_name, true)
-                .catch((error) => {
-                  logger.error('Failed to get TMDB person mapping for artist', {
-                    label: 'Music API',
-                    artistName: artist.artist_credit_name,
-                    artistMbid: artist.artist_mbid,
-                    error: error.message,
-                  });
+          )
+          .map((artist) =>
+            personMapper
+              .getMapping(artist.artist_mbid, artist.artist_credit_name)
+              .catch((error) => {
+                logger.error('Failed to get TMDB person mapping for artist', {
+                  label: 'Music API',
+                  artistName: artist.artist_credit_name,
+                  artistMbid: artist.artist_mbid,
+                  error: error.message,
                 });
-            }
-          })
+              })
+          )
       )
     );
+
+    await Promise.all(trackArtistPromises);
+
+    trackArtistMetadata = await getRepository(MetadataArtist).find({
+      where: { mbArtistId: In(trackArtistIds) },
+    });
 
     const mappedDetails = mapMusicDetails(albumDetails, media, onUserWatchlist);
 
@@ -262,36 +268,46 @@ musicRoutes.get('/:id/artist', async (req, res, next) => {
         : [];
 
     const transformedSimilarArtists = artistData.similarArtists?.artists
-      ? artistData.similarArtists.artists.map((artist) => {
-          const metadata = similarArtistMetadata.find(
-            (m) => m.mbArtistId === artist.artist_mbid
-          );
+      ? await Promise.all(
+          artistData.similarArtists.artists.map(async (artist) => {
+            const metadata = similarArtistMetadata.find(
+              (m) => m.mbArtistId === artist.artist_mbid
+            );
 
-          if (!metadata?.tadbThumb && !metadata?.tadbCover) {
-            theAudioDb.getArtistImages(artist.artist_mbid, true);
-          }
+            if (!metadata?.tadbThumb && !metadata?.tadbCover) {
+              theAudioDb.getArtistImages(artist.artist_mbid, true);
+            }
 
-          if (artist.type === 'Person' && !metadata?.tmdbPersonId) {
-            personMapper
-              .getMapping(artist.artist_mbid, artist.name, true)
-              .catch((error) => {
+            let updatedMetadata = metadata;
+            if (artist.type === 'Person' && !metadata?.tmdbPersonId) {
+              try {
+                await personMapper.getMapping(artist.artist_mbid, artist.name);
+                updatedMetadata =
+                  (await metadataArtistRepository.findOne({
+                    where: { mbArtistId: artist.artist_mbid },
+                  })) ?? undefined;
+              } catch (error) {
                 logger.error('Failed to get TMDB person mapping', {
                   label: 'Music API',
                   artistName: artist.name,
                   error: error.message,
                 });
-              });
-          }
+              }
+            }
 
-          return {
-            ...artist,
-            artistThumb: metadata?.tmdbThumb ?? metadata?.tadbThumb ?? null,
-            artistBackground: metadata?.tadbCover ?? null,
-            tmdbPersonId: metadata?.tmdbPersonId
-              ? Number(metadata.tmdbPersonId)
-              : null,
-          };
-        })
+            return {
+              ...artist,
+              artistThumb:
+                updatedMetadata?.tmdbThumb ??
+                updatedMetadata?.tadbThumb ??
+                null,
+              artistBackground: updatedMetadata?.tadbCover ?? null,
+              tmdbPersonId: updatedMetadata?.tmdbPersonId
+                ? Number(updatedMetadata.tmdbPersonId)
+                : null,
+            };
+          })
+        )
       : [];
 
     return res.status(200).json({
