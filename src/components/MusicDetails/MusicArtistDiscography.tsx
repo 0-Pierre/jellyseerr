@@ -27,6 +27,8 @@ const MusicArtistDiscography = () => {
   );
 
   const releaseGroups = artistData?.artist?.releaseGroups ?? [];
+  const mainArtistName =
+    musicData?.artist.name.split(/[&,]|\sfeat\./)[0].trim() ?? '';
 
   if (!musicData && !artistData) {
     return <Error statusCode={404} />;
@@ -37,9 +39,9 @@ const MusicArtistDiscography = () => {
       <PageTitle
         title={[
           intl.formatMessage(messages.discography, {
-            artistName: musicData?.artist.name ?? '',
+            artistName: mainArtistName,
           }),
-          musicData?.artist.name,
+          mainArtistName,
         ]}
       />
       <div className="mt-1 mb-5">
@@ -49,14 +51,14 @@ const MusicArtistDiscography = () => {
               href={`/music/${musicData?.mbId}`}
               className="hover:underline"
             >
-              {`${musicData?.title} ${intl.formatMessage(messages.byartist)} ${
-                musicData?.artist.name
-              }`}
+              {`${musicData?.title} ${intl.formatMessage(
+                messages.byartist
+              )} ${mainArtistName}`}
             </Link>
           }
         >
           {intl.formatMessage(messages.discography, {
-            artistName: musicData?.artist.name ?? '',
+            artistName: mainArtistName,
           })}
         </Header>
       </div>
