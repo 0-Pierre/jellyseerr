@@ -23,6 +23,19 @@ personRoutes.get('/:id', async (req, res, next) => {
   const theAudioDb = TheAudioDb.getInstance();
   const coverArtArchive = CoverArtArchive.getInstance();
 
+  const typeOrder = [
+    'Album',
+    'EP',
+    'Single',
+    'Live',
+    'Compilation',
+    'Remix',
+    'Soundtrack',
+    'Broadcast',
+    'Demo',
+    'Other',
+  ];
+
   try {
     const person = await tmdb.getPerson({
       personId: Number(req.params.id),
@@ -81,6 +94,12 @@ personRoutes.get('/:id', async (req, res, next) => {
         if (artistData?.releaseGroups) {
           const sortedReleaseGroups = [...artistData.releaseGroups].sort(
             (a, b) => {
+              const typeIndexA = typeOrder.indexOf(a.type || 'Other');
+              const typeIndexB = typeOrder.indexOf(b.type || 'Other');
+              if (typeIndexA !== typeIndexB) {
+                return typeIndexA - typeIndexB;
+              }
+
               const dateA = a.date ? new Date(a.date).getTime() : 0;
               const dateB = b.date ? new Date(b.date).getTime() : 0;
               return dateB - dateA;
@@ -113,6 +132,8 @@ personRoutes.get('/:id', async (req, res, next) => {
                 'first-release-date': releaseGroup.date,
                 'artist-credit': [{ name: releaseGroup.artist_credit_name }],
                 'primary-type': releaseGroup.type || 'Other',
+                secondary_types: releaseGroup.secondary_types || [],
+                total_listen_count: releaseGroup.total_listen_count || 0,
                 posterPath: cachedCoverArt ?? undefined,
                 mediaInfo: relatedMedia.find(
                   (media) => media.mbId === releaseGroup.mbid

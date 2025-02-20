@@ -23,6 +23,7 @@ export interface PersonDetails {
   artist?: {
     artistThumb?: string;
     releaseGroups?: {
+      secondary_types?: string[];
       id: string;
       title: string;
       'first-release-date': string;

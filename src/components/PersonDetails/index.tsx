@@ -9,7 +9,7 @@ import Error from '@app/pages/_error';
 import defineMessages from '@app/utils/defineMessages';
 import type { PersonCombinedCreditsResponse } from '@server/interfaces/api/personInterfaces';
 import type { PersonDetails as PersonDetailsType } from '@server/models/Person';
-import { groupBy } from 'lodash';
+import { groupBy, orderBy } from 'lodash';
 import { useRouter } from 'next/router';
 import { useEffect, useMemo, useState } from 'react';
 import { useIntl } from 'react-intl';
@@ -23,6 +23,16 @@ const messages = defineMessages('components.PersonDetails', {
   appearsin: 'Appearances',
   crewmember: 'Crew',
   ascharacter: 'as {character}',
+  album: 'Album',
+  single: 'Single',
+  ep: 'EP',
+  live: 'Live',
+  compilation: 'Compilation',
+  remix: 'Remix',
+  soundtrack: 'Soundtrack',
+  broadcast: 'Broadcast',
+  demo: 'Demo',
+  other: 'Other',
 });
 
 const PersonDetails = () => {
@@ -146,13 +156,26 @@ const PersonDetails = () => {
       return null;
     }
 
-    return groupBy(data.artist.releaseGroups, 'primary-type');
+    const grouped = groupBy(data.artist.releaseGroups, (release) => {
+      if (release.secondary_types?.length) {
+        return release.secondary_types[0];
+      }
+      return release['primary-type'] || 'Other';
+    });
+
+    return grouped;
   }, [data?.artist?.releaseGroups]);
 
   const renderReleaseGroup = (title: string, releases: any[]) => {
     if (!releases?.length) {
       return null;
     }
+
+    const sortedReleases = orderBy(
+      releases,
+      [(r) => r['first-release-date'] || '', 'title'],
+      ['desc', 'asc']
+    );
 
     return (
       <>
@@ -162,7 +185,7 @@ const PersonDetails = () => {
           </div>
         </div>
         <ul className="cards-vertical">
-          {releases.map((media) => (
+          {sortedReleases.map((media) => (
             <li key={`release-${media.id}`}>
               <TitleCard
                 key={media.id}
@@ -389,10 +412,46 @@ const PersonDetails = () => {
       </div>
       {groupedReleases && (
         <>
-          {renderReleaseGroup('Albums', groupedReleases['Album'])}
-          {renderReleaseGroup('Singles', groupedReleases['Single'])}
-          {renderReleaseGroup('EPs', groupedReleases['EP'])}
-          {renderReleaseGroup('Other Releases', groupedReleases['Other'])}
+          {renderReleaseGroup(
+            intl.formatMessage(messages.album),
+            groupedReleases['Album']
+          )}
+          {renderReleaseGroup(
+            intl.formatMessage(messages.ep),
+            groupedReleases['EP']
+          )}
+          {renderReleaseGroup(
+            intl.formatMessage(messages.single),
+            groupedReleases['Single']
+          )}
+          {renderReleaseGroup(
+            intl.formatMessage(messages.live),
+            groupedReleases['Live']
+          )}
+          {renderReleaseGroup(
+            intl.formatMessage(messages.compilation),
+            groupedReleases['Compilation']
+          )}
+          {renderReleaseGroup(
+            intl.formatMessage(messages.remix),
+            groupedReleases['Remix']
+          )}
+          {renderReleaseGroup(
+            intl.formatMessage(messages.soundtrack),
+            groupedReleases['Soundtrack']
+          )}
+          {renderReleaseGroup(
+            intl.formatMessage(messages.broadcast),
+            groupedReleases['Broadcast']
+          )}
+          {renderReleaseGroup(
+            intl.formatMessage(messages.demo),
+            groupedReleases['Demo']
+          )}
+          {renderReleaseGroup(
+            intl.formatMessage(messages.other),
+            groupedReleases['Other']
+          )}
         </>
       )}
       {data.knownForDepartment === 'Acting' ? [cast, crew] : [crew, cast]}

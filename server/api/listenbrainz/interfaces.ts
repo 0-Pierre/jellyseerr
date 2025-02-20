@@ -178,6 +178,8 @@ export interface LbReleaseGroupExtended extends LbReleaseGroup {
   mbid: string;
   type: string;
   name: string;
+  secondary_types?: string[];
+  total_listen_count: number;
 }
 
 export interface LbArtistDetails {

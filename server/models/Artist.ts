@@ -26,6 +26,8 @@ export interface ArtistDetails {
       name: string;
     }[];
     'primary-type': string;
+    secondary_types?: string[];
+    total_listen_count?: number;
     posterPath?: string;
     mediaInfo?: Media;
   }[];

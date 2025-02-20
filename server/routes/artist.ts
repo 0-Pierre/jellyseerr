@@ -55,6 +55,19 @@ artistRoutes.get('/:id', async (req, res, next) => {
       where: { mbAlbumId: In(albumIds) },
     });
 
+    const typeOrder = [
+      'Album',
+      'EP',
+      'Single',
+      'Live',
+      'Compilation',
+      'Remix',
+      'Soundtrack',
+      'Broadcast',
+      'Demo',
+      'Other',
+    ];
+
     const sortedReleaseGroups = artistData.releaseGroups
       .map((releaseGroup) => {
         const metadata = albumMetadata.find(
@@ -72,6 +85,8 @@ artistRoutes.get('/:id', async (req, res, next) => {
           'first-release-date': releaseGroup.date,
           'artist-credit': [{ name: releaseGroup.artist_credit_name }],
           'primary-type': releaseGroup.type || 'Other',
+          secondary_types: releaseGroup.secondary_types || [],
+          total_listen_count: releaseGroup.total_listen_count || 0,
           posterPath: metadata?.caaUrl ?? null,
           mediaInfo: relatedMedia.find(
             (media) => media.mbId === releaseGroup.mbid
@@ -79,6 +94,12 @@ artistRoutes.get('/:id', async (req, res, next) => {
         };
       })
       .sort((a, b) => {
+        const typeIndexA = typeOrder.indexOf(a['primary-type']);
+        const typeIndexB = typeOrder.indexOf(b['primary-type']);
+        if (typeIndexA !== typeIndexB) {
+          return typeIndexA - typeIndexB;
+        }
+
         const dateA = a['first-release-date']
           ? new Date(a['first-release-date']).getTime()
           : 0;

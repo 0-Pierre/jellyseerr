@@ -8,7 +8,7 @@ import globalMessages from '@app/i18n/globalMessages';
 import Error from '@app/pages/_error';
 import defineMessages from '@app/utils/defineMessages';
 import type { ArtistDetails as ArtistDetailsType } from '@server/models/Artist';
-import { groupBy } from 'lodash';
+import { groupBy, orderBy } from 'lodash';
 import { useRouter } from 'next/router';
 import { useEffect, useMemo, useState } from 'react';
 import { useIntl } from 'react-intl';
@@ -19,11 +19,17 @@ const messages = defineMessages('components.ArtistDetails', {
   active: '{year} - Present',
   lifespan: '{beginYear} - {endYear}',
   discography: 'Discography',
-  albums: 'Albums',
-  singles: 'Singles',
-  eps: 'EPs',
-  other: 'Other Releases',
+  album: 'Album',
+  single: 'Single',
+  ep: 'EP',
+  other: 'Other',
   alsoknownas: 'Also Known As: {names}',
+  live: 'Live',
+  compilation: 'Compilation',
+  remix: 'Remix',
+  soundtrack: 'Soundtrack',
+  broadcast: 'Broadcast',
+  demo: 'Demo',
 });
 
 const ArtistDetails = () => {
@@ -71,8 +77,27 @@ const ArtistDetails = () => {
       return null;
     }
 
-    return groupBy(data.releaseGroups, 'primary-type');
+    const grouped = groupBy(data.releaseGroups, (release) => {
+      if (release.secondary_types?.length) {
+        return release.secondary_types[0];
+      }
+      return release['primary-type'] || 'Other';
+    });
+
+    return grouped;
   }, [data?.releaseGroups]);
+
+  const sortReleases = (releases: ArtistDetailsType['releaseGroups']) => {
+    return orderBy(
+      releases,
+      [
+        (r) => r['first-release-date'] || '',
+        (r) => r.total_listen_count || 0,
+        'title',
+      ],
+      ['desc', 'desc', 'asc']
+    );
+  };
 
   const renderReleaseGroup = (
     title: string,
@@ -82,6 +107,8 @@ const ArtistDetails = () => {
       return null;
     }
 
+    const sortedReleases = sortReleases(releases);
+
     return (
       <>
         <div className="slider-header">
@@ -90,7 +117,7 @@ const ArtistDetails = () => {
           </div>
         </div>
         <ul className="cards-vertical">
-          {releases.map((media) => (
+          {sortedReleases.map((media) => (
             <li key={`release-${media.id}`}>
               <TitleCard
                 key={media.id}
@@ -221,16 +248,40 @@ const ArtistDetails = () => {
       {groupedReleases && (
         <>
           {renderReleaseGroup(
-            intl.formatMessage(messages.albums),
+            intl.formatMessage(messages.album),
             groupedReleases['Album']
           )}
           {renderReleaseGroup(
-            intl.formatMessage(messages.singles),
+            intl.formatMessage(messages.ep),
+            groupedReleases['EP']
+          )}
+          {renderReleaseGroup(
+            intl.formatMessage(messages.single),
             groupedReleases['Single']
           )}
           {renderReleaseGroup(
-            intl.formatMessage(messages.eps),
-            groupedReleases['EP']
+            intl.formatMessage(messages.live),
+            groupedReleases['Live']
+          )}
+          {renderReleaseGroup(
+            intl.formatMessage(messages.compilation),
+            groupedReleases['Compilation']
+          )}
+          {renderReleaseGroup(
+            intl.formatMessage(messages.remix),
+            groupedReleases['Remix']
+          )}
+          {renderReleaseGroup(
+            intl.formatMessage(messages.soundtrack),
+            groupedReleases['Soundtrack']
+          )}
+          {renderReleaseGroup(
+            intl.formatMessage(messages.broadcast),
+            groupedReleases['Broadcast']
+          )}
+          {renderReleaseGroup(
+            intl.formatMessage(messages.demo),
+            groupedReleases['Demo']
           )}
           {renderReleaseGroup(
             intl.formatMessage(messages.other),
