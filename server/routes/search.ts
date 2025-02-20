@@ -20,82 +20,84 @@ const searchRoutes = Router();
 const ITEMS_PER_PAGE = 20;
 searchRoutes.get('/', async (req, res, next) => {
   const queryString = req.query.query as string;
-  const searchProvider = findSearchProvider(queryString.toLowerCase());
-  let results: CombinedSearchResponse;
-  let combinedResults: CombinedSearchResponse['results'] = [];
+  const page = Number(req.query.page) || 1;
+  const language = (req.query.language as string) ?? req.locale;
 
   try {
+    const searchProvider = findSearchProvider(queryString.toLowerCase());
+    let results: CombinedSearchResponse;
+
     if (searchProvider) {
       const [id] = queryString
         .toLowerCase()
         .match(searchProvider.pattern) as RegExpMatchArray;
       results = await searchProvider.search({
         id,
-        language: (req.query.language as string) ?? req.locale,
+        language,
         query: queryString,
       });
     } else {
       const tmdb = new TheMovieDb();
-      const tmdbResults = await tmdb.searchMulti({
+      const tmdbResultsPromise = tmdb.searchMulti({
         query: queryString,
-        page: Number(req.query.page),
+        page,
+        language,
       });
-
-      const personsWithoutImages = tmdbResults.results.filter(
-        (result) => result.media_type === 'person' && !result.profile_path
-      );
-
-      if (personsWithoutImages.length > 0) {
-        const metadataArtistRepository = getRepository(MetadataArtist);
-        const personIds = personsWithoutImages.map((p) => p.id.toString());
-
-        const artistMetadata = await metadataArtistRepository.find({
-          where: { tmdbPersonId: In(personIds) },
-        });
-
-        for (const person of personsWithoutImages) {
-          const metadata = artistMetadata.find(
-            (m) => m.tmdbPersonId === person.id.toString()
-          );
-          if (metadata?.tadbThumb) {
-            Object.assign(person, {
-              profile_path: metadata.tadbThumb,
-              artist_backdrop: metadata.tadbCover,
-            });
-          }
-        }
-      }
-
-      combinedResults = [...tmdbResults.results];
 
       const musicbrainz = new MusicBrainz();
       const coverArtArchive = CoverArtArchive.getInstance();
       const theAudioDb = TheAudioDb.getInstance();
 
-      const [albumResults, artistResults] = await Promise.all([
-        musicbrainz.searchAlbum({
-          query: queryString,
-          limit: 20,
-        }),
-        musicbrainz.searchArtist({
-          query: queryString,
-          limit: 20,
-        }),
+      const [tmdbResults, [albumResults, artistResults]] = await Promise.all([
+        tmdbResultsPromise,
+        Promise.all([
+          musicbrainz.searchAlbum({
+            query: queryString,
+            limit: ITEMS_PER_PAGE,
+          }),
+          musicbrainz.searchArtist({
+            query: queryString,
+            limit: ITEMS_PER_PAGE,
+          }),
+        ]),
       ]);
 
-      const metadataAlbumRepository = getRepository(MetadataAlbum);
+      const personsWithoutImages = tmdbResults.results.filter(
+        (result) => result.media_type === 'person' && !result.profile_path
+      );
+
+      const personIds = personsWithoutImages.map((p) => p.id.toString());
+      const artistMetadata =
+        personIds.length > 0
+          ? await getRepository(MetadataArtist).find({
+              where: { tmdbPersonId: In(personIds) },
+              cache: true,
+            })
+          : [];
+
+      personsWithoutImages.forEach((person) => {
+        const metadata = artistMetadata.find(
+          (m) => m.tmdbPersonId === person.id.toString()
+        );
+        if (metadata?.tadbThumb) {
+          Object.assign(person, {
+            profile_path: metadata.tadbThumb,
+            artist_backdrop: metadata.tadbCover,
+          });
+        }
+      });
+
       const albumIds = albumResults.map((album) => album.id);
-      const albumMetadata = await metadataAlbumRepository.find({
+      const albumMetadata = await getRepository(MetadataAlbum).find({
         where: { mbAlbumId: In(albumIds) },
+        cache: true,
       });
 
       const albumsWithArt = albumResults.map((album) => {
         const metadata = albumMetadata.find((m) => m.mbAlbumId === album.id);
-
         if (!metadata?.caaUrl) {
           coverArtArchive.getCoverArt(album.id, true);
         }
-
         return {
           ...album,
           media_type: 'album' as const,
@@ -104,21 +106,18 @@ searchRoutes.get('/', async (req, res, next) => {
         };
       });
 
-      const metadataArtistRepository = getRepository(MetadataArtist);
       const artistIds = artistResults.map((artist) => artist.id);
-      const artistMetadata = await metadataArtistRepository.find({
+      const artistsMetadata = await getRepository(MetadataArtist).find({
         where: { mbArtistId: In(artistIds) },
+        cache: true,
       });
 
       const artistsWithArt = await Promise.all(
         artistResults.map(async (artist) => {
-          const metadata = artistMetadata.find(
+          const metadata = artistsMetadata.find(
             (m) => m.mbArtistId === artist.id
           );
-
-          if (metadata?.tmdbPersonId) {
-            return null;
-          }
+          if (metadata?.tmdbPersonId) return null;
 
           if (!metadata?.tadbThumb && !metadata?.tadbCover) {
             theAudioDb.getArtistImages(artist.id, true);
@@ -137,10 +136,9 @@ searchRoutes.get('/', async (req, res, next) => {
       const validArtists = artistsWithArt.filter(
         (artist): artist is NonNullable<typeof artist> => artist !== null
       );
-
-      const musicResults = [...albumsWithArt, ...validArtists].sort((a, b) => {
-        return (b.score || 0) - (a.score || 0);
-      });
+      const musicResults = [...albumsWithArt, ...validArtists].sort(
+        (a, b) => (b.score || 0) - (a.score || 0)
+      );
 
       const totalItems = tmdbResults.total_results + musicResults.length;
       const totalPages = Math.max(
@@ -148,11 +146,10 @@ searchRoutes.get('/', async (req, res, next) => {
         Math.ceil(totalItems / ITEMS_PER_PAGE)
       );
 
-      if (Number(req.query.page) === 1) {
-        combinedResults = [...tmdbResults.results, ...musicResults];
-      } else {
-        combinedResults = [...tmdbResults.results];
-      }
+      const combinedResults =
+        page === 1
+          ? [...tmdbResults.results, ...musicResults]
+          : tmdbResults.results;
 
       results = {
         page: tmdbResults.page,
@@ -164,9 +161,7 @@ searchRoutes.get('/', async (req, res, next) => {
 
     const media = await Media.getRelatedMedia(
       req.user,
-      results.results.map((result) => {
-        return result.id.toString();
-      })
+      results.results.map((result) => result.id.toString())
     );
 
     const mappedResults = await mapSearchResults(results.results, media);
@@ -181,7 +176,7 @@ searchRoutes.get('/', async (req, res, next) => {
     logger.debug('Something went wrong retrieving search results', {
       label: 'API',
       errorMessage: e.message,
-      query: req.query.query,
+      query: queryString,
     });
     return next({
       status: 500,

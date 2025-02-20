@@ -42,119 +42,111 @@ personRoutes.get('/:id', async (req, res, next) => {
       language: (req.query.language as string) ?? req.locale,
     });
 
+    const mbArtists = await musicbrainz
+      .searchArtist({
+        query: person.name,
+        limit: 1,
+      })
+      .catch((error) => {
+        logger.error('Failed to search MusicBrainz artist', {
+          label: 'Person API',
+          personName: person.name,
+          error: error.message,
+        });
+        return [];
+      });
+
     let artistId: string | null = null;
     let artistData = null;
 
-    try {
-      const mbArtists = await musicbrainz.searchArtist({
-        query: person.name,
-        limit: 1,
-      });
+    if (mbArtists.length > 0) {
+      const artist = mbArtists[0];
+      const nameMatches =
+        artist.name.toLowerCase() === person.name.toLowerCase() ||
+        artist.aliases?.some(
+          (alias) => alias.name.toLowerCase() === person.name.toLowerCase()
+        );
 
-      if (mbArtists.length > 0) {
-        const artist = mbArtists[0];
-        const nameMatches =
-          artist.name.toLowerCase() === person.name.toLowerCase() ||
-          artist.aliases?.some(
-            (alias) => alias.name.toLowerCase() === person.name.toLowerCase()
-          );
-
-        if (nameMatches && artist.type === 'Person') {
-          artistId = artist.id;
-          const mapping =
-            (await personMapper.getMappingFromCache(artistId)) ||
-            (await personMapper.getMapping(artistId, person.name, false));
-
-          if (mapping?.personId && mapping.personId !== person.id) {
-            artistId = null;
-          }
-        }
-      }
-    } catch (error) {
-      logger.error('Failed to search MusicBrainz artist', {
-        label: 'Person API',
-        personName: person.name,
-        error: error.message,
-      });
-    }
-
-    if (artistId) {
-      try {
-        const [artistResult, cachedTheAudioDb] = await Promise.all([
-          listenbrainz.getArtist(artistId),
+      if (nameMatches && artist.type === 'Person') {
+        artistId = artist.id;
+        const [mapping, cachedTheAudioDb] = await Promise.all([
+          personMapper.getMappingFromCache(artistId) ||
+            personMapper.getMapping(artistId, person.name, false),
           theAudioDb.getArtistImagesFromCache(artistId),
         ]);
 
-        artistData = artistResult;
+        if (mapping?.personId && mapping.personId === person.id) {
+          const artistResult = await listenbrainz.getArtist(artistId);
+          artistData = artistResult;
 
-        if (!cachedTheAudioDb) {
-          theAudioDb.getArtistImages(artistId, true);
-        }
+          if (!cachedTheAudioDb) {
+            theAudioDb.getArtistImages(artistId, true).catch(() => {
+              // Silent fail for background task
+            });
+          }
 
-        if (artistData?.releaseGroups) {
-          const sortedReleaseGroups = [...artistData.releaseGroups].sort(
-            (a, b) => {
-              const typeIndexA = typeOrder.indexOf(a.type || 'Other');
-              const typeIndexB = typeOrder.indexOf(b.type || 'Other');
-              if (typeIndexA !== typeIndexB) {
-                return typeIndexA - typeIndexB;
+          if (artistData?.releaseGroups) {
+            const sortedReleaseGroups = [...artistData.releaseGroups].sort(
+              (a, b) => {
+                const typeIndexA = typeOrder.indexOf(a.type || 'Other');
+                const typeIndexB = typeOrder.indexOf(b.type || 'Other');
+                if (typeIndexA !== typeIndexB) return typeIndexA - typeIndexB;
+
+                const dateA = a.date ? new Date(a.date).getTime() : 0;
+                const dateB = b.date ? new Date(b.date).getTime() : 0;
+                return dateB - dateA;
               }
+            );
 
-              const dateA = a.date ? new Date(a.date).getTime() : 0;
-              const dateB = b.date ? new Date(b.date).getTime() : 0;
-              return dateB - dateA;
-            }
-          );
+            const allReleaseGroupIds = sortedReleaseGroups.map((rg) => rg.mbid);
+            const [relatedMedia, cachedCovers] = await Promise.all([
+              Media.getRelatedMedia(req.user, allReleaseGroupIds),
+              Promise.all(
+                allReleaseGroupIds.map((id) =>
+                  coverArtArchive.getCoverArtFromCache(id)
+                )
+              ),
+            ]);
 
-          const allReleaseGroupIds = sortedReleaseGroups.map((rg) => rg.mbid);
+            const transformedReleaseGroups = sortedReleaseGroups.map(
+              (releaseGroup, index) => {
+                const cachedCoverArt = cachedCovers[index];
 
-          const [relatedMedia, cachedCovers] = await Promise.all([
-            Media.getRelatedMedia(req.user, allReleaseGroupIds),
-            Promise.all(
-              allReleaseGroupIds.map((id) =>
-                coverArtArchive.getCoverArtFromCache(id)
-              )
-            ),
-          ]);
+                if (!cachedCoverArt) {
+                  coverArtArchive.getCoverArt(releaseGroup.mbid, true);
+                }
 
-          const transformedReleaseGroups = sortedReleaseGroups.map(
-            (releaseGroup, index) => {
-              const cachedCoverArt = cachedCovers[index];
-
-              if (!cachedCoverArt) {
-                coverArtArchive.getCoverArt(releaseGroup.mbid, true);
+                return {
+                  id: releaseGroup.mbid,
+                  mediaType: 'album',
+                  title: releaseGroup.name,
+                  'first-release-date': releaseGroup.date,
+                  'artist-credit': [{ name: releaseGroup.artist_credit_name }],
+                  'primary-type': releaseGroup.type || 'Other',
+                  secondary_types: releaseGroup.secondary_types || [],
+                  total_listen_count: releaseGroup.total_listen_count || 0,
+                  posterPath: cachedCoverArt ?? undefined,
+                  mediaInfo: relatedMedia.find(
+                    (media) => media.mbId === releaseGroup.mbid
+                  ),
+                };
               }
+            );
 
-              return {
-                id: releaseGroup.mbid,
-                mediaType: 'album',
-                title: releaseGroup.name,
-                'first-release-date': releaseGroup.date,
-                'artist-credit': [{ name: releaseGroup.artist_credit_name }],
-                'primary-type': releaseGroup.type || 'Other',
-                secondary_types: releaseGroup.secondary_types || [],
-                total_listen_count: releaseGroup.total_listen_count || 0,
-                posterPath: cachedCoverArt ?? undefined,
-                mediaInfo: relatedMedia.find(
-                  (media) => media.mbId === releaseGroup.mbid
-                ),
-              };
-            }
-          );
-
-          artistData = {
-            ...artistData,
-            releaseGroups: transformedReleaseGroups,
-          };
+            artistData = {
+              ...artistData,
+              releaseGroups: transformedReleaseGroups,
+            };
+          }
+        } else {
+          artistId = null;
         }
-      } catch (error) {
-        logger.error('Failed to fetch artist data', {
-          label: 'Person API',
-          artistId,
-          error: error.message,
-        });
       }
     }
+
+    const artistImages = artistId
+      ? await theAudioDb.getArtistImagesFromCache(artistId)
+      : null;
 
     const mappedDetails = {
       ...mapPersonDetails(person),
@@ -164,14 +156,9 @@ personRoutes.get('/:id', async (req, res, next) => {
               mbid: artistId,
               profilePath: person.profile_path
                 ? `https://image.tmdb.org/t/p/w500${person.profile_path}`
-                : (await theAudioDb.getArtistImagesFromCache(artistId))
-                    ?.artistThumb ?? null,
-              artistThumb:
-                (await theAudioDb.getArtistImagesFromCache(artistId))
-                  ?.artistThumb ?? null,
-              artistBackdrop:
-                (await theAudioDb.getArtistImagesFromCache(artistId))
-                  ?.artistBackground ?? null,
+                : artistImages?.artistThumb ?? null,
+              artistThumb: artistImages?.artistThumb ?? null,
+              artistBackdrop: artistImages?.artistBackground ?? null,
               ...artistData,
             }
           : null,

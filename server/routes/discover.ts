@@ -27,7 +27,6 @@ import { mapNetwork } from '@server/models/Tv';
 import { isCollection, isMovie, isPerson } from '@server/utils/typeHelpers';
 import { Router } from 'express';
 import { sortBy } from 'lodash';
-import { In } from 'typeorm';
 import { z } from 'zod';
 
 export const createTmdbWithRegionLanguage = (user?: User): TheMovieDb => {
@@ -839,26 +838,26 @@ discoverRoutes.get('/music', async (req, res, next) => {
     const offset = (page - 1) * pageSize;
     const sortBy = (req.query.sortBy as string) || 'listen_count.desc';
 
-    const data = await listenbrainz.getTopAlbums({
-      offset,
-      count: pageSize,
-      range: 'week',
-    });
+    const [topAlbumsData, existingMetadata] = await Promise.all([
+      listenbrainz.getTopAlbums({
+        offset,
+        count: pageSize,
+        range: 'week',
+      }),
+      metadataAlbumRepository.find(),
+    ]);
 
-    const mbIds = data.payload.release_groups
+    const mbIds = topAlbumsData.payload.release_groups
       .map((album) => album.release_group_mbid)
       .filter((id): id is string => !!id);
 
-    const [metadataAlbums, media] = await Promise.all([
-      metadataAlbumRepository.find({
-        where: {
-          mbAlbumId: In(mbIds),
-        },
-      }),
-      Media.getRelatedMedia(req.user, mbIds),
-    ]);
+    const media = await Media.getRelatedMedia(req.user, mbIds);
 
-    const results = data.payload.release_groups.map((album) => {
+    const metadataMap = new Map(
+      existingMetadata.map((meta) => [meta.mbAlbumId, meta])
+    );
+
+    const results = topAlbumsData.payload.release_groups.map((album) => {
       if (!album.release_group_mbid) {
         return {
           id: null,
@@ -872,12 +871,12 @@ discoverRoutes.get('/music', async (req, res, next) => {
         };
       }
 
-      const metadata = metadataAlbums.find(
-        (ma) => ma.mbAlbumId === album.release_group_mbid
-      );
+      const metadata = metadataMap.get(album.release_group_mbid);
 
       if (!metadata?.caaUrl) {
-        coverArtArchive.getCoverArt(album.release_group_mbid, true);
+        setImmediate(() => {
+          coverArtArchive.getCoverArt(album.release_group_mbid, true);
+        });
       }
 
       return {
@@ -894,19 +893,22 @@ discoverRoutes.get('/music', async (req, res, next) => {
       };
     });
 
-    switch (sortBy) {
-      case 'listen_count.asc':
-        results.sort((a, b) => a.listenCount - b.listenCount);
-        break;
-      case 'listen_count.desc':
-        results.sort((a, b) => b.listenCount - a.listenCount);
-        break;
+    if (sortBy) {
+      const [field, direction] = sortBy.split('.');
+      const multiplier = direction === 'asc' ? 1 : -1;
+
+      results.sort((a, b) => {
+        if (field === 'listen_count') {
+          return (a.listenCount - b.listenCount) * multiplier;
+        }
+        return 0;
+      });
     }
 
     return res.json({
       page,
-      totalPages: Math.ceil(data.payload.count / pageSize),
-      totalResults: data.payload.count,
+      totalPages: Math.ceil(topAlbumsData.payload.count / pageSize),
+      totalResults: topAlbumsData.payload.count,
       results,
     });
   } catch (e) {

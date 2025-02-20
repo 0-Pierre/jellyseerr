@@ -19,11 +19,10 @@ artistRoutes.get('/:id', async (req, res, next) => {
   const theAudioDb = TheAudioDb.getInstance();
 
   try {
-    const metadataArtist = await getRepository(MetadataArtist).findOne({
-      where: { mbArtistId: req.params.id },
-    });
-
-    const [artistData, cachedTheAudioDb] = await Promise.all([
+    const [metadataArtist, artistData, cachedTheAudioDb] = await Promise.all([
+      getRepository(MetadataArtist).findOne({
+        where: { mbArtistId: req.params.id },
+      }),
       listenbrainz.getArtist(req.params.id),
       theAudioDb.getArtistImagesFromCache(req.params.id),
     ]);
@@ -33,10 +32,12 @@ artistRoutes.get('/:id', async (req, res, next) => {
     }
 
     if (!metadataArtist?.tadbThumb && !metadataArtist?.tadbCover) {
-      theAudioDb.getArtistImages(req.params.id, true);
+      theAudioDb.getArtistImages(req.params.id, true).catch(() => {
+        // Silent fail for background task
+      });
     }
 
-    const [artistWikipedia, relatedMedia] = await Promise.all([
+    const [artistWikipedia, relatedMedia, albumMetadata] = await Promise.all([
       musicbrainz
         .getArtistWikipediaExtract({
           artistMbid: req.params.id,
@@ -47,26 +48,10 @@ artistRoutes.get('/:id', async (req, res, next) => {
         req.user,
         artistData.releaseGroups.map((rg) => rg.mbid)
       ),
+      getRepository(MetadataAlbum).find({
+        where: { mbAlbumId: In(artistData.releaseGroups.map((rg) => rg.mbid)) },
+      }),
     ]);
-
-    const metadataAlbumRepository = getRepository(MetadataAlbum);
-    const albumIds = artistData.releaseGroups.map((rg) => rg.mbid);
-    const albumMetadata = await metadataAlbumRepository.find({
-      where: { mbAlbumId: In(albumIds) },
-    });
-
-    const typeOrder = [
-      'Album',
-      'EP',
-      'Single',
-      'Live',
-      'Compilation',
-      'Remix',
-      'Soundtrack',
-      'Broadcast',
-      'Demo',
-      'Other',
-    ];
 
     const sortedReleaseGroups = artistData.releaseGroups
       .map((releaseGroup) => {
@@ -75,7 +60,9 @@ artistRoutes.get('/:id', async (req, res, next) => {
         );
 
         if (!metadata?.caaUrl) {
-          coverArtArchive.getCoverArt(releaseGroup.mbid, true);
+          coverArtArchive.getCoverArt(releaseGroup.mbid, true).catch(() => {
+            // Silent fail for background task
+          });
         }
 
         return {
@@ -94,8 +81,21 @@ artistRoutes.get('/:id', async (req, res, next) => {
         };
       })
       .sort((a, b) => {
+        const typeOrder = [
+          'Album',
+          'EP',
+          'Single',
+          'Live',
+          'Compilation',
+          'Remix',
+          'Soundtrack',
+          'Broadcast',
+          'Demo',
+          'Other',
+        ];
         const typeIndexA = typeOrder.indexOf(a['primary-type']);
         const typeIndexB = typeOrder.indexOf(b['primary-type']);
+
         if (typeIndexA !== typeIndexB) {
           return typeIndexA - typeIndexB;
         }
@@ -106,6 +106,7 @@ artistRoutes.get('/:id', async (req, res, next) => {
         const dateB = b['first-release-date']
           ? new Date(b['first-release-date']).getTime()
           : 0;
+
         return dateB - dateA;
       });
 

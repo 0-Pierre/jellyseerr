@@ -5,7 +5,7 @@ import MetadataArtist from '@server/entity/MetadataArtist';
 import cacheManager from '@server/lib/cache';
 import logger from '@server/logger';
 import EventEmitter from 'events';
-import type { TmdbPersonResult, TmdbSearchPersonResponse } from './interfaces';
+import type { TmdbSearchPersonResponse } from './interfaces';
 
 interface SearchPersonOptions {
   query: string;
@@ -16,12 +16,15 @@ interface SearchPersonOptions {
 
 class TmdbPersonMapper extends ExternalAPI {
   private static instance: TmdbPersonMapper;
-  private fetchingIds: Set<string> = new Set();
-  private pendingFetches: Map<
+  private readonly fetchingIds: Set<string> = new Set();
+  private readonly pendingFetches: Map<
     string,
     Promise<{ personId: number | null; profilePath: string | null }>
   > = new Map();
-  private eventEmitter = new EventEmitter();
+  private readonly eventEmitter = new EventEmitter();
+  private readonly CACHE_TTL = 43200;
+  private readonly BACKGROUND_TIMEOUT = 250;
+  private readonly STALE_THRESHOLD = 30 * 24 * 60 * 60 * 1000;
   private tmdb: TheMovieDb;
 
   private constructor() {
@@ -48,23 +51,13 @@ class TmdbPersonMapper extends ExternalAPI {
     return TmdbPersonMapper.instance;
   }
 
-  public async getMappingFromCache(
-    artistId: string
-  ): Promise<
-    { personId: number | null; profilePath: string | null } | undefined
-  > {
-    const metadataArtistRepository = getRepository(MetadataArtist);
-    const metadata = await metadataArtistRepository.findOne({
-      where: { mbArtistId: artistId },
-    });
+  private isMetadataStale(metadata: MetadataArtist | null): boolean {
+    if (!metadata) return true;
+    return Date.now() - metadata.updatedAt.getTime() > this.STALE_THRESHOLD;
+  }
 
-    if (metadata) {
-      return {
-        personId: metadata.tmdbPersonId ? Number(metadata.tmdbPersonId) : null,
-        profilePath: metadata.tmdbThumb,
-      };
-    }
-    return undefined;
+  private createEmptyResponse() {
+    return { personId: null, profilePath: null };
   }
 
   public async getMapping(
@@ -72,53 +65,105 @@ class TmdbPersonMapper extends ExternalAPI {
     artistName: string,
     background = false
   ): Promise<{ personId: number | null; profilePath: string | null }> {
-    const metadataArtistRepository = getRepository(MetadataArtist);
-    const metadata = await metadataArtistRepository.findOne({
-      where: { mbArtistId: artistId },
-    });
+    try {
+      const metadata = await getRepository(MetadataArtist).findOne({
+        where: { mbArtistId: artistId },
+        select: ['tmdbPersonId', 'tmdbThumb', 'updatedAt'],
+      });
 
-    if (metadata?.tmdbPersonId || metadata?.tmdbThumb) {
+      if (metadata?.tmdbPersonId || metadata?.tmdbThumb) {
+        return {
+          personId: metadata.tmdbPersonId
+            ? Number(metadata.tmdbPersonId)
+            : null,
+          profilePath: metadata.tmdbThumb,
+        };
+      }
+
+      if (metadata && !this.isMetadataStale(metadata)) {
+        return this.createEmptyResponse();
+      }
+
+      if (this.pendingFetches.has(artistId)) {
+        const pendingFetch = this.pendingFetches.get(artistId);
+        if (!pendingFetch) {
+          throw new Error(`Pending fetch for id ${artistId} not found`);
+        }
+
+        if (background) {
+          return Promise.race([
+            pendingFetch,
+            new Promise<{
+              personId: number | null;
+              profilePath: string | null;
+            }>((resolve) =>
+              setTimeout(
+                () => resolve(this.createEmptyResponse()),
+                this.BACKGROUND_TIMEOUT
+              )
+            ),
+          ]);
+        }
+        return pendingFetch;
+      }
+
+      const fetchPromise = this.fetchMapping(artistId, artistName).finally(() =>
+        this.pendingFetches.delete(artistId)
+      );
+      this.pendingFetches.set(artistId, fetchPromise);
+
+      if (background) {
+        return Promise.race([
+          fetchPromise,
+          new Promise<{ personId: number | null; profilePath: string | null }>(
+            (resolve) =>
+              setTimeout(
+                () => resolve(this.createEmptyResponse()),
+                this.BACKGROUND_TIMEOUT
+              )
+          ),
+        ]);
+      }
+      return fetchPromise;
+    } catch (error) {
+      logger.error('Failed to get person mapping', {
+        label: 'TmdbPersonMapper',
+        artistId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return this.createEmptyResponse();
+    }
+  }
+
+  public async getMappingFromCache(
+    artistId: string
+  ): Promise<{ personId: number | null; profilePath: string | null } | null> {
+    try {
+      const metadata = await getRepository(MetadataArtist).findOne({
+        where: { mbArtistId: artistId },
+        select: ['tmdbPersonId', 'tmdbThumb', 'updatedAt'],
+      });
+
+      if (!metadata) {
+        return null;
+      }
+
+      if (this.isMetadataStale(metadata)) {
+        return null;
+      }
+
       return {
         personId: metadata.tmdbPersonId ? Number(metadata.tmdbPersonId) : null,
         profilePath: metadata.tmdbThumb,
       };
-    }
-
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    if (metadata && metadata.updatedAt > thirtyDaysAgo) {
-      return { personId: null, profilePath: null };
-    }
-
-    if (this.pendingFetches.has(artistId)) {
-      const pendingFetch = this.pendingFetches.get(artistId);
-      if (pendingFetch) {
-        return await pendingFetch;
-      }
-      throw new Error(`Pending fetch for id ${artistId} not found`);
-    }
-
-    const fetchPromise = this.fetchMapping(artistId, artistName).then(
-      (result) => {
-        this.pendingFetches.delete(artistId);
-        return result;
-      }
-    );
-    this.pendingFetches.set(artistId, fetchPromise);
-
-    if (background) {
-      const timeoutPromise = new Promise<{
-        personId: number | null;
-        profilePath: string | null;
-      }>((resolve) => {
-        setTimeout(() => resolve({ personId: null, profilePath: null }), 100);
+    } catch (error) {
+      logger.error('Failed to get person mapping from cache', {
+        label: 'TmdbPersonMapper',
+        artistId,
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
-
-      return Promise.race([fetchPromise, timeoutPromise]);
+      return null;
     }
-
-    return fetchPromise;
   }
 
   private async fetchMapping(
@@ -126,44 +171,46 @@ class TmdbPersonMapper extends ExternalAPI {
     artistName: string
   ): Promise<{ personId: number | null; profilePath: string | null }> {
     if (this.fetchingIds.has(artistId)) {
-      return { personId: null, profilePath: null };
+      return this.createEmptyResponse();
     }
 
+    this.fetchingIds.add(artistId);
     try {
-      this.fetchingIds.add(artistId);
-      const metadataArtistRepository = getRepository(MetadataArtist);
-
       const cleanArtistName = artistName
         .split(/(?:feat\.?|ft\.?|&|,)/i)[0]
         .trim()
         .replace(/['']/g, "'");
 
-      const searchResults = await this.searchPerson({
-        query: cleanArtistName,
-        language: 'en',
-      });
-
-      const exactMatch = searchResults.results.find(
-        (person: TmdbPersonResult) => {
-          const normalizedPersonName = person.name
-            .toLowerCase()
-            .normalize('NFKD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .replace(/['']/g, "'")
-            .replace(/[^a-z0-9]/g, '')
-            .trim();
-
-          const normalizedArtistName = cleanArtistName
-            .toLowerCase()
-            .normalize('NFKD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .replace(/['']/g, "'")
-            .replace(/[^a-z0-9]/g, '')
-            .trim();
-
-          return normalizedPersonName === normalizedArtistName;
-        }
+      const searchResults = await this.get<TmdbSearchPersonResponse>(
+        '/search/person',
+        {
+          query: cleanArtistName,
+          page: '1',
+          include_adult: 'false',
+          language: 'en',
+        },
+        this.CACHE_TTL
       );
+
+      const exactMatch = searchResults.results.find((person) => {
+        const normalizedPersonName = person.name
+          .toLowerCase()
+          .normalize('NFKD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/['']/g, "'")
+          .replace(/[^a-z0-9]/g, '')
+          .trim();
+
+        const normalizedArtistName = cleanArtistName
+          .toLowerCase()
+          .normalize('NFKD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/['']/g, "'")
+          .replace(/[^a-z0-9]/g, '')
+          .trim();
+
+        return normalizedPersonName === normalizedArtistName;
+      });
 
       const mapping = {
         personId: exactMatch?.id ?? null,
@@ -172,7 +219,7 @@ class TmdbPersonMapper extends ExternalAPI {
           : null,
       };
 
-      await metadataArtistRepository
+      await getRepository(MetadataArtist)
         .upsert(
           {
             mbArtistId: artistId,
@@ -191,14 +238,13 @@ class TmdbPersonMapper extends ExternalAPI {
         .catch((e) => {
           logger.error('Failed to save artist metadata', {
             label: 'TmdbPersonMapper',
-            error: e.message,
+            error: e instanceof Error ? e.message : 'Unknown error',
           });
         });
 
       return mapping;
-    } catch (e) {
-      const metadataArtistRepository = getRepository(MetadataArtist);
-      await metadataArtistRepository.upsert(
+    } catch (error) {
+      await getRepository(MetadataArtist).upsert(
         {
           mbArtistId: artistId,
           tmdbPersonId: null,
@@ -208,7 +254,7 @@ class TmdbPersonMapper extends ExternalAPI {
           conflictPaths: ['mbArtistId'],
         }
       );
-      return { personId: null, profilePath: null };
+      return this.createEmptyResponse();
     } finally {
       this.fetchingIds.delete(artistId);
     }
@@ -228,14 +274,16 @@ class TmdbPersonMapper extends ExternalAPI {
     options: SearchPersonOptions
   ): Promise<TmdbSearchPersonResponse> {
     try {
-      const data = await this.get<TmdbSearchPersonResponse>('/search/person', {
-        query: options.query,
-        page: options.page?.toString() ?? '1',
-        include_adult: options.includeAdult ? 'true' : 'false',
-        language: options.language ?? 'en',
-      });
-
-      return data;
+      return await this.get<TmdbSearchPersonResponse>(
+        '/search/person',
+        {
+          query: options.query,
+          page: options.page?.toString() ?? '1',
+          include_adult: options.includeAdult ? 'true' : 'false',
+          language: options.language ?? 'en',
+        },
+        this.CACHE_TTL
+      );
     } catch (e) {
       return {
         page: 1,

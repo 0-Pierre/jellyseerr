@@ -8,9 +8,13 @@ import type { CoverArtResponse } from './interfaces';
 
 class CoverArtArchive extends ExternalAPI {
   private static instance: CoverArtArchive;
-  private fetchingIds: Set<string> = new Set();
-  private pendingFetches: Map<string, Promise<CoverArtResponse>> = new Map();
-  private eventEmitter = new EventEmitter();
+  private readonly fetchingIds: Set<string> = new Set();
+  private readonly pendingFetches: Map<string, Promise<CoverArtResponse>> =
+    new Map();
+  private readonly eventEmitter = new EventEmitter();
+  private readonly CACHE_TTL = 43200;
+  private readonly BACKGROUND_TIMEOUT = 250;
+  private readonly STALE_THRESHOLD = 30 * 24 * 60 * 60 * 1000;
 
   public static getInstance(): CoverArtArchive {
     if (!CoverArtArchive.instance) {
@@ -33,14 +37,36 @@ class CoverArtArchive extends ExternalAPI {
     );
   }
 
+  private isMetadataStale(metadata: MetadataAlbum | null): boolean {
+    if (!metadata) return true;
+    return Date.now() - metadata.updatedAt.getTime() > this.STALE_THRESHOLD;
+  }
+
+  private createEmptyResponse(id: string): CoverArtResponse {
+    return { images: [], release: `/release/${id}` };
+  }
+
+  private createCachedResponse(url: string, id: string): CoverArtResponse {
+    return {
+      images: [
+        {
+          approved: true,
+          front: true,
+          id: 0,
+          thumbnails: { 250: url },
+        },
+      ],
+      release: `/release/${id}`,
+    };
+  }
+
   public async getCoverArtFromCache(
     id: string
   ): Promise<string | null | undefined> {
-    const metadataAlbumRepository = getRepository(MetadataAlbum);
-    const metadata = await metadataAlbumRepository.findOne({
+    const metadata = await getRepository(MetadataAlbum).findOne({
       where: { mbAlbumId: id },
+      select: ['caaUrl'],
     });
-
     return metadata?.caaUrl;
   }
 
@@ -48,99 +74,96 @@ class CoverArtArchive extends ExternalAPI {
     id: string,
     background = false
   ): Promise<CoverArtResponse> {
-    const metadataAlbumRepository = getRepository(MetadataAlbum);
-    const metadata = await metadataAlbumRepository.findOne({
-      where: { mbAlbumId: id },
-    });
-
-    if (metadata?.caaUrl) {
-      return {
-        images: [
-          {
-            approved: true,
-            front: true,
-            id: 0,
-            thumbnails: { 250: metadata.caaUrl },
-          },
-        ],
-        release: `/release/${id}`,
-      };
-    }
-
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    if (metadata && metadata.updatedAt > thirtyDaysAgo) {
-      return { images: [], release: `/release/${id}` };
-    }
-
-    if (this.pendingFetches.has(id)) {
-      const pendingFetch = this.pendingFetches.get(id);
-      if (pendingFetch) {
-        return await pendingFetch;
-      }
-      throw new Error(`Pending fetch for id ${id} not found`);
-    }
-
-    const fetchPromise = this.fetchCoverArt(id).then((result) => {
-      this.pendingFetches.delete(id);
-      return result;
-    });
-    this.pendingFetches.set(id, fetchPromise);
-
-    if (background) {
-      const timeoutPromise = new Promise<CoverArtResponse>((resolve) => {
-        setTimeout(() => {
-          resolve({ images: [], release: `/release/${id}` });
-        }, 10);
+    try {
+      const metadata = await getRepository(MetadataAlbum).findOne({
+        where: { mbAlbumId: id },
+        select: ['caaUrl', 'updatedAt'],
       });
 
-      return Promise.race([fetchPromise, timeoutPromise]);
-    }
+      if (metadata?.caaUrl) {
+        return this.createCachedResponse(metadata.caaUrl, id);
+      }
 
-    return fetchPromise;
+      if (metadata && !this.isMetadataStale(metadata)) {
+        return this.createEmptyResponse(id);
+      }
+
+      if (this.pendingFetches.has(id)) {
+        const pendingFetch = this.pendingFetches.get(id);
+        if (!pendingFetch) {
+          throw new Error(`Invalid pending fetch for id ${id}`);
+        }
+        return background
+          ? Promise.race([
+              pendingFetch,
+              new Promise<CoverArtResponse>((resolve) =>
+                setTimeout(
+                  () => resolve(this.createEmptyResponse(id)),
+                  this.BACKGROUND_TIMEOUT
+                )
+              ),
+            ])
+          : pendingFetch;
+      }
+
+      const fetchPromise = this.fetchCoverArt(id).finally(() =>
+        this.pendingFetches.delete(id)
+      );
+      this.pendingFetches.set(id, fetchPromise);
+
+      return background
+        ? Promise.race([
+            fetchPromise,
+            new Promise<CoverArtResponse>((resolve) =>
+              setTimeout(
+                () => resolve(this.createEmptyResponse(id)),
+                this.BACKGROUND_TIMEOUT
+              )
+            ),
+          ])
+        : fetchPromise;
+    } catch (error) {
+      logger.error('Failed to get cover art', {
+        label: 'CoverArtArchive',
+        id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return this.createEmptyResponse(id);
+    }
   }
 
   private async fetchCoverArt(id: string): Promise<CoverArtResponse> {
     if (this.fetchingIds.has(id)) {
-      return { images: [], release: `/release/${id}` };
+      return this.createEmptyResponse(id);
     }
 
+    this.fetchingIds.add(id);
     try {
-      this.fetchingIds.add(id);
-      const metadataAlbumRepository = getRepository(MetadataAlbum);
-
       const data = await this.get<CoverArtResponse>(
         `/release-group/${id}`,
         undefined,
-        43200
+        this.CACHE_TTL
       );
 
       const releaseMBID = data.release.split('/').pop();
+      const metadataRepository = getRepository(MetadataAlbum);
 
       data.images = data.images.map((image) => {
-        const baseUrl = `/mbid-${releaseMBID}/mbid-${releaseMBID}-${image.id}_thumb250.jpg`;
-
-        const fullUrl = `https://archive.org/download${baseUrl}`;
+        const fullUrl = `https://archive.org/download/mbid-${releaseMBID}/mbid-${releaseMBID}-${image.id}_thumb250.jpg`;
 
         if (image.front) {
-          metadataAlbumRepository
+          metadataRepository
             .upsert(
-              {
-                mbAlbumId: id,
-                caaUrl: fullUrl,
-              },
-              {
-                conflictPaths: ['mbAlbumId'],
-              }
+              { mbAlbumId: id, caaUrl: fullUrl },
+              { conflictPaths: ['mbAlbumId'] }
             )
-            .then(() => {
-              this.eventEmitter.emit('coverArtFound', { id, url: fullUrl });
-            })
+            .then(() =>
+              this.eventEmitter.emit('coverArtFound', { id, url: fullUrl })
+            )
             .catch((e) => {
               logger.error('Failed to save album metadata', {
                 label: 'CoverArtArchive',
-                error: e.message,
+                error: e instanceof Error ? e.message : 'Unknown error',
               });
             });
         }
@@ -154,18 +177,12 @@ class CoverArtArchive extends ExternalAPI {
       });
 
       return data;
-    } catch (e) {
-      const metadataAlbumRepository = getRepository(MetadataAlbum);
-      await metadataAlbumRepository.upsert(
-        {
-          mbAlbumId: id,
-          caaUrl: null,
-        },
-        {
-          conflictPaths: ['mbAlbumId'],
-        }
+    } catch (error) {
+      await getRepository(MetadataAlbum).upsert(
+        { mbAlbumId: id, caaUrl: null },
+        { conflictPaths: ['mbAlbumId'] }
       );
-      return { images: [], release: `/release/${id}` };
+      return this.createEmptyResponse(id);
     } finally {
       this.fetchingIds.delete(id);
     }
@@ -175,9 +192,7 @@ class CoverArtArchive extends ExternalAPI {
     callback: (data: { id: string; url: string }) => void
   ): () => void {
     this.eventEmitter.on('coverArtFound', callback);
-    return () => {
-      this.eventEmitter.removeListener('coverArtFound', callback);
-    };
+    return () => this.eventEmitter.removeListener('coverArtFound', callback);
   }
 }
 

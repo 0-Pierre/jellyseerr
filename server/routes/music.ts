@@ -46,15 +46,20 @@ musicRoutes.get('/:id', async (req, res, next) => {
 
     const artistId =
       albumDetails.release_group_metadata?.artist?.artists[0]?.artist_mbid;
+    const isPerson =
+      albumDetails.release_group_metadata?.artist?.artists[0]?.type ===
+      'Person';
 
-    const metadataAlbum = await getRepository(MetadataAlbum).findOne({
-      where: { mbAlbumId: req.params.id },
-    });
-    let metadataArtist = artistId
-      ? await getRepository(MetadataArtist).findOne({
-          where: { mbArtistId: artistId },
-        })
-      : undefined;
+    const [metadataAlbum, metadataArtist] = await Promise.all([
+      getRepository(MetadataAlbum).findOne({
+        where: { mbAlbumId: req.params.id },
+      }),
+      artistId
+        ? getRepository(MetadataArtist).findOne({
+            where: { mbArtistId: artistId },
+          })
+        : Promise.resolve(undefined),
+    ]);
 
     if (!metadataAlbum?.caaUrl) {
       coverArtArchive.getCoverArt(req.params.id, true);
@@ -64,17 +69,14 @@ musicRoutes.get('/:id', async (req, res, next) => {
       TheAudioDb.getInstance().getArtistImages(artistId, true);
     }
 
-    if (
-      artistId &&
-      !metadataArtist?.tmdbPersonId &&
-      albumDetails.release_group_metadata?.artist?.artists[0]?.type === 'Person'
-    ) {
+    let updatedMetadataArtist = metadataArtist;
+    if (artistId && isPerson && !metadataArtist?.tmdbPersonId) {
       try {
         await personMapper.getMapping(
           artistId,
           albumDetails.release_group_metadata.artist.artists[0].name
         );
-        metadataArtist = await getRepository(MetadataArtist).findOne({
+        updatedMetadataArtist = await getRepository(MetadataArtist).findOne({
           where: { mbArtistId: artistId },
         });
       } catch (error) {
@@ -93,9 +95,31 @@ musicRoutes.get('/:id', async (req, res, next) => {
       .filter((artist) => artist.artist_mbid)
       .map((artist) => artist.artist_mbid);
 
-    let trackArtistMetadata = await getRepository(MetadataArtist).find({
-      where: { mbArtistId: In(trackArtistIds) },
-    });
+    const [initialTrackArtistMetadata, artistWikipedia] = await Promise.all([
+      getRepository(MetadataArtist).find({
+        where: { mbArtistId: In(trackArtistIds) },
+      }),
+      artistId
+        ? musicbrainz
+            .getArtistWikipediaExtract({
+              artistMbid: artistId,
+              language: req.locale,
+            })
+            .catch((error) => {
+              if (
+                !error.message.includes('No Wikipedia extract found') &&
+                !error.message.includes('fetch failed')
+              ) {
+                logger.error('Failed to fetch Wikipedia extract', {
+                  label: 'Music API',
+                  errorMessage: error.message,
+                  artistMbid: artistId,
+                });
+              }
+              return null;
+            })
+        : Promise.resolve(null),
+    ]);
 
     const trackArtistPromises = albumDetails.mediums.flatMap((medium) =>
       medium.tracks.flatMap((track) =>
@@ -103,7 +127,7 @@ musicRoutes.get('/:id', async (req, res, next) => {
           .filter((artist) => artist.artist_mbid)
           .filter(
             (artist) =>
-              !trackArtistMetadata.some(
+              !initialTrackArtistMetadata.some(
                 (m) => m.mbArtistId === artist.artist_mbid
               )
           )
@@ -124,42 +148,23 @@ musicRoutes.get('/:id', async (req, res, next) => {
 
     await Promise.all(trackArtistPromises);
 
-    trackArtistMetadata = await getRepository(MetadataArtist).find({
+    const trackArtistMetadata = await getRepository(MetadataArtist).find({
       where: { mbArtistId: In(trackArtistIds) },
     });
 
     const mappedDetails = mapMusicDetails(albumDetails, media, onUserWatchlist);
-
-    const artistWikipedia = artistId
-      ? await musicbrainz
-          .getArtistWikipediaExtract({
-            artistMbid: artistId,
-            language: req.locale,
-          })
-          .catch((error) => {
-            if (
-              !error.message.includes('No Wikipedia extract found') &&
-              !error.message.includes('fetch failed')
-            ) {
-              logger.error('Failed to fetch Wikipedia extract', {
-                label: 'Music API',
-                errorMessage: error.message,
-                artistMbid: artistId,
-              });
-            }
-            return null;
-          })
-      : null;
 
     return res.status(200).json({
       ...mappedDetails,
       posterPath: metadataAlbum?.caaUrl ?? null,
       artistWikipedia,
       artistThumb:
-        metadataArtist?.tmdbThumb ?? metadataArtist?.tadbThumb ?? null,
-      artistBackdrop: metadataArtist?.tadbCover ?? null,
-      tmdbPersonId: metadataArtist?.tmdbPersonId
-        ? Number(metadataArtist.tmdbPersonId)
+        updatedMetadataArtist?.tmdbThumb ??
+        updatedMetadataArtist?.tadbThumb ??
+        null,
+      artistBackdrop: updatedMetadataArtist?.tadbCover ?? null,
+      tmdbPersonId: updatedMetadataArtist?.tmdbPersonId
+        ? Number(updatedMetadataArtist.tmdbPersonId)
         : null,
       tracks: mappedDetails.tracks.map((track) => ({
         ...track,
@@ -213,23 +218,20 @@ musicRoutes.get('/:id/artist', async (req, res, next) => {
     const [artistData, cachedTheAudioDb] = await Promise.all([
       listenbrainzApi.getArtist(artistId),
       theAudioDb.getArtistImagesFromCache(artistId),
+      metadataArtistRepository.findOne({
+        where: { mbArtistId: artistId },
+      }),
     ]);
 
     if (!artistData) {
       return res.status(404).json({ status: 404, message: 'Artist not found' });
     }
 
-    if (!cachedTheAudioDb) {
-      theAudioDb.getArtistImages(artistId, true);
-    }
-
+    const releaseGroupIds = artistData.releaseGroups.map((rg) => rg.mbid);
     const [relatedMedia, albumMetadata] = await Promise.all([
-      Media.getRelatedMedia(
-        req.user,
-        artistData.releaseGroups.map((rg) => rg.mbid)
-      ),
+      Media.getRelatedMedia(req.user, releaseGroupIds),
       metadataAlbumRepository.find({
-        where: { mbAlbumId: In(artistData.releaseGroups.map((rg) => rg.mbid)) },
+        where: { mbAlbumId: In(releaseGroupIds) },
       }),
     ]);
 
@@ -267,48 +269,49 @@ musicRoutes.get('/:id/artist', async (req, res, next) => {
           })
         : [];
 
-    const transformedSimilarArtists = artistData.similarArtists?.artists
-      ? await Promise.all(
-          artistData.similarArtists.artists.map(async (artist) => {
-            const metadata = similarArtistMetadata.find(
-              (m) => m.mbArtistId === artist.artist_mbid
-            );
+    const similarArtistPromises =
+      artistData.similarArtists?.artists?.map(async (artist) => {
+        const metadata = similarArtistMetadata.find(
+          (m) => m.mbArtistId === artist.artist_mbid
+        );
 
-            if (!metadata?.tadbThumb && !metadata?.tadbCover) {
-              theAudioDb.getArtistImages(artist.artist_mbid, true);
-            }
+        if (!metadata?.tadbThumb && !metadata?.tadbCover) {
+          theAudioDb.getArtistImages(artist.artist_mbid, true);
+        }
 
-            let updatedMetadata = metadata;
-            if (artist.type === 'Person' && !metadata?.tmdbPersonId) {
-              try {
-                await personMapper.getMapping(artist.artist_mbid, artist.name);
-                updatedMetadata =
-                  (await metadataArtistRepository.findOne({
-                    where: { mbArtistId: artist.artist_mbid },
-                  })) ?? undefined;
-              } catch (error) {
-                logger.error('Failed to get TMDB person mapping', {
-                  label: 'Music API',
-                  artistName: artist.name,
-                  error: error.message,
-                });
-              }
-            }
+        let updatedMetadata = metadata;
+        if (artist.type === 'Person' && !metadata?.tmdbPersonId) {
+          try {
+            await personMapper.getMapping(artist.artist_mbid, artist.name);
+            updatedMetadata =
+              (await metadataArtistRepository.findOne({
+                where: { mbArtistId: artist.artist_mbid },
+              })) ?? undefined;
+          } catch (error) {
+            logger.error('Failed to get TMDB person mapping', {
+              label: 'Music API',
+              artistName: artist.name,
+              error: error.message,
+            });
+          }
+        }
 
-            return {
-              ...artist,
-              artistThumb:
-                updatedMetadata?.tmdbThumb ??
-                updatedMetadata?.tadbThumb ??
-                null,
-              artistBackground: updatedMetadata?.tadbCover ?? null,
-              tmdbPersonId: updatedMetadata?.tmdbPersonId
-                ? Number(updatedMetadata.tmdbPersonId)
-                : null,
-            };
-          })
-        )
-      : [];
+        return {
+          ...artist,
+          artistThumb:
+            updatedMetadata?.tmdbThumb ?? updatedMetadata?.tadbThumb ?? null,
+          artistBackground: updatedMetadata?.tadbCover ?? null,
+          tmdbPersonId: updatedMetadata?.tmdbPersonId
+            ? Number(updatedMetadata.tmdbPersonId)
+            : null,
+        };
+      }) ?? [];
+
+    const transformedSimilarArtists = await Promise.all(similarArtistPromises);
+
+    if (!cachedTheAudioDb) {
+      theAudioDb.getArtistImages(artistId, true);
+    }
 
     return res.status(200).json({
       artist: {

@@ -11,7 +11,8 @@ import { BarsArrowDownIcon } from '@heroicons/react/24/solid';
 import type { AlbumResult } from '@server/models/Search';
 import { debounce } from 'lodash'; // Install lodash if you don't have it
 import { useRouter } from 'next/router';
-import { useCallback } from 'react';
+import type { ChangeEvent } from 'react';
+import { memo, useCallback, useMemo } from 'react';
 import { useIntl } from 'react-intl';
 
 const messages = defineMessages('components.Discover.DiscoverMusic', {
@@ -38,7 +39,10 @@ const DiscoverMusic = () => {
   const router = useRouter();
   const updateQueryParams = useUpdateQueryParams({});
 
-  const preparedFilters = prepareFilterValues(router.query);
+  const preparedFilters = useMemo(
+    () => prepareFilterValues(router.query),
+    [router.query]
+  );
 
   const {
     isLoadingInitialData,
@@ -53,12 +57,41 @@ const DiscoverMusic = () => {
     preparedFilters
   );
 
-  const debouncedFetchMore = useCallback(() => {
-    const debouncer = debounce(() => {
-      fetchMore();
-    }, 250);
-    debouncer();
-  }, [fetchMore]);
+  const debouncedFetchMore = useCallback(
+    debounce(() => {
+      if (!isLoadingMore && !isReachingEnd) {
+        fetchMore();
+      }
+    }, 150),
+    [fetchMore, isLoadingMore, isReachingEnd]
+  );
+
+  const sortOptions = useMemo(
+    () => ({
+      [SortOptions.PopularityDesc]: intl.formatMessage(
+        messages.sortPopularityDesc
+      ),
+      [SortOptions.PopularityAsc]: intl.formatMessage(
+        messages.sortPopularityAsc
+      ),
+      [SortOptions.ReleaseDateDesc]: intl.formatMessage(
+        messages.sortReleaseDateDesc
+      ),
+      [SortOptions.ReleaseDateAsc]: intl.formatMessage(
+        messages.sortReleaseDateAsc
+      ),
+      [SortOptions.TitleAsc]: intl.formatMessage(messages.sortTitleAsc),
+      [SortOptions.TitleDesc]: intl.formatMessage(messages.sortTitleDesc),
+    }),
+    [intl]
+  );
+
+  const handleSortChange = useCallback(
+    (e: ChangeEvent<HTMLSelectElement>) => {
+      updateQueryParams('sortBy', e.target.value);
+    },
+    [updateQueryParams]
+  );
 
   if (error) {
     return <Error statusCode={500} />;
@@ -81,26 +114,13 @@ const DiscoverMusic = () => {
               name="sortBy"
               className="rounded-r-only"
               value={preparedFilters.sortBy}
-              onChange={(e) => updateQueryParams('sortBy', e.target.value)}
+              onChange={handleSortChange}
             >
-              <option value={SortOptions.PopularityDesc}>
-                {intl.formatMessage(messages.sortPopularityDesc)}
-              </option>
-              <option value={SortOptions.PopularityAsc}>
-                {intl.formatMessage(messages.sortPopularityAsc)}
-              </option>
-              <option value={SortOptions.ReleaseDateDesc}>
-                {intl.formatMessage(messages.sortReleaseDateDesc)}
-              </option>
-              <option value={SortOptions.ReleaseDateAsc}>
-                {intl.formatMessage(messages.sortReleaseDateAsc)}
-              </option>
-              <option value={SortOptions.TitleAsc}>
-                {intl.formatMessage(messages.sortTitleAsc)}
-              </option>
-              <option value={SortOptions.TitleDesc}>
-                {intl.formatMessage(messages.sortTitleDesc)}
-              </option>
+              {Object.entries(sortOptions).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -112,10 +132,10 @@ const DiscoverMusic = () => {
           isLoadingInitialData || (isLoadingMore && (titles?.length ?? 0) > 0)
         }
         isReachingEnd={isReachingEnd}
-        onScrollBottom={debouncedFetchMore} // Use the debounced function
+        onScrollBottom={debouncedFetchMore}
       />
     </>
   );
 };
 
-export default DiscoverMusic;
+export default memo(DiscoverMusic);

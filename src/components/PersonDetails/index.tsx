@@ -35,136 +35,168 @@ const messages = defineMessages('components.PersonDetails', {
   other: 'Other',
 });
 
+const sortCredits = (credits: any[]) => {
+  return orderBy(credits, [(c) => c.voteCount ?? 0, 'title'], ['desc', 'asc']);
+};
+
 const PersonDetails = () => {
   const intl = useIntl();
   const router = useRouter();
   const { data, error, mutate } = useSWR<PersonDetailsType>(
-    `/api/v1/person/${router.query.personId}`
+    `/api/v1/person/${router.query.personId}`,
+    {
+      revalidateOnFocus: false,
+      revalidateIfStale: false,
+      dedupingInterval: 30000,
+    }
   );
-  const [showBio, setShowBio] = useState(false);
 
   const { data: combinedCredits, error: errorCombinedCredits } =
     useSWR<PersonCombinedCreditsResponse>(
-      `/api/v1/person/${router.query.personId}/combined_credits`
+      `/api/v1/person/${router.query.personId}/combined_credits`,
+      {
+        revalidateOnFocus: false,
+        revalidateIfStale: false,
+        dedupingInterval: 30000,
+      }
     );
 
+  const [showBio, setShowBio] = useState(false);
+
   useEffect(() => {
-    const caaEventSource = new EventSource('/caaproxy/updates');
-    const tadbEventSource = new EventSource('/tadbproxy/updates');
-
-    const processCAAUpdate = (coverArtData: { id: string; url: string }) => {
-      mutate((currentData) => {
-        if (!currentData) return currentData;
-
-        return {
-          ...currentData,
-          artist: {
-            ...currentData.artist,
-            releaseGroups: currentData.artist?.releaseGroups?.map((release) => {
-              if (release.id === coverArtData.id) {
-                return {
-                  ...release,
-                  posterPath: coverArtData.url,
-                };
-              }
-              return release;
-            }),
-          },
-        };
-      }, false);
+    const sources = {
+      caa: new EventSource('/caaproxy/updates'),
+      tadb: new EventSource('/tadbproxy/updates'),
     };
 
-    const processTADBUpdate = (tadbData: {
-      id: string;
-      urls: {
-        artistThumb: string | null;
-        artistBackground: string | null;
-      };
-    }) => {
-      mutate((currentData) => {
-        if (!currentData) return currentData;
+    const handlers = {
+      caa: (coverArtData: { id: string; url: string }) => {
+        mutate((currentData) => {
+          if (!currentData?.artist?.releaseGroups) return currentData;
 
-        if (
-          currentData.artist?.releaseGroups?.some(
-            (group) => group['artist-credit']?.[0]?.name === currentData.name
+          return {
+            ...currentData,
+            artist: {
+              ...currentData.artist,
+              releaseGroups: currentData.artist.releaseGroups.map((release) =>
+                release.id === coverArtData.id
+                  ? { ...release, posterPath: coverArtData.url }
+                  : release
+              ),
+            },
+          };
+        }, false);
+      },
+      tadb: (tadbData: {
+        id: string;
+        urls: { artistThumb: string | null; artistBackground: string | null };
+      }) => {
+        mutate((currentData) => {
+          if (
+            !currentData?.artist?.releaseGroups?.some(
+              (group) => group['artist-credit']?.[0]?.name === currentData.name
+            )
           )
-        ) {
+            return currentData;
+
           return {
             ...currentData,
             artistThumb: tadbData.urls.artistThumb,
             artistBackdrop: tadbData.urls.artistBackground,
           };
-        }
-        return currentData;
-      }, false);
+        }, false);
+      },
     };
 
-    caaEventSource.onmessage = (event) => {
-      const coverArtData = JSON.parse(event.data);
-      processCAAUpdate(coverArtData);
-    };
-
-    tadbEventSource.onmessage = (event) => {
-      const tadbData = JSON.parse(event.data);
-      processTADBUpdate(tadbData);
-    };
+    sources.caa.onmessage = (event) => handlers.caa(JSON.parse(event.data));
+    sources.tadb.onmessage = (event) => handlers.tadb(JSON.parse(event.data));
 
     return () => {
-      caaEventSource.close();
-      tadbEventSource.close();
+      Object.values(sources).forEach((source) => source.close());
     };
   }, [mutate]);
 
-  const sortedCast = useMemo(() => {
-    const grouped = groupBy(combinedCredits?.cast ?? [], 'id');
+  const sortedCredits = useMemo(() => {
+    const cast = combinedCredits?.cast ?? [];
+    const crew = combinedCredits?.crew ?? [];
 
-    const reduced = Object.values(grouped).map((objs) => ({
-      ...objs[0],
-      character: objs.map((pos) => pos.character).join(', '),
-    }));
-
-    return reduced.sort((a, b) => {
-      const aVotes = a.voteCount ?? 0;
-      const bVotes = b.voteCount ?? 0;
-      if (aVotes > bVotes) {
-        return -1;
-      }
-      return 1;
-    });
-  }, [combinedCredits]);
-
-  const sortedCrew = useMemo(() => {
-    const grouped = groupBy(combinedCredits?.crew ?? [], 'id');
-
-    const reduced = Object.values(grouped).map((objs) => ({
-      ...objs[0],
-      job: objs.map((pos) => pos.job).join(', '),
-    }));
-
-    return reduced.sort((a, b) => {
-      const aVotes = a.voteCount ?? 0;
-      const bVotes = b.voteCount ?? 0;
-      if (aVotes > bVotes) {
-        return -1;
-      }
-      return 1;
-    });
+    return {
+      cast: sortCredits(
+        Object.values(groupBy(cast, 'id')).map((group) => ({
+          ...group[0],
+          character: group.map((g) => g.character).join(', '),
+        }))
+      ),
+      crew: sortCredits(
+        Object.values(groupBy(crew, 'id')).map((group) => ({
+          ...group[0],
+          job: group.map((g) => g.job).join(', '),
+        }))
+      ),
+    };
   }, [combinedCredits]);
 
   const groupedReleases = useMemo(() => {
-    if (!data?.artist?.releaseGroups) {
-      return null;
+    if (!data?.artist?.releaseGroups) return null;
+
+    return groupBy(data.artist.releaseGroups, (release) =>
+      release.secondary_types?.length
+        ? release.secondary_types[0]
+        : release['primary-type'] || 'Other'
+    );
+  }, [data?.artist?.releaseGroups]);
+
+  const personAttributes = useMemo(() => {
+    if (!data) return [];
+
+    const attributes: string[] = [];
+
+    if (data.birthday) {
+      if (data.deathday) {
+        attributes.push(
+          intl.formatMessage(messages.lifespan, {
+            birthdate: intl.formatDate(data.birthday, {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              timeZone: 'UTC',
+            }),
+            deathdate: intl.formatDate(data.deathday, {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              timeZone: 'UTC',
+            }),
+          })
+        );
+      } else {
+        attributes.push(
+          intl.formatMessage(messages.birthdate, {
+            birthdate: intl.formatDate(data.birthday, {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              timeZone: 'UTC',
+            }),
+          })
+        );
+      }
     }
 
-    const grouped = groupBy(data.artist.releaseGroups, (release) => {
-      if (release.secondary_types?.length) {
-        return release.secondary_types[0];
-      }
-      return release['primary-type'] || 'Other';
-    });
+    if (data.placeOfBirth) {
+      attributes.push(data.placeOfBirth);
+    }
 
-    return grouped;
-  }, [data?.artist?.releaseGroups]);
+    return attributes;
+  }, [data, intl]);
+
+  if (!data && !error) {
+    return <LoadingSpinner />;
+  }
+
+  if (!data) {
+    return <Error statusCode={404} />;
+  }
 
   const renderReleaseGroup = (title: string, releases: any[]) => {
     if (!releases?.length) {
@@ -206,55 +238,7 @@ const PersonDetails = () => {
     );
   };
 
-  if (!data && !error) {
-    return <LoadingSpinner />;
-  }
-
-  if (!data) {
-    return <Error statusCode={404} />;
-  }
-
-  const personAttributes: string[] = [];
-
-  if (data.birthday) {
-    if (data.deathday) {
-      personAttributes.push(
-        intl.formatMessage(messages.lifespan, {
-          birthdate: intl.formatDate(data.birthday, {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            timeZone: 'UTC',
-          }),
-          deathdate: intl.formatDate(data.deathday, {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            timeZone: 'UTC',
-          }),
-        })
-      );
-    } else {
-      personAttributes.push(
-        intl.formatMessage(messages.birthdate, {
-          birthdate: intl.formatDate(data.birthday, {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            timeZone: 'UTC',
-          }),
-        })
-      );
-    }
-  }
-
-  if (data.placeOfBirth) {
-    personAttributes.push(data.placeOfBirth);
-  }
-
-  const isLoading = !combinedCredits && !errorCombinedCredits;
-
-  const cast = (sortedCast ?? []).length > 0 && (
+  const cast = (sortedCredits.cast ?? []).length > 0 && (
     <>
       <div className="slider-header">
         <div className="slider-title">
@@ -262,7 +246,7 @@ const PersonDetails = () => {
         </div>
       </div>
       <ul className="cards-vertical">
-        {sortedCast?.map((media, index) => {
+        {sortedCredits.cast?.map((media, index) => {
           return (
             <li key={`list-cast-item-${media.id}-${index}`}>
               <TitleCard
@@ -295,7 +279,7 @@ const PersonDetails = () => {
     </>
   );
 
-  const crew = (sortedCrew ?? []).length > 0 && (
+  const crew = (sortedCredits.crew ?? []).length > 0 && (
     <>
       <div className="slider-header">
         <div className="slider-title">
@@ -303,7 +287,7 @@ const PersonDetails = () => {
         </div>
       </div>
       <ul className="cards-vertical">
-        {sortedCrew?.map((media, index) => {
+        {sortedCredits.crew?.map((media, index) => {
           return (
             <li key={`list-crew-item-${media.id}-${index}`}>
               <TitleCard
@@ -334,14 +318,19 @@ const PersonDetails = () => {
     </>
   );
 
+  const isLoading = !combinedCredits && !errorCombinedCredits;
+
   return (
     <>
       <PageTitle title={data.name} />
-      {(sortedCrew || sortedCast) && (
+      {(sortedCredits.crew || sortedCredits.cast) && (
         <div className="absolute top-0 left-0 right-0 z-0 h-96">
           <ImageFader
             isDarker
-            backgroundImages={[...(sortedCast ?? []), ...(sortedCrew ?? [])]
+            backgroundImages={[
+              ...(sortedCredits.cast ?? []),
+              ...(sortedCredits.crew ?? []),
+            ]
               .filter((media) => media.backdropPath)
               .map(
                 (media) =>

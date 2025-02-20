@@ -32,34 +32,67 @@ const messages = defineMessages('components.ArtistDetails', {
   demo: 'Demo',
 });
 
+const sortReleases = (releases: ArtistDetailsType['releaseGroups']) => {
+  return orderBy(
+    releases,
+    [
+      (r) =>
+        r['first-release-date']
+          ? new Date(r['first-release-date']).getTime()
+          : 0,
+      'title',
+    ],
+    ['desc', 'asc']
+  );
+};
+
 const ArtistDetails = () => {
   const intl = useIntl();
   const router = useRouter();
   const { data, error, mutate } = useSWR<ArtistDetailsType>(
-    `/api/v1/artist/${router.query.artistId}`
+    `/api/v1/artist/${router.query.artistId}`,
+    {
+      revalidateOnFocus: false,
+      revalidateIfStale: false,
+      dedupingInterval: 30000,
+    }
   );
+
   const [showBio, setShowBio] = useState(false);
+  const [isLoadingImages, setIsLoadingImages] = useState(true);
+
+  const groupedReleases = useMemo(() => {
+    if (!data?.releaseGroups) {
+      return null;
+    }
+
+    return groupBy(data.releaseGroups, (release) => {
+      if (release.secondary_types?.length) {
+        return release.secondary_types[0];
+      }
+      return release['primary-type'] || 'Other';
+    });
+  }, [data?.releaseGroups]);
 
   useEffect(() => {
     const caaEventSource = new EventSource('/caaproxy/updates');
 
     const processCAAUpdate = (coverArtData: { id: string; url: string }) => {
-      mutate((currentData?: ArtistDetailsType) => {
-        if (!currentData) return currentData;
+      mutate(
+        (currentData?: ArtistDetailsType) => {
+          if (!currentData) return currentData;
 
-        return {
-          ...currentData,
-          releaseGroups: currentData.releaseGroups?.map((release) => {
-            if (release.id === coverArtData.id) {
-              return {
-                ...release,
-                posterPath: coverArtData.url,
-              };
-            }
-            return release;
-          }),
-        };
-      }, false);
+          return {
+            ...currentData,
+            releaseGroups: currentData.releaseGroups?.map((release) =>
+              release.id === coverArtData.id
+                ? { ...release, posterPath: coverArtData.url }
+                : release
+            ),
+          };
+        },
+        { revalidate: false }
+      );
     };
 
     caaEventSource.onmessage = (event) => {
@@ -72,74 +105,18 @@ const ArtistDetails = () => {
     };
   }, [mutate]);
 
-  const groupedReleases = useMemo(() => {
-    if (!data?.releaseGroups) {
-      return null;
+  useEffect(() => {
+    if (!data?.artistThumb && !data?.profilePath) {
+      setIsLoadingImages(false);
     }
-
-    const grouped = groupBy(data.releaseGroups, (release) => {
-      if (release.secondary_types?.length) {
-        return release.secondary_types[0];
-      }
-      return release['primary-type'] || 'Other';
-    });
-
-    return grouped;
-  }, [data?.releaseGroups]);
-
-  const sortReleases = (releases: ArtistDetailsType['releaseGroups']) => {
-    return orderBy(
-      releases,
-      [
-        (r) => r['first-release-date'] || '',
-        (r) => r.total_listen_count || 0,
-        'title',
-      ],
-      ['desc', 'desc', 'asc']
-    );
-  };
-
-  const renderReleaseGroup = (
-    title: string,
-    releases: ArtistDetailsType['releaseGroups']
-  ) => {
-    if (!releases?.length) {
-      return null;
-    }
-
-    const sortedReleases = sortReleases(releases);
-
-    return (
-      <>
-        <div className="slider-header">
-          <div className="slider-title">
-            <span>{title}</span>
-          </div>
-        </div>
-        <ul className="cards-vertical">
-          {sortedReleases.map((media) => (
-            <li key={`release-${media.id}`}>
-              <TitleCard
-                key={media.id}
-                id={media.id}
-                title={media.title}
-                year={media['first-release-date']}
-                image={media.posterPath}
-                mediaType="album"
-                artist={media['artist-credit']?.[0]?.name}
-                type={media['primary-type']}
-                status={media.mediaInfo?.status}
-                canExpand
-              />
-            </li>
-          ))}
-        </ul>
-      </>
-    );
-  };
+  }, [data]);
 
   if (!data && !error) {
-    return <LoadingSpinner />;
+    return (
+      <div className="h-full">
+        <LoadingSpinner />
+      </div>
+    );
   }
 
   if (!data) {
@@ -147,7 +124,6 @@ const ArtistDetails = () => {
   }
 
   const artistAttributes: string[] = [];
-
   if (data.artist.begin_year) {
     const yearString = data.artist.end_year
       ? intl.formatMessage(messages.lifespan, {
@@ -169,7 +145,7 @@ const ArtistDetails = () => {
 
   return (
     <>
-      <PageTitle title={data?.artist?.name ?? ''} />
+      <PageTitle title={data.artist?.name ?? ''} />
       <div className="absolute top-0 left-0 right-0 z-0 h-96">
         <ImageFader
           isDarker
@@ -184,9 +160,10 @@ const ArtistDetails = () => {
           }
         />
       </div>
+
       <div
         className={`relative z-10 mt-4 mb-8 flex flex-col items-center lg:flex-row ${
-          data.biography ? 'lg:items-start' : ''
+          data.wikipedia?.content ? 'lg:items-start' : ''
         }`}
       >
         {(data.artistThumb || data.profilePath) && (
@@ -197,16 +174,22 @@ const ArtistDetails = () => {
               alt=""
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               fill
+              onLoad={() => setIsLoadingImages(false)}
             />
           </div>
         )}
+
         <div className="text-center text-gray-300 lg:text-left">
-          <h1 className="text-3xl text-white lg:text-4xl">{data.name}</h1>
+          <h1 className="text-3xl text-white lg:text-4xl">
+            {data.artist.name}
+          </h1>
+
           {artistAttributes.length > 0 && (
             <div className="mt-1 mb-2 space-y-1 text-xs text-white sm:text-sm lg:text-base">
               <div>{artistAttributes.join(' | ')}</div>
             </div>
           )}
+
           {(data.alsoKnownAs ?? []).length > 0 && (
             <div>
               {intl.formatMessage(messages.alsoknownas, {
@@ -219,6 +202,7 @@ const ArtistDetails = () => {
               })}
             </div>
           )}
+
           {data.wikipedia?.content && (
             <div className="relative text-left">
               <button
@@ -245,49 +229,51 @@ const ArtistDetails = () => {
           )}
         </div>
       </div>
-      {groupedReleases && (
-        <>
-          {renderReleaseGroup(
-            intl.formatMessage(messages.album),
-            groupedReleases['Album']
+
+      {/* Release Groups */}
+      {groupedReleases && !isLoadingImages && (
+        <div className="space-y-8">
+          {[
+            { type: 'Album', message: messages.album },
+            { type: 'EP', message: messages.ep },
+            { type: 'Single', message: messages.single },
+            { type: 'Live', message: messages.live },
+            { type: 'Compilation', message: messages.compilation },
+            { type: 'Remix', message: messages.remix },
+            { type: 'Soundtrack', message: messages.soundtrack },
+            { type: 'Broadcast', message: messages.broadcast },
+            { type: 'Demo', message: messages.demo },
+            { type: 'Other', message: messages.other },
+          ].map(
+            ({ type, message }) =>
+              groupedReleases[type] && (
+                <div key={type} className="section">
+                  <div className="slider-header">
+                    <div className="slider-title">
+                      <span>{intl.formatMessage(message)}</span>
+                    </div>
+                  </div>
+                  <ul className="cards-vertical">
+                    {sortReleases(groupedReleases[type]).map((media) => (
+                      <li key={`release-${media.id}`}>
+                        <TitleCard
+                          id={media.id}
+                          title={media.title}
+                          year={media['first-release-date']}
+                          image={media.posterPath}
+                          mediaType="album"
+                          artist={media['artist-credit']?.[0]?.name}
+                          type={media['primary-type']}
+                          status={media.mediaInfo?.status}
+                          canExpand
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )
           )}
-          {renderReleaseGroup(
-            intl.formatMessage(messages.ep),
-            groupedReleases['EP']
-          )}
-          {renderReleaseGroup(
-            intl.formatMessage(messages.single),
-            groupedReleases['Single']
-          )}
-          {renderReleaseGroup(
-            intl.formatMessage(messages.live),
-            groupedReleases['Live']
-          )}
-          {renderReleaseGroup(
-            intl.formatMessage(messages.compilation),
-            groupedReleases['Compilation']
-          )}
-          {renderReleaseGroup(
-            intl.formatMessage(messages.remix),
-            groupedReleases['Remix']
-          )}
-          {renderReleaseGroup(
-            intl.formatMessage(messages.soundtrack),
-            groupedReleases['Soundtrack']
-          )}
-          {renderReleaseGroup(
-            intl.formatMessage(messages.broadcast),
-            groupedReleases['Broadcast']
-          )}
-          {renderReleaseGroup(
-            intl.formatMessage(messages.demo),
-            groupedReleases['Demo']
-          )}
-          {renderReleaseGroup(
-            intl.formatMessage(messages.other),
-            groupedReleases['Other']
-          )}
-        </>
+        </div>
       )}
     </>
   );
