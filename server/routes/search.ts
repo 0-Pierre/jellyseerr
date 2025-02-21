@@ -2,6 +2,7 @@ import CoverArtArchive from '@server/api/coverartarchive';
 import MusicBrainz from '@server/api/musicbrainz';
 import TheAudioDb from '@server/api/theaudiodb';
 import TheMovieDb from '@server/api/themoviedb';
+import TmdbPersonMapper from '@server/api/themoviedb/personMapper';
 import { getRepository } from '@server/datasource';
 import Media from '@server/entity/Media';
 import MetadataAlbum from '@server/entity/MetadataAlbum';
@@ -117,7 +118,37 @@ searchRoutes.get('/', async (req, res, next) => {
           const metadata = artistsMetadata.find(
             (m) => m.mbArtistId === artist.id
           );
-          if (metadata?.tmdbPersonId) return null;
+          if (artist.type === 'Person' && !metadata?.tmdbPersonId) {
+            try {
+              const personMapper = TmdbPersonMapper.getInstance();
+              await personMapper.getMapping(artist.id, artist.name);
+              const updatedMetadata = await getRepository(
+                MetadataArtist
+              ).findOne({
+                where: { mbArtistId: artist.id },
+                cache: true,
+              });
+              if (updatedMetadata?.tmdbPersonId) return null;
+
+              if (!updatedMetadata?.tadbThumb && !updatedMetadata?.tadbCover) {
+                theAudioDb.getArtistImages(artist.id, true);
+              }
+
+              return {
+                ...artist,
+                media_type: 'artist' as const,
+                artistThumb: updatedMetadata?.tadbThumb ?? null,
+                artistBackdrop: updatedMetadata?.tadbCover ?? null,
+                score: artist.score || 0,
+              };
+            } catch (error) {
+              logger.error('Failed to get TMDB person mapping', {
+                label: 'API',
+                artistName: artist.name,
+                error: error.message,
+              });
+            }
+          }
 
           if (!metadata?.tadbThumb && !metadata?.tadbCover) {
             theAudioDb.getArtistImages(artist.id, true);

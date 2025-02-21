@@ -192,7 +192,7 @@ class TmdbPersonMapper extends ExternalAPI {
         this.CACHE_TTL
       );
 
-      const exactMatch = searchResults.results.find((person) => {
+      const exactMatches = searchResults.results.filter((person) => {
         const normalizedPersonName = person.name
           .toLowerCase()
           .normalize('NFKD')
@@ -211,6 +211,13 @@ class TmdbPersonMapper extends ExternalAPI {
 
         return normalizedPersonName === normalizedArtistName;
       });
+
+      const exactMatch =
+        exactMatches.length > 0
+          ? exactMatches.reduce((prev, current) =>
+              current.popularity > prev.popularity ? current : prev
+            )
+          : null;
 
       const mapping = {
         personId: exactMatch?.id ?? null,
