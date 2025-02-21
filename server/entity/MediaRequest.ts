@@ -1542,6 +1542,21 @@ export class MediaRequest {
         const albumInfo = searchResults[0].album;
         const artistPath = `/media/${albumInfo.artist.artistName}`;
 
+        let rootFolder = lidarrSettings.activeDirectory;
+
+        if (
+          this.rootFolder &&
+          this.rootFolder !== '' &&
+          this.rootFolder !== rootFolder
+        ) {
+          rootFolder = this.rootFolder;
+          logger.info(`Request has an override root folder: ${rootFolder}`, {
+            label: 'Media Request',
+            requestId: this.id,
+            mediaId: this.media.id,
+          });
+        }
+
         const addAlbumPayload: LidarrAlbumOptions = {
           title: albumInfo.title,
           disambiguation: albumInfo.disambiguation || '',
@@ -1577,7 +1592,7 @@ export class MediaRequest {
             metadataProfileId: 2,
             monitored: true,
             monitorNewItems: 'none',
-            rootFolderPath: '/media',
+            rootFolderPath: rootFolder,
             genres: albumInfo.artist.genres || [],
             cleanName: albumInfo.artist.cleanName,
             sortName: albumInfo.artist.sortName,
