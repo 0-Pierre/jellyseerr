@@ -4,6 +4,8 @@ import ImageFader from '@app/components/Common/ImageFader';
 import LoadingSpinner from '@app/components/Common/LoadingSpinner';
 import PageTitle from '@app/components/Common/PageTitle';
 import TitleCard from '@app/components/TitleCard';
+import { useArtistImageUpdates } from '@app/hooks/useArtistImageUpdates';
+import { useCoverArtUpdates } from '@app/hooks/useCoverArtUpdates';
 import globalMessages from '@app/i18n/globalMessages';
 import Error from '@app/pages/_error';
 import defineMessages from '@app/utils/defineMessages';
@@ -11,7 +13,7 @@ import type { PersonCombinedCreditsResponse } from '@server/interfaces/api/perso
 import type { PersonDetails as PersonDetailsType } from '@server/models/Person';
 import { groupBy, orderBy } from 'lodash';
 import { useRouter } from 'next/router';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useIntl } from 'react-intl';
 import TruncateMarkup from 'react-truncate-markup';
 import useSWR from 'swr';
@@ -63,58 +65,40 @@ const PersonDetails = () => {
 
   const [showBio, setShowBio] = useState(false);
 
-  useEffect(() => {
-    const sources = {
-      caa: new EventSource('/caaproxy/updates'),
-      tadb: new EventSource('/tadbproxy/updates'),
-    };
+  useCoverArtUpdates((coverArtData) => {
+    mutate((currentData) => {
+      if (!currentData?.artist?.releaseGroups) return currentData;
 
-    const handlers = {
-      caa: (coverArtData: { id: string; url: string }) => {
-        mutate((currentData) => {
-          if (!currentData?.artist?.releaseGroups) return currentData;
+      return {
+        ...currentData,
+        artist: {
+          ...currentData.artist,
+          releaseGroups: currentData.artist.releaseGroups.map((release) =>
+            release.id === coverArtData.id
+              ? { ...release, posterPath: coverArtData.url }
+              : release
+          ),
+        },
+      };
+    }, false);
+  });
 
-          return {
-            ...currentData,
-            artist: {
-              ...currentData.artist,
-              releaseGroups: currentData.artist.releaseGroups.map((release) =>
-                release.id === coverArtData.id
-                  ? { ...release, posterPath: coverArtData.url }
-                  : release
-              ),
-            },
-          };
-        }, false);
-      },
-      tadb: (tadbData: {
-        id: string;
-        urls: { artistThumb: string | null; artistBackground: string | null };
-      }) => {
-        mutate((currentData) => {
-          if (
-            !currentData?.artist?.releaseGroups?.some(
-              (group) => group['artist-credit']?.[0]?.name === currentData.name
-            )
-          )
-            return currentData;
+  useArtistImageUpdates((tadbData) => {
+    mutate((currentData?: PersonDetailsType) => {
+      if (!currentData?.artist) return currentData;
 
-          return {
-            ...currentData,
-            artistThumb: tadbData.urls.artistThumb,
-            artistBackdrop: tadbData.urls.artistBackground,
-          };
-        }, false);
-      },
-    };
-
-    sources.caa.onmessage = (event) => handlers.caa(JSON.parse(event.data));
-    sources.tadb.onmessage = (event) => handlers.tadb(JSON.parse(event.data));
-
-    return () => {
-      Object.values(sources).forEach((source) => source.close());
-    };
-  }, [mutate]);
+      return {
+        ...currentData,
+        artist: {
+          ...currentData.artist,
+          artistThumb:
+            tadbData.urls.artistThumb ?? currentData.artist.artistThumb,
+          artistBackdrop:
+            tadbData.urls.artistBackground ?? currentData.artist.artistBackdrop,
+        },
+      };
+    }, false);
+  });
 
   const sortedCredits = useMemo(() => {
     const cast = combinedCredits?.cast ?? [];

@@ -21,6 +21,7 @@ export interface PersonDetails {
   imdbId?: string;
   homepage?: string;
   artist?: {
+    artistBackdrop: string | null;
     artistThumb?: string;
     releaseGroups?: {
       secondary_types?: string[];

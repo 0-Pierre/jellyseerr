@@ -1,5 +1,6 @@
 import AddedCard from '@app/components/AddedCard';
 import Slider from '@app/components/Slider';
+import { useCoverArtUpdates } from '@app/hooks/useCoverArtUpdates';
 import { Permission, useUser } from '@app/hooks/useUser';
 import defineMessages from '@app/utils/defineMessages';
 import type { MediaResultsResponse } from '@server/interfaces/api/mediaInterfaces';
@@ -25,32 +26,19 @@ const RecentlyAddedSlider = () => {
     setMediaItems(media?.results ?? []);
   }, [media]);
 
-  useEffect(() => {
-    const caaEventSource = new EventSource('/caaproxy/updates');
-
-    const processCAAUpdate = (coverArtData: { id: string; url: string }) => {
-      setMediaItems((currentItems) =>
-        currentItems.map((item) => {
-          if (item.mediaType === 'music' && item.mbId === coverArtData.id) {
-            return Object.assign(Object.create(Object.getPrototypeOf(item)), {
-              ...item,
-              posterPath: coverArtData.url,
-            });
-          }
-          return item;
-        })
-      );
-    };
-
-    caaEventSource.onmessage = (event) => {
-      const coverArtData = JSON.parse(event.data);
-      processCAAUpdate(coverArtData);
-    };
-
-    return () => {
-      caaEventSource.close();
-    };
-  }, []);
+  useCoverArtUpdates((coverArtData) => {
+    setMediaItems((currentItems) =>
+      currentItems.map((item) => {
+        if (item.mediaType === 'music' && item.mbId === coverArtData.id) {
+          return Object.assign(Object.create(Object.getPrototypeOf(item)), {
+            ...item,
+            posterPath: coverArtData.url,
+          });
+        }
+        return item;
+      })
+    );
+  });
 
   if (
     (media && !media.results.length && !mediaError) ||

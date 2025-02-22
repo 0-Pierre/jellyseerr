@@ -1,5 +1,5 @@
+import { useCoverArtUpdates } from '@app/hooks/useCoverArtUpdates';
 import { MediaStatus } from '@server/constants/media';
-import { useEffect } from 'react';
 import useSWRInfinite from 'swr/infinite';
 import useSettings from './useSettings';
 
@@ -85,34 +85,21 @@ const useDiscover = <
     }
   );
 
-  useEffect(() => {
-    const eventSource = new EventSource('/caaproxy/updates');
+  useCoverArtUpdates((coverArtData) => {
+    mutate((currentData) => {
+      if (!currentData) return currentData;
 
-    const processUpdate = (coverArtData: { id: string; url: string }) => {
-      mutate((currentData) => {
-        if (!currentData) return currentData;
-
-        return currentData.map((page) => ({
-          ...page,
-          results: page.results.map((result) => {
-            if (result?.id?.toString() === coverArtData.id) {
-              return { ...result, posterPath: coverArtData.url };
-            }
-            return result;
-          }),
-        }));
-      }, false);
-    };
-
-    eventSource.onmessage = (event) => {
-      const coverArtData = JSON.parse(event.data);
-      processUpdate(coverArtData);
-    };
-
-    return () => {
-      eventSource.close();
-    };
-  }, [mutate]);
+      return currentData.map((page) => ({
+        ...page,
+        results: page.results.map((result) => {
+          if (result?.id?.toString() === coverArtData.id) {
+            return { ...result, posterPath: coverArtData.url };
+          }
+          return result;
+        }),
+      }));
+    }, false);
+  });
 
   const resultIds: Set<number> = new Set<number>();
 

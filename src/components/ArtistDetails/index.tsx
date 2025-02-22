@@ -4,6 +4,8 @@ import ImageFader from '@app/components/Common/ImageFader';
 import LoadingSpinner from '@app/components/Common/LoadingSpinner';
 import PageTitle from '@app/components/Common/PageTitle';
 import TitleCard from '@app/components/TitleCard';
+import { useArtistImageUpdates } from '@app/hooks/useArtistImageUpdates';
+import { useCoverArtUpdates } from '@app/hooks/useCoverArtUpdates';
 import globalMessages from '@app/i18n/globalMessages';
 import Error from '@app/pages/_error';
 import defineMessages from '@app/utils/defineMessages';
@@ -74,36 +76,39 @@ const ArtistDetails = () => {
     });
   }, [data?.releaseGroups]);
 
-  useEffect(() => {
-    const caaEventSource = new EventSource('/caaproxy/updates');
+  useCoverArtUpdates((coverArtData) => {
+    mutate(
+      (currentData?: ArtistDetailsType) => {
+        if (!currentData) return currentData;
 
-    const processCAAUpdate = (coverArtData: { id: string; url: string }) => {
-      mutate(
-        (currentData?: ArtistDetailsType) => {
-          if (!currentData) return currentData;
+        return {
+          ...currentData,
+          releaseGroups: currentData.releaseGroups?.map((release) =>
+            release.id === coverArtData.id
+              ? { ...release, posterPath: coverArtData.url }
+              : release
+          ),
+        };
+      },
+      { revalidate: false }
+    );
+  });
 
-          return {
-            ...currentData,
-            releaseGroups: currentData.releaseGroups?.map((release) =>
-              release.id === coverArtData.id
-                ? { ...release, posterPath: coverArtData.url }
-                : release
-            ),
-          };
-        },
-        { revalidate: false }
-      );
-    };
+  useArtistImageUpdates((tadbData) => {
+    mutate(
+      (currentData?: ArtistDetailsType) => {
+        if (!currentData) return currentData;
 
-    caaEventSource.onmessage = (event) => {
-      const coverArtData = JSON.parse(event.data);
-      processCAAUpdate(coverArtData);
-    };
-
-    return () => {
-      caaEventSource.close();
-    };
-  }, [mutate]);
+        return {
+          ...currentData,
+          artistThumb: tadbData.urls.artistThumb ?? currentData.artistThumb,
+          artistBackdrop:
+            tadbData.urls.artistBackground ?? currentData.artistBackdrop,
+        };
+      },
+      { revalidate: false }
+    );
+  });
 
   useEffect(() => {
     if (!data?.artistThumb && !data?.profilePath) {
