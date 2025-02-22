@@ -177,7 +177,7 @@ class TmdbPersonMapper extends ExternalAPI {
     this.fetchingIds.add(artistId);
     try {
       const cleanArtistName = artistName
-        .split(/(?:feat\.?|ft\.?|&|,)/i)[0]
+        .split(/(?:(?:feat|ft)\.?\s+|&\s*|,\s+)/i)[0]
         .trim()
         .replace(/['']/g, "'");
 
@@ -198,7 +198,7 @@ class TmdbPersonMapper extends ExternalAPI {
           .normalize('NFKD')
           .replace(/[\u0300-\u036f]/g, '')
           .replace(/['']/g, "'")
-          .replace(/[^a-z0-9]/g, '')
+          .replace(/[^a-z0-9\s]/g, '')
           .trim();
 
         const normalizedArtistName = cleanArtistName
@@ -206,7 +206,7 @@ class TmdbPersonMapper extends ExternalAPI {
           .normalize('NFKD')
           .replace(/[\u0300-\u036f]/g, '')
           .replace(/['']/g, "'")
-          .replace(/[^a-z0-9]/g, '')
+          .replace(/[^a-z0-9\s]/g, '')
           .trim();
 
         return normalizedPersonName === normalizedArtistName;
