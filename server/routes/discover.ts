@@ -866,7 +866,6 @@ discoverRoutes.get('/music', async (req, res, next) => {
           title: album.release_group_name,
           'artist-credit': [{ name: album.artist_name }],
           listenCount: album.listen_count,
-          'first-release-date': '',
           posterPath: undefined,
         };
       }
@@ -888,7 +887,6 @@ discoverRoutes.get('/music', async (req, res, next) => {
         artistId: album.artist_mbids[0],
         mediaInfo: media?.find((med) => med.mbId === album.release_group_mbid),
         listenCount: album.listen_count,
-        'first-release-date': '',
         posterPath: metadata?.caaUrl ?? undefined,
       };
     });
@@ -898,10 +896,18 @@ discoverRoutes.get('/music', async (req, res, next) => {
       const multiplier = direction === 'asc' ? 1 : -1;
 
       results.sort((a, b) => {
-        if (field === 'listen_count') {
-          return (a.listenCount - b.listenCount) * multiplier;
+        switch (field) {
+          case 'listen_count': {
+            return (a.listenCount - b.listenCount) * multiplier;
+          }
+
+          case 'title': {
+            return (a.title ?? '').localeCompare(b.title ?? '') * multiplier;
+          }
+
+          default:
+            return 0;
         }
-        return 0;
       });
     }
 

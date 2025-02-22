@@ -58,11 +58,14 @@ const DiscoverMusic = () => {
   );
 
   const debouncedFetchMore = useCallback(
-    debounce(() => {
-      if (!isLoadingMore && !isReachingEnd) {
-        fetchMore();
-      }
-    }, 150),
+    () => {
+      const debouncedFn = debounce(() => {
+        if (!isLoadingMore && !isReachingEnd) {
+          fetchMore();
+        }
+      }, 150);
+      debouncedFn();
+    },
     [fetchMore, isLoadingMore, isReachingEnd]
   );
 
@@ -73,12 +76,6 @@ const DiscoverMusic = () => {
       ),
       [SortOptions.PopularityAsc]: intl.formatMessage(
         messages.sortPopularityAsc
-      ),
-      [SortOptions.ReleaseDateDesc]: intl.formatMessage(
-        messages.sortReleaseDateDesc
-      ),
-      [SortOptions.ReleaseDateAsc]: intl.formatMessage(
-        messages.sortReleaseDateAsc
       ),
       [SortOptions.TitleAsc]: intl.formatMessage(messages.sortTitleAsc),
       [SortOptions.TitleDesc]: intl.formatMessage(messages.sortTitleDesc),
