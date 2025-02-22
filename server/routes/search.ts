@@ -167,7 +167,29 @@ searchRoutes.get('/', async (req, res, next) => {
       const validArtists = artistsWithArt.filter(
         (artist): artist is NonNullable<typeof artist> => artist !== null
       );
-      const musicResults = [...albumsWithArt, ...validArtists].sort(
+
+      const tmdbPersonResults = tmdbResults.results.filter(
+        (result) => result.media_type === 'person'
+      );
+
+      const tmdbPersonIds = tmdbPersonResults.map((person) =>
+        person.id.toString()
+      );
+
+      const existingMappings = await getRepository(MetadataArtist).find({
+        where: { tmdbPersonId: In(tmdbPersonIds) },
+        cache: true,
+      });
+
+      const filteredArtists = validArtists.filter((artist) => {
+        const mapping = existingMappings.find(
+          (mapping) => mapping.mbArtistId === artist.id
+        );
+
+        return !mapping || !tmdbPersonIds.includes(mapping.tmdbPersonId ?? '');
+      });
+
+      const musicResults = [...albumsWithArt, ...filteredArtists].sort(
         (a, b) => (b.score || 0) - (a.score || 0)
       );
 
