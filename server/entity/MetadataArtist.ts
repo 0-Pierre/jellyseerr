@@ -3,7 +3,6 @@ import {
   CreateDateColumn,
   Entity,
   PrimaryGeneratedColumn,
-  UpdateDateColumn,
 } from 'typeorm';
 
 @Entity()
@@ -20,17 +19,20 @@ class MetadataArtist {
   @Column({ nullable: true, type: 'varchar' })
   public tmdbThumb: string | null;
 
+  @Column({ nullable: true, type: 'datetime' })
+  public tmdbUpdatedAt: Date | null;
+
   @Column({ nullable: true, type: 'varchar' })
   public tadbThumb: string | null;
 
   @Column({ nullable: true, type: 'varchar' })
   public tadbCover: string | null;
 
+  @Column({ nullable: true, type: 'datetime' })
+  public tadbUpdatedAt: Date | null;
+
   @CreateDateColumn()
   public createdAt: Date;
-
-  @UpdateDateColumn()
-  public updatedAt: Date;
 
   constructor(init?: Partial<MetadataArtist>) {
     Object.assign(this, init);

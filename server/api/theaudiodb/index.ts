@@ -41,8 +41,8 @@ class TheAudioDb extends ExternalAPI {
   }
 
   private isMetadataStale(metadata: MetadataArtist | null): boolean {
-    if (!metadata) return true;
-    return Date.now() - metadata.updatedAt.getTime() > this.STALE_THRESHOLD;
+    if (!metadata || !metadata.tadbUpdatedAt) return true;
+    return Date.now() - metadata.tadbUpdatedAt.getTime() > this.STALE_THRESHOLD;
   }
 
   private createEmptyResponse() {
@@ -59,7 +59,7 @@ class TheAudioDb extends ExternalAPI {
   > {
     const metadata = await getRepository(MetadataArtist).findOne({
       where: { mbArtistId: id },
-      select: ['tadbThumb', 'tadbCover'],
+      select: ['tadbThumb', 'tadbCover', 'tadbUpdatedAt'],
     });
 
     if (metadata) {
@@ -78,7 +78,7 @@ class TheAudioDb extends ExternalAPI {
     try {
       const metadata = await getRepository(MetadataArtist).findOne({
         where: { mbArtistId: id },
-        select: ['tadbThumb', 'tadbCover', 'updatedAt'],
+        select: ['tadbThumb', 'tadbCover', 'tadbUpdatedAt'],
       });
 
       if (metadata?.tadbThumb || metadata?.tadbCover) {
@@ -169,6 +169,7 @@ class TheAudioDb extends ExternalAPI {
             mbArtistId: id,
             tadbThumb: result.artistThumb,
             tadbCover: result.artistBackground,
+            tadbUpdatedAt: new Date(),
           },
           {
             conflictPaths: ['mbArtistId'],
@@ -193,6 +194,7 @@ class TheAudioDb extends ExternalAPI {
           mbArtistId: id,
           tadbThumb: null,
           tadbCover: null,
+          tadbUpdatedAt: new Date(),
         },
         {
           conflictPaths: ['mbArtistId'],

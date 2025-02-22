@@ -132,10 +132,11 @@ export class AddMusicSupport1714310036946 implements MigrationInterface {
         "mbArtistId" varchar NOT NULL,
         "tmdbPersonId" varchar,
         "tmdbThumb" varchar,
+        "tmdbUpdatedAt" datetime,
         "tadbThumb" varchar,
         "tadbCover" varchar,
-        "createdAt" datetime NOT NULL DEFAULT (datetime('now')),
-        "updatedAt" datetime NOT NULL DEFAULT (datetime('now'))
+        "tadbUpdatedAt" datetime,
+        "createdAt" datetime NOT NULL DEFAULT (datetime('now'))
       )`
     );
 

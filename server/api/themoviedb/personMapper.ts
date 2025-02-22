@@ -52,8 +52,8 @@ class TmdbPersonMapper extends ExternalAPI {
   }
 
   private isMetadataStale(metadata: MetadataArtist | null): boolean {
-    if (!metadata) return true;
-    return Date.now() - metadata.updatedAt.getTime() > this.STALE_THRESHOLD;
+    if (!metadata || !metadata.tmdbUpdatedAt) return true;
+    return Date.now() - metadata.tmdbUpdatedAt.getTime() > this.STALE_THRESHOLD;
   }
 
   private createEmptyResponse() {
@@ -68,7 +68,7 @@ class TmdbPersonMapper extends ExternalAPI {
     try {
       const metadata = await getRepository(MetadataArtist).findOne({
         where: { mbArtistId: artistId },
-        select: ['tmdbPersonId', 'tmdbThumb', 'updatedAt'],
+        select: ['tmdbPersonId', 'tmdbThumb', 'tmdbUpdatedAt'],
       });
 
       if (metadata?.tmdbPersonId || metadata?.tmdbThumb) {
@@ -141,7 +141,7 @@ class TmdbPersonMapper extends ExternalAPI {
     try {
       const metadata = await getRepository(MetadataArtist).findOne({
         where: { mbArtistId: artistId },
-        select: ['tmdbPersonId', 'tmdbThumb', 'updatedAt'],
+        select: ['tmdbPersonId', 'tmdbThumb', 'tmdbUpdatedAt'],
       });
 
       if (!metadata) {
@@ -232,6 +232,7 @@ class TmdbPersonMapper extends ExternalAPI {
             mbArtistId: artistId,
             tmdbPersonId: mapping.personId?.toString() ?? null,
             tmdbThumb: mapping.profilePath,
+            tmdbUpdatedAt: new Date(),
           },
           {
             conflictPaths: ['mbArtistId'],
@@ -256,6 +257,7 @@ class TmdbPersonMapper extends ExternalAPI {
           mbArtistId: artistId,
           tmdbPersonId: null,
           tmdbThumb: null,
+          tmdbUpdatedAt: new Date(),
         },
         {
           conflictPaths: ['mbArtistId'],

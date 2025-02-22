@@ -76,10 +76,11 @@ export class AddMusicSupport1714310036946 implements MigrationInterface {
         "mbArtistId" character varying NOT NULL,
         "tmdbPersonId" character varying,
         "tmdbThumb" character varying,
+        "tmdbUpdatedAt" TIMESTAMP,
         "tadbThumb" character varying,
         "tadbCover" character varying,
+        "tadbUpdatedAt" TIMESTAMP,
         "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
-        "updatedAt" TIMESTAMP NOT NULL DEFAULT now(),
         CONSTRAINT "PK_metadata_artist" PRIMARY KEY ("id")
       )`
     );
