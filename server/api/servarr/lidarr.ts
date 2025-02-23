@@ -328,7 +328,25 @@ class LidarrAPI extends ServarrBase<{ albumId: number }> {
 
   public async addAlbum(options: LidarrAlbumOptions): Promise<LidarrAlbum> {
     try {
-      const data = await this.post<LidarrAlbum>('/album', options);
+      const existingAlbums = await this.get<LidarrAlbum[]>('/album', {
+        foreignAlbumId: options.foreignAlbumId,
+        includeAllArtistAlbums: 'true',
+      });
+
+      if (existingAlbums.length > 0 && existingAlbums[0].monitored) {
+        logger.info(
+          'Album is already monitored in Lidarr. Skipping add and returning success',
+          {
+            label: 'Lidarr',
+          }
+        );
+        return existingAlbums[0];
+      }
+
+      const data = await this.post<LidarrAlbum>('/album', {
+        ...options,
+        monitored: true,
+      });
       return data;
     } catch (e) {
       throw new Error(`[Lidarr] Failed to add album: ${e.message}`);
