@@ -99,7 +99,8 @@ musicRoutes.get('/:id', async (req, res, next) => {
       getRepository(MetadataArtist).find({
         where: { mbArtistId: In(trackArtistIds) },
       }),
-      artistId
+      artistId &&
+      albumDetails.release_group_metadata?.artist?.artists[0]?.type !== 'Other'
         ? musicbrainz
             .getArtistWikipediaExtract({
               artistMbid: artistId,
@@ -209,25 +210,29 @@ musicRoutes.get('/:id/artist', async (req, res, next) => {
     const metadataArtistRepository = getRepository(MetadataArtist);
 
     const albumData = await listenbrainzApi.getAlbum(req.params.id);
-    const artistId =
-      albumData?.release_group_metadata?.artist?.artists?.[0]?.artist_mbid;
-    if (!artistId) {
-      throw new Error('No artist ID found in album metadata');
+    const artistData = albumData?.release_group_metadata?.artist?.artists?.[0];
+    const artistType = artistData?.type;
+
+    if (!artistData?.artist_mbid || artistType === 'Other') {
+      return res.status(404).json({
+        status: 404,
+        message: 'Artist details not available for this type',
+      });
     }
 
-    const [artistData, cachedTheAudioDb] = await Promise.all([
-      listenbrainzApi.getArtist(artistId),
-      theAudioDb.getArtistImagesFromCache(artistId),
+    const [artistDetails, cachedTheAudioDb] = await Promise.all([
+      listenbrainzApi.getArtist(artistData.artist_mbid),
+      theAudioDb.getArtistImagesFromCache(artistData.artist_mbid),
       metadataArtistRepository.findOne({
-        where: { mbArtistId: artistId },
+        where: { mbArtistId: artistData.artist_mbid },
       }),
     ]);
 
-    if (!artistData) {
+    if (!artistDetails) {
       return res.status(404).json({ status: 404, message: 'Artist not found' });
     }
 
-    const releaseGroupIds = artistData.releaseGroups.map((rg) => rg.mbid);
+    const releaseGroupIds = artistDetails.releaseGroups.map((rg) => rg.mbid);
     const [relatedMedia, albumMetadata] = await Promise.all([
       Media.getRelatedMedia(req.user, releaseGroupIds),
       metadataAlbumRepository.find({
@@ -235,7 +240,7 @@ musicRoutes.get('/:id/artist', async (req, res, next) => {
       }),
     ]);
 
-    const transformedReleaseGroups = artistData.releaseGroups.map(
+    const transformedReleaseGroups = artistDetails.releaseGroups.map(
       (releaseGroup) => {
         const metadata = albumMetadata.find(
           (m) => m.mbAlbumId === releaseGroup.mbid
@@ -261,7 +266,7 @@ musicRoutes.get('/:id/artist', async (req, res, next) => {
     );
 
     const similarArtistIds =
-      artistData.similarArtists?.artists?.map((a) => a.artist_mbid) ?? [];
+      artistDetails.similarArtists?.artists?.map((a) => a.artist_mbid) ?? [];
     const similarArtistMetadata =
       similarArtistIds.length > 0
         ? await metadataArtistRepository.find({
@@ -270,7 +275,7 @@ musicRoutes.get('/:id/artist', async (req, res, next) => {
         : [];
 
     const similarArtistPromises =
-      artistData.similarArtists?.artists?.map(async (artist) => {
+      artistDetails.similarArtists?.artists?.map(async (artist) => {
         const metadata = similarArtistMetadata.find(
           (m) => m.mbArtistId === artist.artist_mbid
         );
@@ -310,16 +315,16 @@ musicRoutes.get('/:id/artist', async (req, res, next) => {
     const transformedSimilarArtists = await Promise.all(similarArtistPromises);
 
     if (!cachedTheAudioDb) {
-      theAudioDb.getArtistImages(artistId, true);
+      theAudioDb.getArtistImages(artistData.artist_mbid, true);
     }
 
     return res.status(200).json({
       artist: {
-        ...artistData,
+        ...artistDetails,
         artistThumb: cachedTheAudioDb?.artistThumb ?? null,
         artistBackdrop: cachedTheAudioDb?.artistBackground ?? null,
         similarArtists: {
-          ...artistData.similarArtists,
+          ...artistDetails.similarArtists,
           artists: transformedSimilarArtists,
         },
         releaseGroups: transformedReleaseGroups,
