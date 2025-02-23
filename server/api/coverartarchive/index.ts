@@ -30,7 +30,7 @@ class CoverArtArchive extends ExternalAPI {
       {
         nodeCache: cacheManager.getCache('covertartarchive').data,
         rateLimit: {
-          maxRPS: 100,
+          maxRPS: 50,
           id: 'covertartarchive',
         },
       }

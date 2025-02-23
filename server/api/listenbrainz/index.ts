@@ -14,7 +14,7 @@ class ListenBrainzAPI extends ExternalAPI {
       {
         nodeCache: cacheManager.getCache('listenbrainz').data,
         rateLimit: {
-          maxRPS: 50,
+          maxRPS: 25,
           id: 'listenbrainz',
         },
       }

@@ -26,7 +26,7 @@ class TheAudioDb extends ExternalAPI {
       {
         nodeCache: cacheManager.getCache('tadb').data,
         rateLimit: {
-          maxRPS: 10,
+          maxRPS: 25,
           id: 'tadb',
         },
       }

@@ -20,7 +20,7 @@ class MusicBrainz extends ExternalAPI {
         },
         nodeCache: cacheManager.getCache('musicbrainz').data,
         rateLimit: {
-          maxRPS: 50,
+          maxRPS: 25,
           id: 'musicbrainz',
         },
       }

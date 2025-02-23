@@ -6,7 +6,7 @@ import { Router } from 'express';
 const router = Router();
 const tadbImageProxy = new ImageProxy('tadb', 'https://r2.theaudiodb.com', {
   rateLimitOptions: {
-    maxRPS: 10,
+    maxRPS: 25,
   },
 });
 

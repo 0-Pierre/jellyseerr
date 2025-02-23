@@ -6,7 +6,7 @@ import { Router } from 'express';
 const router = Router();
 const caaImageProxy = new ImageProxy('caa', 'https://archive.org/download', {
   rateLimitOptions: {
-    maxRPS: 100,
+    maxRPS: 50,
   },
 });
 
