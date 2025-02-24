@@ -212,10 +212,26 @@ searchRoutes.get('/', async (req, res, next) => {
       };
     }
 
-    const media = await Media.getRelatedMedia(
-      req.user,
-      results.results.map((result) => result.id.toString())
-    );
+    const media = await Promise.all([
+      Media.getRelatedMedia(
+        req.user,
+        results.results
+          .filter(
+            (result) =>
+              result.media_type === 'movie' || result.media_type === 'tv'
+          )
+          .map((result) => Number(result.id))
+      ),
+      Media.getRelatedMedia(
+        req.user,
+        results.results
+          .filter(
+            (result) =>
+              result.media_type === 'album' || result.media_type === 'artist'
+          )
+          .map((result) => result.id.toString())
+      ),
+    ]).then(([movieTvMedia, musicMedia]) => [...movieTvMedia, ...musicMedia]);
 
     const mappedResults = await mapSearchResults(results.results, media);
 
