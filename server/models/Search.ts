@@ -389,6 +389,7 @@ export const mapPersonDetailsToResult = (
   personDetails: TmdbPersonDetails
 ): TmdbPersonResult => ({
   id: personDetails.id,
+  known_for_department: personDetails.known_for_department,
   media_type: 'person',
   name: personDetails.name,
   popularity: personDetails.popularity,

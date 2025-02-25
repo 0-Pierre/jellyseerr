@@ -212,8 +212,16 @@ class TmdbPersonMapper extends ExternalAPI {
         return normalizedPersonName === normalizedArtistName;
       });
 
+      const soundMatches = exactMatches.filter(
+        (person) => person.known_for_department === 'Sound'
+      );
+
       const exactMatch =
-        exactMatches.length > 0
+        soundMatches.length > 0
+          ? soundMatches.reduce((prev, current) =>
+              current.popularity > prev.popularity ? current : prev
+            )
+          : exactMatches.length > 0
           ? exactMatches.reduce((prev, current) =>
               current.popularity > prev.popularity ? current : prev
             )
