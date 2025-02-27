@@ -1527,7 +1527,6 @@ export class MediaRequest {
           url: LidarrAPI.buildUrl(lidarrSettings, '/api/v1'),
         });
 
-        // Search for the album using MusicBrainz ID
         if (!media.mbId) {
           throw new Error('media.mbId is required but is undefined');
         }
@@ -1540,7 +1539,6 @@ export class MediaRequest {
         }
 
         const albumInfo = searchResults[0].album;
-        const artistPath = `/media/${albumInfo.artist.artistName}`;
 
         let rootFolder = lidarrSettings.activeDirectory;
 
@@ -1556,6 +1554,8 @@ export class MediaRequest {
             mediaId: this.media.id,
           });
         }
+
+        const artistPath = `${rootFolder}/${albumInfo.artist.artistName}`;
 
         const addAlbumPayload: LidarrAlbumOptions = {
           title: albumInfo.title,
