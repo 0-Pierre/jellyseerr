@@ -28,9 +28,8 @@ const messages = defineMessages('components.ArtistDetails', {
   broadcast: 'Broadcast',
   demo: 'Demo',
   other: 'Other',
-  loadMore: 'Load More',
-  showAll: 'Show All',
-  showLess: 'Show Less',
+  showall: 'Show All',
+  showless: 'Show Less',
 });
 
 const DISPLAY_COUNT = 10;
@@ -204,7 +203,7 @@ const AlbumSection = ({
                 role="button"
                 tabIndex={0}
                 aria-label={intl.formatMessage(
-                  isExpanded ? messages.showLess : messages.showAll
+                  isExpanded ? messages.showless : messages.showall
                 )}
               >
                 <div
@@ -223,7 +222,7 @@ const AlbumSection = ({
                     )}
                     <div className="mt-2 font-extrabold">
                       {intl.formatMessage(
-                        isExpanded ? messages.showLess : messages.showAll
+                        isExpanded ? messages.showless : messages.showall
                       )}
                     </div>
                     {!isExpanded && totalCount > DISPLAY_COUNT && (

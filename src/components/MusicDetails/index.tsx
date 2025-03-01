@@ -38,6 +38,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useToasts } from 'react-toast-notifications';
 import useSWR from 'swr';
+import Ellipsis from '@app/assets/ellipsis.svg';
+import TruncateMarkup from 'react-truncate-markup';
 
 const messages = defineMessages('components.MusicDetails', {
   biography: 'Biography',
@@ -69,6 +71,42 @@ interface MusicDetailsProps {
   music?: MusicDetailsType;
 }
 
+const Biography = ({
+  content,
+  showBio,
+  onClick,
+}: {
+  content: string;
+  showBio: boolean;
+  onClick: () => void;
+}) => {
+  return (
+    <div className="relative text-left">
+      <div
+        className="group outline-none ring-0"
+        onClick={onClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onClick();
+          }
+        }}
+        role="button"
+        tabIndex={0}
+      >
+        <TruncateMarkup
+          lines={showBio ? 200 : 6}
+          ellipsis={
+            <Ellipsis className="relative -top-0.5 ml-2 inline-block opacity-70 transition duration-300 group-hover:opacity-100" />
+          }
+        >
+          <p className="pt-2 text-sm lg:text-base">{content}</p>
+        </TruncateMarkup>
+      </div>
+    </div>
+  );
+};
+
 const MusicDetails = ({ music }: MusicDetailsProps) => {
   const settings = useSettings();
   const { user, hasPermission } = useUser();
@@ -84,6 +122,7 @@ const MusicDetails = ({ music }: MusicDetailsProps) => {
     useState<boolean>(false);
   const [showBlacklistModal, setShowBlacklistModal] = useState(false);
   const { addToast } = useToasts();
+  const [showBio, setShowBio] = useState(false);
 
   const {
     data,
@@ -553,11 +592,15 @@ const MusicDetails = ({ music }: MusicDetailsProps) => {
       <div className="media-overview">
         <div className="media-overview-left">
           <h2>{intl.formatMessage(messages.biography)}</h2>
-          <p>
-            {data.artistWikipedia?.content
-              ? data.artistWikipedia.content
-              : intl.formatMessage(messages.biographyunavailable)}
-          </p>
+          <Biography
+            content={
+              data.artistWikipedia?.content
+                ? data.artistWikipedia.content
+                : intl.formatMessage(messages.biographyunavailable)
+            }
+            showBio={showBio}
+            onClick={() => setShowBio(!showBio)}
+          />
           {/* We don't know we we will do with this tags maybe use it to show related content */}
           {((data?.tags?.artist?.length ?? 0) > 0 ||
             (data?.tags?.releaseGroup?.length ?? 0) > 0) && (
