@@ -27,6 +27,7 @@ import { mapNetwork } from '@server/models/Tv';
 import { isCollection, isMovie, isPerson } from '@server/utils/typeHelpers';
 import { Router } from 'express';
 import { sortBy } from 'lodash';
+import { In } from 'typeorm';
 import { z } from 'zod';
 
 export const createTmdbWithRegionLanguage = (user?: User): TheMovieDb => {
@@ -830,7 +831,6 @@ discoverRoutes.get<{ language: string }, GenreSliderItem[]>(
 discoverRoutes.get('/music', async (req, res, next) => {
   const listenbrainz = new ListenBrainzAPI();
   const coverArtArchive = CoverArtArchive.getInstance();
-  const metadataAlbumRepository = getRepository(MetadataAlbum);
 
   try {
     const page = Number(req.query.page) || 1;
@@ -838,23 +838,59 @@ discoverRoutes.get('/music', async (req, res, next) => {
     const offset = (page - 1) * pageSize;
     const sortBy = (req.query.sortBy as string) || 'listen_count.desc';
 
-    const [topAlbumsData, existingMetadata] = await Promise.all([
-      listenbrainz.getTopAlbums({
-        offset,
-        count: pageSize,
-        range: 'week',
-      }),
-      metadataAlbumRepository.find(),
-    ]);
+    const topAlbumsData = await listenbrainz.getTopAlbums({
+      offset,
+      count: pageSize,
+      range: 'week',
+    });
 
     const mbIds = topAlbumsData.payload.release_groups
       .map((album) => album.release_group_mbid)
       .filter((id): id is string => !!id);
 
-    const media = await Media.getRelatedMedia(req.user, mbIds);
+    if (mbIds.length === 0) {
+      const results = topAlbumsData.payload.release_groups.map((album) => ({
+        id: null,
+        mediaType: 'album',
+        'primary-type': 'Album',
+        title: album.release_group_name,
+        'artist-credit': [{ name: album.artist_name }],
+        listenCount: album.listen_count,
+        posterPath: undefined,
+      }));
+
+      return res.json({
+        page,
+        totalPages: Math.ceil(topAlbumsData.payload.count / pageSize),
+        totalResults: topAlbumsData.payload.count,
+        results,
+      });
+    }
+
+    const [existingMetadata, media] = await Promise.all([
+      getRepository(MetadataAlbum).find({
+        where: { mbAlbumId: In(mbIds) },
+        select: ['mbAlbumId', 'caaUrl'],
+        cache: true,
+      }),
+      Media.getRelatedMedia(req.user, mbIds),
+    ]);
 
     const metadataMap = new Map(
       existingMetadata.map((meta) => [meta.mbAlbumId, meta])
+    );
+
+    const albumsNeedingCovers = mbIds.filter(
+      (id) => !metadataMap.get(id)?.caaUrl
+    );
+
+    const coverArtResults =
+      albumsNeedingCovers.length > 0
+        ? await coverArtArchive.batchGetCoverArt(albumsNeedingCovers)
+        : {};
+
+    const mediaMap = new Map(
+      media.map((mediaItem) => [mediaItem.mbId, mediaItem])
     );
 
     const results = topAlbumsData.payload.release_groups.map((album) => {
@@ -871,12 +907,8 @@ discoverRoutes.get('/music', async (req, res, next) => {
       }
 
       const metadata = metadataMap.get(album.release_group_mbid);
-
-      if (!metadata?.caaUrl) {
-        setImmediate(() => {
-          coverArtArchive.getCoverArt(album.release_group_mbid, true);
-        });
-      }
+      const coverArtUrl =
+        metadata?.caaUrl || coverArtResults[album.release_group_mbid] || null;
 
       return {
         id: album.release_group_mbid,
@@ -885,9 +917,9 @@ discoverRoutes.get('/music', async (req, res, next) => {
         title: album.release_group_name,
         'artist-credit': [{ name: album.artist_name }],
         artistId: album.artist_mbids[0],
-        mediaInfo: media?.find((med) => med.mbId === album.release_group_mbid),
+        mediaInfo: mediaMap.get(album.release_group_mbid),
         listenCount: album.listen_count,
-        posterPath: metadata?.caaUrl ?? undefined,
+        posterPath: coverArtUrl || undefined,
       };
     });
 
@@ -900,11 +932,9 @@ discoverRoutes.get('/music', async (req, res, next) => {
           case 'listen_count': {
             return (a.listenCount - b.listenCount) * multiplier;
           }
-
           case 'title': {
             return (a.title ?? '').localeCompare(b.title ?? '') * multiplier;
           }
-
           default:
             return 0;
         }
@@ -920,7 +950,7 @@ discoverRoutes.get('/music', async (req, res, next) => {
   } catch (e) {
     logger.error('Failed to retrieve popular music', {
       label: 'API',
-      error: e.message,
+      error: e instanceof Error ? e.message : 'Unknown error',
     });
     return next({
       status: 500,

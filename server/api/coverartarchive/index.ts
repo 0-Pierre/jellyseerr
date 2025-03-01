@@ -3,17 +3,12 @@ import { getRepository } from '@server/datasource';
 import MetadataAlbum from '@server/entity/MetadataAlbum';
 import cacheManager from '@server/lib/cache';
 import logger from '@server/logger';
-import EventEmitter from 'events';
+import { In } from 'typeorm';
 import type { CoverArtResponse } from './interfaces';
 
 class CoverArtArchive extends ExternalAPI {
   private static instance: CoverArtArchive;
-  private readonly fetchingIds: Set<string> = new Set();
-  private readonly pendingFetches: Map<string, Promise<CoverArtResponse>> =
-    new Map();
-  private readonly eventEmitter = new EventEmitter();
   private readonly CACHE_TTL = 43200;
-  private readonly BACKGROUND_TIMEOUT = 250;
   private readonly STALE_THRESHOLD = 30 * 24 * 60 * 60 * 1000;
 
   public static getInstance(): CoverArtArchive {
@@ -63,17 +58,23 @@ class CoverArtArchive extends ExternalAPI {
   public async getCoverArtFromCache(
     id: string
   ): Promise<string | null | undefined> {
-    const metadata = await getRepository(MetadataAlbum).findOne({
-      where: { mbAlbumId: id },
-      select: ['caaUrl'],
-    });
-    return metadata?.caaUrl;
+    try {
+      const metadata = await getRepository(MetadataAlbum).findOne({
+        where: { mbAlbumId: id },
+        select: ['caaUrl'],
+      });
+      return metadata?.caaUrl;
+    } catch (error) {
+      logger.error('Failed to fetch cover art from cache', {
+        label: 'CoverArtArchive',
+        id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return null;
+    }
   }
 
-  public async getCoverArt(
-    id: string,
-    background = false
-  ): Promise<CoverArtResponse> {
+  public async getCoverArt(id: string): Promise<CoverArtResponse> {
     try {
       const metadata = await getRepository(MetadataAlbum).findOne({
         where: { mbAlbumId: id },
@@ -88,40 +89,7 @@ class CoverArtArchive extends ExternalAPI {
         return this.createEmptyResponse(id);
       }
 
-      if (this.pendingFetches.has(id)) {
-        const pendingFetch = this.pendingFetches.get(id);
-        if (!pendingFetch) {
-          throw new Error(`Invalid pending fetch for id ${id}`);
-        }
-        return background
-          ? Promise.race([
-              pendingFetch,
-              new Promise<CoverArtResponse>((resolve) =>
-                setTimeout(
-                  () => resolve(this.createEmptyResponse(id)),
-                  this.BACKGROUND_TIMEOUT
-                )
-              ),
-            ])
-          : pendingFetch;
-      }
-
-      const fetchPromise = this.fetchCoverArt(id).finally(() =>
-        this.pendingFetches.delete(id)
-      );
-      this.pendingFetches.set(id, fetchPromise);
-
-      return background
-        ? Promise.race([
-            fetchPromise,
-            new Promise<CoverArtResponse>((resolve) =>
-              setTimeout(
-                () => resolve(this.createEmptyResponse(id)),
-                this.BACKGROUND_TIMEOUT
-              )
-            ),
-          ])
-        : fetchPromise;
+      return await this.fetchCoverArt(id);
     } catch (error) {
       logger.error('Failed to get cover art', {
         label: 'CoverArtArchive',
@@ -133,11 +101,6 @@ class CoverArtArchive extends ExternalAPI {
   }
 
   private async fetchCoverArt(id: string): Promise<CoverArtResponse> {
-    if (this.fetchingIds.has(id)) {
-      return this.createEmptyResponse(id);
-    }
-
-    this.fetchingIds.add(id);
     try {
       const data = await this.get<CoverArtResponse>(
         `/release-group/${id}`,
@@ -146,19 +109,15 @@ class CoverArtArchive extends ExternalAPI {
       );
 
       const releaseMBID = data.release.split('/').pop();
-      const metadataRepository = getRepository(MetadataAlbum);
 
       data.images = data.images.map((image) => {
         const fullUrl = `https://archive.org/download/mbid-${releaseMBID}/mbid-${releaseMBID}-${image.id}_thumb250.jpg`;
 
         if (image.front) {
-          metadataRepository
+          getRepository(MetadataAlbum)
             .upsert(
               { mbAlbumId: id, caaUrl: fullUrl },
               { conflictPaths: ['mbAlbumId'] }
-            )
-            .then(() =>
-              this.eventEmitter.emit('coverArtFound', { id, url: fullUrl })
             )
             .catch((e) => {
               logger.error('Failed to save album metadata', {
@@ -183,16 +142,53 @@ class CoverArtArchive extends ExternalAPI {
         { conflictPaths: ['mbAlbumId'] }
       );
       return this.createEmptyResponse(id);
-    } finally {
-      this.fetchingIds.delete(id);
     }
   }
 
-  public onCoverArtFound(
-    callback: (data: { id: string; url: string }) => void
-  ): () => void {
-    this.eventEmitter.on('coverArtFound', callback);
-    return () => this.eventEmitter.removeListener('coverArtFound', callback);
+  public async batchGetCoverArt(
+    ids: string[]
+  ): Promise<Record<string, string | null>> {
+    if (!ids.length) return {};
+
+    const metadataRepository = getRepository(MetadataAlbum);
+    const existingMetadata = await metadataRepository.find({
+      where: { mbAlbumId: In(ids) },
+      select: ['mbAlbumId', 'caaUrl', 'updatedAt'],
+    });
+
+    const results: Record<string, string | null> = {};
+    const idsToFetch: string[] = [];
+
+    ids.forEach((id) => {
+      const metadata = existingMetadata.find((m) => m.mbAlbumId === id);
+
+      if (metadata?.caaUrl) {
+        results[id] = metadata.caaUrl;
+      } else if (metadata && !this.isMetadataStale(metadata)) {
+        results[id] = null;
+      } else {
+        idsToFetch.push(id);
+      }
+    });
+
+    if (idsToFetch.length > 0) {
+      const batchPromises = idsToFetch.map((id) =>
+        this.fetchCoverArt(id)
+          .then((response) => {
+            const frontImage = response.images.find((img) => img.front);
+            results[id] = frontImage?.thumbnails?.[250] || null;
+            return true;
+          })
+          .catch(() => {
+            results[id] = null;
+            return false;
+          })
+      );
+
+      await Promise.all(batchPromises);
+    }
+
+    return results;
   }
 }
 

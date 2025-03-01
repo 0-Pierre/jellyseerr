@@ -3,8 +3,6 @@ import ShowMoreCard from '@app/components/MediaSlider/ShowMoreCard';
 import PersonCard from '@app/components/PersonCard';
 import Slider from '@app/components/Slider';
 import TitleCard from '@app/components/TitleCard';
-import { useArtistImageUpdates } from '@app/hooks/useArtistImageUpdates';
-import { useCoverArtUpdates } from '@app/hooks/useCoverArtUpdates';
 import useSettings from '@app/hooks/useSettings';
 import { useUser } from '@app/hooks/useUser';
 import { ArrowRightCircleIcon } from '@heroicons/react/24/outline';
@@ -49,6 +47,7 @@ interface MediaSliderProps {
     | AlbumResult
     | ArtistResult
   )[];
+  totalItems?: number;
 }
 
 const MediaSlider = ({
@@ -60,6 +59,7 @@ const MediaSlider = ({
   hideWhenEmpty = false,
   onNewTitles,
   items: passedItems,
+  totalItems,
 }: MediaSliderProps) => {
   const settings = useSettings();
   const { hasPermission } = useUser();
@@ -84,40 +84,6 @@ const MediaSlider = ({
       revalidateFirstPage: false,
     }
   );
-
-  useCoverArtUpdates((coverArtData) => {
-    setTitles((currentTitles) =>
-      currentTitles.map((title) => {
-        if (
-          title.mediaType === 'album' &&
-          'id' in title &&
-          title.id === coverArtData.id
-        ) {
-          return {
-            ...title,
-            posterPath: coverArtData.url,
-          };
-        }
-        return title;
-      })
-    );
-  });
-
-  useArtistImageUpdates((tadbData) => {
-    setTitles((currentTitles) =>
-      currentTitles.map((title) => {
-        if (title.mediaType === 'artist' && title.id === tadbData.id) {
-          return {
-            ...title,
-            artistThumb: tadbData.urls.artistThumb ?? title.artistThumb,
-            artistBackdrop:
-              tadbData.urls.artistBackground ?? title.artistBackdrop,
-          };
-        }
-        return title;
-      })
-    );
-  });
 
   useEffect(() => {
     const newTitles =
@@ -265,7 +231,7 @@ const MediaSlider = ({
       }
     });
 
-  if (linkUrl && titles.length > 20) {
+  if (linkUrl && (totalItems ? totalItems > 20 : titles.length > 20)) {
     finalTitles.push(
       <ShowMoreCard
         url={linkUrl}

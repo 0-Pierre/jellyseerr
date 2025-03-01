@@ -4,16 +4,16 @@ import ImageFader from '@app/components/Common/ImageFader';
 import LoadingSpinner from '@app/components/Common/LoadingSpinner';
 import PageTitle from '@app/components/Common/PageTitle';
 import TitleCard from '@app/components/TitleCard';
-import { useArtistImageUpdates } from '@app/hooks/useArtistImageUpdates';
-import { useCoverArtUpdates } from '@app/hooks/useCoverArtUpdates';
 import globalMessages from '@app/i18n/globalMessages';
 import Error from '@app/pages/_error';
 import defineMessages from '@app/utils/defineMessages';
+import { ArrowRightCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import type { MediaStatus } from '@server/constants/media';
 import type { PersonCombinedCreditsResponse } from '@server/interfaces/api/personInterfaces';
 import type { PersonDetails as PersonDetailsType } from '@server/models/Person';
 import { groupBy, orderBy } from 'lodash';
 import { useRouter } from 'next/router';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useIntl } from 'react-intl';
 import TruncateMarkup from 'react-truncate-markup';
 import useSWR from 'swr';
@@ -35,17 +35,282 @@ const messages = defineMessages('components.PersonDetails', {
   broadcast: 'Broadcast',
   demo: 'Demo',
   other: 'Other',
+  showAll: 'Show All',
+  showLess: 'Show Less',
 });
 
-const sortCredits = (credits: any[]) => {
-  return orderBy(credits, [(c) => c.voteCount ?? 0, 'title'], ['desc', 'asc']);
+const DISPLAY_COUNT = 10;
+const COLLAPSE_ANIMATION_DURATION = 300;
+
+const albumTypeMessages: Record<string, keyof typeof messages> = {
+  Album: 'album',
+  EP: 'ep',
+  Single: 'single',
+  Live: 'live',
+  Compilation: 'compilation',
+  Remix: 'remix',
+  Soundtrack: 'soundtrack',
+  Broadcast: 'broadcast',
+  Demo: 'demo',
+  Other: 'other',
+};
+
+interface Album {
+  id: string;
+  title?: string;
+  'first-release-date'?: string;
+  posterPath?: string;
+  'primary-type'?: string;
+  secondary_types?: string[];
+  'artist-credit'?: { name: string }[];
+  mediaInfo?: {
+    status: MediaStatus;
+  };
+}
+
+interface ArtistWithTypeCounts {
+  name?: string;
+  artistBackdrop: string | null;
+  artistThumb?: string;
+  releaseGroups?: Album[];
+  typeCounts?: Record<string, number>;
+  area?: string;
+  artist_mbid?: string;
+}
+
+interface AlbumTypeState {
+  albums: Album[];
+  isExpanded: boolean;
+  isLoading: boolean;
+  isHovered: boolean;
+  isCollapsing: boolean;
+}
+
+interface EnhancedPersonDetails extends Omit<PersonDetailsType, 'artist'> {
+  artist?: ArtistWithTypeCounts;
+}
+
+const Biography = ({
+  content,
+  showBio,
+  onClick,
+}: {
+  content: string;
+  showBio: boolean;
+  onClick: () => void;
+}) => {
+  return (
+    <div className="relative text-left">
+      <div
+        className="group outline-none ring-0"
+        onClick={onClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onClick();
+          }
+        }}
+        role="button"
+        tabIndex={0}
+      >
+        <TruncateMarkup
+          lines={showBio ? 200 : 6}
+          ellipsis={
+            <Ellipsis className="relative -top-0.5 ml-2 inline-block opacity-70 transition duration-300 group-hover:opacity-100" />
+          }
+        >
+          <p className="pt-2 text-sm lg:text-base">{content}</p>
+        </TruncateMarkup>
+      </div>
+    </div>
+  );
+};
+
+const AlbumSection = ({
+  type,
+  state,
+  totalCount,
+  artistName,
+  onToggleExpand,
+  onHover,
+}: {
+  type: string;
+  state: AlbumTypeState;
+  totalCount: number;
+  artistName?: string;
+  onToggleExpand: (type: string) => void;
+  onHover: (type: string, isHovered: boolean) => void;
+}) => {
+  const intl = useIntl();
+  const { albums, isExpanded, isLoading, isHovered, isCollapsing } = state;
+
+  const displayAlbums = isExpanded ? albums : albums.slice(0, DISPLAY_COUNT);
+
+  const shouldShowExpandButton = totalCount > DISPLAY_COUNT;
+
+  const remainingItems = totalCount - albums.length;
+  const placeholdersToShow = Math.min(remainingItems, 20);
+
+  const messageKey = albumTypeMessages[type] || 'other';
+  const title = intl.formatMessage(messages[messageKey]);
+
+  return (
+    <div className="mb-8">
+      <div className="slider-header">
+        <div className="slider-title">
+          <span>{title}</span>
+          {totalCount > 0 && (
+            <span className="ml-2 text-sm text-gray-400">({totalCount})</span>
+          )}
+        </div>
+      </div>
+      <ul className="cards-vertical">
+        {displayAlbums
+          .filter((media) => media && media.id)
+          .map((media) => (
+            <li key={`release-${media.id}`}>
+              <TitleCard
+                key={media.id}
+                id={media.id}
+                title={media.title ?? 'Unknown Album'}
+                year={media['first-release-date']}
+                image={media.posterPath}
+                mediaType="album"
+                artist={media['artist-credit']?.[0]?.name || artistName}
+                type={media['primary-type']}
+                status={media.mediaInfo?.status}
+                canExpand
+              />
+            </li>
+          ))}
+
+        {shouldShowExpandButton && !isLoading && (
+          <li>
+            <div
+              className={`w-40 transition-all duration-300 sm:w-40 md:w-40 ${
+                isCollapsing ? 'scale-95 opacity-50' : 'scale-100 opacity-100'
+              }`}
+              style={{ paddingBottom: '150%' }}
+            >
+              <div
+                className="absolute inset-0 h-full w-full cursor-pointer"
+                onClick={() => onToggleExpand(type)}
+                onMouseEnter={() => onHover(type, true)}
+                onMouseLeave={() => onHover(type, false)}
+                onBlur={() => onHover(type, false)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onToggleExpand(type);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                aria-label={intl.formatMessage(
+                  isExpanded ? messages.showLess : messages.showAll
+                )}
+              >
+                <div
+                  className={`relative h-full w-full transform-gpu cursor-pointer
+                  overflow-hidden rounded-xl text-white shadow-lg ring-1 transition duration-150 ease-in-out ${
+                    isHovered
+                      ? 'scale-105 bg-gray-600 ring-gray-500'
+                      : 'scale-100 bg-gray-800 ring-gray-700'
+                  }`}
+                >
+                  <div className="absolute inset-0 flex h-full w-full flex-col items-center justify-center text-white">
+                    {isExpanded ? (
+                      <XCircleIcon className="w-14" />
+                    ) : (
+                      <ArrowRightCircleIcon className="w-14" />
+                    )}
+                    <div className="mt-2 font-extrabold">
+                      {intl.formatMessage(
+                        isExpanded ? messages.showLess : messages.showAll
+                      )}
+                    </div>
+                    {!isExpanded && totalCount > DISPLAY_COUNT && (
+                      <div className="mt-1 text-sm text-gray-300">
+                        {`${totalCount} total`}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </li>
+        )}
+
+        {isLoading &&
+          placeholdersToShow > 0 &&
+          [...Array(placeholdersToShow)].map((_, i) => (
+            <li key={`placeholder-${type}-${i}`}>
+              <TitleCard.Placeholder canExpand />
+            </li>
+          ))}
+      </ul>
+    </div>
+  );
+};
+
+const MediaSection = ({
+  title,
+  mediaItems,
+}: {
+  title: React.ReactNode;
+  mediaItems: any[];
+}) => {
+  if (!mediaItems.length) {
+    return null;
+  }
+
+  return (
+    <div className="mb-8">
+      <div className="slider-header">
+        <div className="slider-title">
+          <span>{title}</span>
+        </div>
+      </div>
+      <ul className="cards-vertical">
+        {mediaItems.map((media) => (
+          <li key={`media-${media.id}`}>
+            <TitleCard
+              id={media.id}
+              title={media.title || media.name}
+              image={media.posterPath}
+              year={
+                media.releaseDate?.slice(0, 4) ||
+                media.firstAirDate?.slice(0, 4)
+              }
+              mediaType={media.mediaType === 'movie' ? 'movie' : 'tv'}
+              status={media.mediaInfo?.status}
+              canExpand
+            />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+const sortCredits = (credits: any[]): any[] => {
+  return orderBy(
+    credits.filter((credit) => credit.releaseDate || credit.firstAirDate),
+    [
+      (credit) => credit.releaseDate || credit.firstAirDate,
+      (credit) => credit.popularity,
+    ],
+    ['desc', 'desc']
+  );
 };
 
 const PersonDetails = () => {
   const intl = useIntl();
   const router = useRouter();
-  const { data, error, mutate } = useSWR<PersonDetailsType>(
-    `/api/v1/person/${router.query.personId}`,
+  const personId = router.query.personId as string;
+
+  const { data, error } = useSWR<EnhancedPersonDetails>(
+    personId ? `/api/v1/person/${personId}` : null,
     {
       revalidateOnFocus: false,
       revalidateIfStale: false,
@@ -55,7 +320,7 @@ const PersonDetails = () => {
 
   const { data: combinedCredits, error: errorCombinedCredits } =
     useSWR<PersonCombinedCreditsResponse>(
-      `/api/v1/person/${router.query.personId}/combined_credits`,
+      personId ? `/api/v1/person/${personId}/combined_credits` : null,
       {
         revalidateOnFocus: false,
         revalidateIfStale: false,
@@ -64,41 +329,149 @@ const PersonDetails = () => {
     );
 
   const [showBio, setShowBio] = useState(false);
+  const [albumTypes, setAlbumTypes] = useState<Record<string, AlbumTypeState>>(
+    {}
+  );
 
-  useCoverArtUpdates((coverArtData) => {
-    mutate((currentData) => {
-      if (!currentData?.artist?.releaseGroups) return currentData;
+  useEffect(() => {
+    if (data?.artist?.typeCounts && data.artist.releaseGroups?.length) {
+      const initialAlbumTypes: Record<string, AlbumTypeState> = {};
 
-      return {
-        ...currentData,
-        artist: {
-          ...currentData.artist,
-          releaseGroups: currentData.artist.releaseGroups.map((release) =>
-            release.id === coverArtData.id
-              ? { ...release, posterPath: coverArtData.url }
-              : release
-          ),
+      data.artist.releaseGroups.forEach((album) => {
+        if (album && album.id) {
+          const type = album.secondary_types?.length
+            ? album.secondary_types[0]
+            : album['primary-type'] || 'Other';
+
+          if (!initialAlbumTypes[type]) {
+            initialAlbumTypes[type] = {
+              albums: [],
+              isExpanded: false,
+              isLoading: false,
+              isHovered: false,
+              isCollapsing: false,
+            };
+          }
+          initialAlbumTypes[type].albums.push(album);
+        }
+      });
+
+      setAlbumTypes(initialAlbumTypes);
+    }
+  }, [data?.artist?.typeCounts, data?.artist?.releaseGroups]);
+
+  const loadAllAlbumsOfType = useCallback(
+    async (albumType: string): Promise<void> => {
+      if (!personId) return;
+
+      setAlbumTypes((prev) => ({
+        ...prev,
+        [albumType]: {
+          ...prev[albumType],
+          isLoading: true,
         },
-      };
-    }, false);
-  });
+      }));
 
-  useArtistImageUpdates((tadbData) => {
-    mutate((currentData?: PersonDetailsType) => {
-      if (!currentData?.artist) return currentData;
+      try {
+        const response = await fetch(
+          `/api/v1/person/${personId}?albumType=${albumType}&pageSize=${
+            data?.artist?.typeCounts?.[albumType] || 100
+          }`
+        );
 
-      return {
-        ...currentData,
-        artist: {
-          ...currentData.artist,
-          artistThumb:
-            tadbData.urls.artistThumb ?? currentData.artist.artistThumb,
-          artistBackdrop:
-            tadbData.urls.artistBackground ?? currentData.artist.artistBackdrop,
-        },
-      };
-    }, false);
-  });
+        if (response.ok) {
+          const responseData = await response.json();
+          const validAlbums =
+            responseData.artist?.releaseGroups?.filter(
+              (album: Album) => album && album.id
+            ) || [];
+
+          setAlbumTypes((prev) => ({
+            ...prev,
+            [albumType]: {
+              ...prev[albumType],
+              albums: validAlbums,
+              isExpanded: true,
+              isLoading: false,
+            },
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to load albums:', error);
+      } finally {
+        setAlbumTypes((prev) => ({
+          ...prev,
+          [albumType]: {
+            ...prev[albumType],
+            isLoading: false,
+          },
+        }));
+      }
+    },
+    [personId, data?.artist?.typeCounts]
+  );
+
+  const handleHover = useCallback((albumType: string, isHovered: boolean) => {
+    setAlbumTypes((prev) => ({
+      ...prev,
+      [albumType]: {
+        ...prev[albumType],
+        isHovered,
+      },
+    }));
+  }, []);
+
+  const toggleExpandType = useCallback(
+    (albumType: string): void => {
+      const currentState = albumTypes[albumType];
+
+      if (currentState?.isExpanded) {
+        setAlbumTypes((prev) => ({
+          ...prev,
+          [albumType]: {
+            ...prev[albumType],
+            isCollapsing: true,
+            isHovered: false,
+          },
+        }));
+
+        setTimeout(() => {
+          setAlbumTypes((prev) => ({
+            ...prev,
+            [albumType]: {
+              ...prev[albumType],
+              isExpanded: false,
+              isCollapsing: false,
+            },
+          }));
+        }, COLLAPSE_ANIMATION_DURATION);
+      } else {
+        const albums = albumTypes[albumType]?.albums || [];
+        const typeCount = data?.artist?.typeCounts?.[albumType] || 0;
+
+        setAlbumTypes((prev) => ({
+          ...prev,
+          [albumType]: {
+            ...prev[albumType],
+            isHovered: false,
+          },
+        }));
+
+        if (albums.length < typeCount) {
+          loadAllAlbumsOfType(albumType);
+        } else {
+          setAlbumTypes((prev) => ({
+            ...prev,
+            [albumType]: {
+              ...prev[albumType],
+              isExpanded: true,
+            },
+          }));
+        }
+      }
+    },
+    [albumTypes, data?.artist?.typeCounts, loadAllAlbumsOfType]
+  );
 
   const sortedCredits = useMemo(() => {
     const cast = combinedCredits?.cast ?? [];
@@ -119,16 +492,6 @@ const PersonDetails = () => {
       ),
     };
   }, [combinedCredits]);
-
-  const groupedReleases = useMemo(() => {
-    if (!data?.artist?.releaseGroups) return null;
-
-    return groupBy(data.artist.releaseGroups, (release) =>
-      release.secondary_types?.length
-        ? release.secondary_types[0]
-        : release['primary-type'] || 'Other'
-    );
-  }, [data?.artist?.releaseGroups]);
 
   const personAttributes = useMemo(() => {
     if (!data) return [];
@@ -174,6 +537,19 @@ const PersonDetails = () => {
     return attributes;
   }, [data, intl]);
 
+  const albumTypeOrder = [
+    'Album',
+    'EP',
+    'Single',
+    'Live',
+    'Compilation',
+    'Remix',
+    'Soundtrack',
+    'Broadcast',
+    'Demo',
+    'Other',
+  ];
+
   if (!data && !error) {
     return <LoadingSpinner />;
   }
@@ -182,146 +558,28 @@ const PersonDetails = () => {
     return <Error statusCode={404} />;
   }
 
-  const renderReleaseGroup = (title: string, releases: any[]) => {
-    if (!releases?.length) {
-      return null;
-    }
+  const backgroundImages = [
+    ...(sortedCredits.cast ?? []),
+    ...(sortedCredits.crew ?? []),
+  ]
+    .filter((media) => media.backdropPath)
+    .map(
+      (media) =>
+        `https://image.tmdb.org/t/p/w1920_and_h800_multi_faces/${media.backdropPath}`
+    )
+    .slice(0, 6);
 
-    const sortedReleases = orderBy(
-      releases,
-      [(r) => r['first-release-date'] || '', 'title'],
-      ['desc', 'asc']
-    );
-
-    return (
-      <>
-        <div className="slider-header">
-          <div className="slider-title">
-            <span>{title}</span>
-          </div>
-        </div>
-        <ul className="cards-vertical">
-          {sortedReleases.map((media) => (
-            <li key={`release-${media.id}`}>
-              <TitleCard
-                key={media.id}
-                id={media.id}
-                title={media.title}
-                year={media['first-release-date']}
-                image={media.posterPath}
-                mediaType="album"
-                artist={media['artist-credit']?.[0]?.name}
-                type={media['primary-type']}
-                status={media.mediaInfo?.status}
-                canExpand
-              />
-            </li>
-          ))}
-        </ul>
-      </>
-    );
-  };
-
-  const cast = (sortedCredits.cast ?? []).length > 0 && (
-    <>
-      <div className="slider-header">
-        <div className="slider-title">
-          <span>{intl.formatMessage(messages.appearsin)}</span>
-        </div>
-      </div>
-      <ul className="cards-vertical">
-        {sortedCredits.cast?.map((media, index) => {
-          return (
-            <li key={`list-cast-item-${media.id}-${index}`}>
-              <TitleCard
-                key={media.id}
-                id={media.id}
-                title={media.mediaType === 'movie' ? media.title : media.name}
-                userScore={media.voteAverage}
-                year={
-                  media.mediaType === 'movie'
-                    ? media.releaseDate
-                    : media.firstAirDate
-                }
-                image={media.posterPath}
-                summary={media.overview}
-                mediaType={media.mediaType as 'movie' | 'tv'}
-                status={media.mediaInfo?.status}
-                canExpand
-              />
-              {media.character && (
-                <div className="mt-2 w-full truncate text-center text-xs text-gray-300">
-                  {intl.formatMessage(messages.ascharacter, {
-                    character: media.character,
-                  })}
-                </div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-    </>
+  const hasCredits = Boolean(
+    sortedCredits.cast?.length || sortedCredits.crew?.length
   );
-
-  const crew = (sortedCredits.crew ?? []).length > 0 && (
-    <>
-      <div className="slider-header">
-        <div className="slider-title">
-          <span>{intl.formatMessage(messages.crewmember)}</span>
-        </div>
-      </div>
-      <ul className="cards-vertical">
-        {sortedCredits.crew?.map((media, index) => {
-          return (
-            <li key={`list-crew-item-${media.id}-${index}`}>
-              <TitleCard
-                key={media.id}
-                id={media.id}
-                title={media.mediaType === 'movie' ? media.title : media.name}
-                userScore={media.voteAverage}
-                year={
-                  media.mediaType === 'movie'
-                    ? media.releaseDate
-                    : media.firstAirDate
-                }
-                image={media.posterPath}
-                summary={media.overview}
-                mediaType={media.mediaType as 'movie' | 'tv'}
-                status={media.mediaInfo?.status}
-                canExpand
-              />
-              {media.job && (
-                <div className="mt-2 w-full truncate text-center text-xs text-gray-300">
-                  {media.job}
-                </div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-    </>
-  );
-
   const isLoading = !combinedCredits && !errorCombinedCredits;
 
   return (
     <>
       <PageTitle title={data.name} />
-      {(sortedCredits.crew || sortedCredits.cast) && (
+      {hasCredits && (
         <div className="absolute top-0 left-0 right-0 z-0 h-96">
-          <ImageFader
-            isDarker
-            backgroundImages={[
-              ...(sortedCredits.cast ?? []),
-              ...(sortedCredits.crew ?? []),
-            ]
-              .filter((media) => media.backdropPath)
-              .map(
-                (media) =>
-                  `https://image.tmdb.org/t/p/w1920_and_h800_multi_faces/${media.backdropPath}`
-              )
-              .slice(0, 6)}
-          />
+          <ImageFader isDarker backgroundImages={backgroundImages} />
         </div>
       )}
       <div
@@ -362,72 +620,57 @@ const PersonDetails = () => {
             )}
           </div>
           {data.biography && (
-            <div className="relative text-left">
-              {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events */}
-              <div
-                className="group outline-none ring-0"
-                onClick={() => setShowBio((show) => !show)}
-                role="button"
-                tabIndex={-1}
-              >
-                <TruncateMarkup
-                  lines={showBio ? 200 : 6}
-                  ellipsis={
-                    <Ellipsis className="relative -top-0.5 ml-2 inline-block opacity-70 transition duration-300 group-hover:opacity-100" />
-                  }
-                >
-                  <p className="pt-2 text-sm lg:text-base">{data.biography}</p>
-                </TruncateMarkup>
-              </div>
-            </div>
+            <Biography
+              content={data.biography}
+              showBio={showBio}
+              onClick={() => setShowBio((show) => !show)}
+            />
           )}
         </div>
       </div>
-      {groupedReleases && (
+
+      {data.artist?.typeCounts && (
+        <div className="space-y-6">
+          {albumTypeOrder
+            .filter((type) => (albumTypes[type]?.albums.length ?? 0) > 0)
+            .map((type) => (
+              <AlbumSection
+                key={`section-${type}`}
+                type={type}
+                state={albumTypes[type]}
+                totalCount={data.artist?.typeCounts?.[type] ?? 0}
+                artistName={data.artist?.name}
+                onToggleExpand={toggleExpandType}
+                onHover={handleHover}
+              />
+            ))}
+        </div>
+      )}
+
+      {data.knownForDepartment === 'Acting' ? (
         <>
-          {renderReleaseGroup(
-            intl.formatMessage(messages.album),
-            groupedReleases['Album']
-          )}
-          {renderReleaseGroup(
-            intl.formatMessage(messages.ep),
-            groupedReleases['EP']
-          )}
-          {renderReleaseGroup(
-            intl.formatMessage(messages.single),
-            groupedReleases['Single']
-          )}
-          {renderReleaseGroup(
-            intl.formatMessage(messages.live),
-            groupedReleases['Live']
-          )}
-          {renderReleaseGroup(
-            intl.formatMessage(messages.compilation),
-            groupedReleases['Compilation']
-          )}
-          {renderReleaseGroup(
-            intl.formatMessage(messages.remix),
-            groupedReleases['Remix']
-          )}
-          {renderReleaseGroup(
-            intl.formatMessage(messages.soundtrack),
-            groupedReleases['Soundtrack']
-          )}
-          {renderReleaseGroup(
-            intl.formatMessage(messages.broadcast),
-            groupedReleases['Broadcast']
-          )}
-          {renderReleaseGroup(
-            intl.formatMessage(messages.demo),
-            groupedReleases['Demo']
-          )}
-          {renderReleaseGroup(
-            intl.formatMessage(messages.other),
-            groupedReleases['Other']
-          )}
+          <MediaSection
+            title={intl.formatMessage(messages.appearsin)}
+            mediaItems={sortedCredits.cast}
+          />
+          <MediaSection
+            title={intl.formatMessage(messages.crewmember)}
+            mediaItems={sortedCredits.crew}
+          />
+        </>
+      ) : (
+        <>
+          <MediaSection
+            title={intl.formatMessage(messages.crewmember)}
+            mediaItems={sortedCredits.crew}
+          />
+          <MediaSection
+            title={intl.formatMessage(messages.appearsin)}
+            mediaItems={sortedCredits.cast}
+          />
         </>
       )}
-      {data.knownForDepartment === 'Acting' ? [cast, crew] : [crew, cast]}
+
       {isLoading && <LoadingSpinner />}
     </>
   );

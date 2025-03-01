@@ -21,97 +21,132 @@ personRoutes.get('/:id', async (req, res, next) => {
   const theAudioDb = TheAudioDb.getInstance();
   const coverArtArchive = CoverArtArchive.getInstance();
 
-  const typeOrder = [
-    'Album',
-    'EP',
-    'Single',
-    'Live',
-    'Compilation',
-    'Remix',
-    'Soundtrack',
-    'Broadcast',
-    'Demo',
-    'Other',
-  ];
+  const page = Number(req.query.page) || 1;
+  const pageSize = Number(req.query.pageSize) || 10;
+  const initialItemsPerType = 10;
+  const albumType = req.query.albumType as string | undefined;
 
   try {
-    const person = await tmdb.getPerson({
-      personId: Number(req.params.id),
-      language: (req.query.language as string) ?? req.locale,
-    });
-
-    const existingMetadata = await getRepository(MetadataArtist).findOne({
-      where: { tmdbPersonId: person.id.toString() },
-      select: ['mbArtistId', 'tmdbThumb', 'tadbThumb', 'tadbCover'],
-    });
+    const [person, existingMetadata] = await Promise.all([
+      tmdb.getPerson({
+        personId: Number(req.params.id),
+        language: (req.query.language as string) ?? req.locale,
+      }),
+      getRepository(MetadataArtist).findOne({
+        where: { tmdbPersonId: req.params.id },
+        select: ['mbArtistId', 'tmdbThumb', 'tadbThumb', 'tadbCover'],
+      }),
+    ]);
 
     let artistData = null;
 
     if (existingMetadata?.mbArtistId) {
-      const artistResult = await listenbrainz.getArtist(
-        existingMetadata.mbArtistId
-      );
-      artistData = artistResult;
-
-      if (!existingMetadata.tadbThumb && !existingMetadata.tadbCover) {
-        theAudioDb
-          .getArtistImages(existingMetadata.mbArtistId, true)
-          .catch(() => {
-            // Silent fail for background task
-          });
-      }
+      artistData = await listenbrainz.getArtist(existingMetadata.mbArtistId);
 
       if (artistData?.releaseGroups) {
-        const sortedReleaseGroups = [...artistData.releaseGroups].sort(
-          (a, b) => {
-            const typeIndexA = typeOrder.indexOf(a.type || 'Other');
-            const typeIndexB = typeOrder.indexOf(b.type || 'Other');
-            if (typeIndexA !== typeIndexB) return typeIndexA - typeIndexB;
+        const groupedReleaseGroups = artistData.releaseGroups.reduce(
+          (acc, rg) => {
+            const type = rg.secondary_types?.length
+              ? rg.secondary_types[0]
+              : rg.type || 'Other';
 
+            if (!acc[type]) {
+              acc[type] = [];
+            }
+            acc[type].push(rg);
+            return acc;
+          },
+          {} as Record<string, typeof artistData.releaseGroups>
+        );
+
+        Object.keys(groupedReleaseGroups).forEach((type) => {
+          groupedReleaseGroups[type].sort((a, b) => {
             const dateA = a.date ? new Date(a.date).getTime() : 0;
             const dateB = b.date ? new Date(b.date).getTime() : 0;
             return dateB - dateA;
-          }
+          });
+        });
+
+        let releaseGroupsToProcess: typeof artistData.releaseGroups = [];
+        let totalCount: number;
+        let totalPages: number;
+
+        if (albumType) {
+          const filteredReleaseGroups = groupedReleaseGroups[albumType] || [];
+          totalCount = filteredReleaseGroups.length;
+          totalPages = Math.ceil(totalCount / pageSize);
+
+          releaseGroupsToProcess = filteredReleaseGroups.slice(
+            (page - 1) * pageSize,
+            page * pageSize
+          );
+        } else {
+          Object.entries(groupedReleaseGroups).forEach(([, releases]) => {
+            releaseGroupsToProcess.push(
+              ...releases.slice(0, initialItemsPerType)
+            );
+          });
+
+          totalCount = Object.values(groupedReleaseGroups).reduce(
+            (sum, releases) => sum + releases.length,
+            0
+          );
+          totalPages = 1;
+        }
+
+        const allReleaseGroupIds = releaseGroupsToProcess.map((rg) => rg.mbid);
+
+        const [artistImagesPromise, relatedMedia, coverArtResults] =
+          await Promise.all([
+            !existingMetadata.tadbThumb && !existingMetadata.tadbCover
+              ? theAudioDb.getArtistImages(existingMetadata.mbArtistId)
+              : Promise.resolve(null),
+            Media.getRelatedMedia(req.user, allReleaseGroupIds),
+            coverArtArchive.batchGetCoverArt(allReleaseGroupIds),
+          ]);
+
+        if (artistImagesPromise) {
+          existingMetadata.tadbThumb = artistImagesPromise.artistThumb;
+          existingMetadata.tadbCover = artistImagesPromise.artistBackground;
+        }
+
+        const mediaMap = new Map(
+          relatedMedia.map((media) => [media.mbId, media])
         );
 
-        const allReleaseGroupIds = sortedReleaseGroups.map((rg) => rg.mbid);
-        const [relatedMedia, cachedCovers] = await Promise.all([
-          Media.getRelatedMedia(req.user, allReleaseGroupIds),
-          Promise.all(
-            allReleaseGroupIds.map((id) =>
-              coverArtArchive.getCoverArtFromCache(id)
-            )
-          ),
-        ]);
+        const transformedReleaseGroups = releaseGroupsToProcess.map(
+          (releaseGroup) => ({
+            id: releaseGroup.mbid,
+            mediaType: 'album',
+            title: releaseGroup.name,
+            'first-release-date': releaseGroup.date,
+            'artist-credit': [{ name: releaseGroup.artist_credit_name }],
+            'primary-type': releaseGroup.type || 'Other',
+            secondary_types: releaseGroup.secondary_types || [],
+            total_listen_count: releaseGroup.total_listen_count || 0,
+            posterPath: coverArtResults[releaseGroup.mbid] ?? undefined,
+            mediaInfo: mediaMap.get(releaseGroup.mbid),
+          })
+        );
 
-        const transformedReleaseGroups = sortedReleaseGroups.map(
-          (releaseGroup, index) => {
-            const cachedCoverArt = cachedCovers[index];
-
-            if (!cachedCoverArt) {
-              coverArtArchive.getCoverArt(releaseGroup.mbid, true);
-            }
-
-            return {
-              id: releaseGroup.mbid,
-              mediaType: 'album',
-              title: releaseGroup.name,
-              'first-release-date': releaseGroup.date,
-              'artist-credit': [{ name: releaseGroup.artist_credit_name }],
-              'primary-type': releaseGroup.type || 'Other',
-              secondary_types: releaseGroup.secondary_types || [],
-              total_listen_count: releaseGroup.total_listen_count || 0,
-              posterPath: cachedCoverArt ?? undefined,
-              mediaInfo: relatedMedia.find(
-                (media) => media.mbId === releaseGroup.mbid
-              ),
-            };
-          }
+        const typeCounts = Object.fromEntries(
+          Object.entries(groupedReleaseGroups).map(([type, releases]) => [
+            type,
+            releases.length,
+          ])
         );
 
         artistData = {
           ...artistData,
           releaseGroups: transformedReleaseGroups,
+          typeCounts,
+          pagination: {
+            page,
+            pageSize,
+            totalItems: totalCount,
+            totalPages,
+            albumType,
+          },
         };
       }
     }

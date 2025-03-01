@@ -1,4 +1,3 @@
-import TheAudioDb from '@server/api/theaudiodb';
 import ImageProxy from '@server/lib/imageproxy';
 import logger from '@server/logger';
 import { Router } from 'express';
@@ -8,30 +7,6 @@ const tadbImageProxy = new ImageProxy('tadb', 'https://r2.theaudiodb.com', {
   rateLimitOptions: {
     maxRPS: 25,
   },
-});
-
-router.get('/updates', (req, res) => {
-  const theAudioDb = TheAudioDb.getInstance();
-
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-
-  const listener = (data: {
-    id: string;
-    urls: {
-      artistThumb: string | null;
-      artistBackground: string | null;
-    };
-  }) => {
-    res.write(`data: ${JSON.stringify(data)}\n\n`);
-  };
-
-  const unsubscribe = theAudioDb.onArtistImagesFound(listener);
-
-  req.on('close', () => {
-    unsubscribe();
-  });
 });
 
 router.get('/*', async (req, res) => {

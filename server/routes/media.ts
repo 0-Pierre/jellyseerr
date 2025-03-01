@@ -80,23 +80,24 @@ mediaRoutes.get('/', async (req, res, next) => {
       skip,
     });
 
-    const mediaWithCoverArt = await Promise.all(
-      media.map(async (item) => {
-        if (item.mediaType === 'music' && item.mbId) {
-          const cachedCoverArt = coverArtArchive.getCoverArtFromCache(
-            item.mbId
-          );
-          if (!cachedCoverArt) {
-            coverArtArchive.getCoverArt(item.mbId, true);
-          }
-          return {
-            ...item,
-            posterPath: cachedCoverArt || null,
-          };
-        }
-        return item;
-      })
+    const musicMediaItems = media.filter(
+      (item) => item.mediaType === 'music' && item.mbId
     );
+
+    const mbIds = musicMediaItems.map((item) => item.mbId as string);
+
+    const coverArtResults =
+      mbIds.length > 0 ? await coverArtArchive.batchGetCoverArt(mbIds) : {};
+
+    const mediaWithCoverArt = media.map((item) => {
+      if (item.mediaType === 'music' && item.mbId) {
+        return {
+          ...item,
+          posterPath: coverArtResults[item.mbId] || null,
+        };
+      }
+      return item;
+    });
 
     return res.status(200).json({
       pageInfo: {
@@ -108,7 +109,11 @@ mediaRoutes.get('/', async (req, res, next) => {
       results: mediaWithCoverArt,
     } as MediaResultsResponse);
   } catch (e) {
-    next({ status: 500, message: e.message });
+    logger.error('Something went wrong retrieving media', {
+      label: 'Media',
+      error: e instanceof Error ? e.message : 'Unknown error',
+    });
+    next({ status: 500, message: 'Unable to retrieve media' });
   }
 });
 

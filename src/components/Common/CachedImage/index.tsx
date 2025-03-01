@@ -1,6 +1,7 @@
 import useSettings from '@app/hooks/useSettings';
 import type { ImageLoader, ImageProps } from 'next/image';
 import Image from 'next/image';
+import { useState } from 'react';
 
 const imageLoader: ImageLoader = ({ src }) => src;
 
@@ -15,8 +16,11 @@ export type CachedImageProps = ImageProps & {
  **/
 const CachedImage = ({ src, type, ...props }: CachedImageProps) => {
   const { currentSettings } = useSettings();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
 
   let imageUrl: string;
+  let fallbackImage = '';
 
   if (type === 'tmdb') {
     // tmdb stuff
@@ -24,6 +28,7 @@ const CachedImage = ({ src, type, ...props }: CachedImageProps) => {
       currentSettings.cacheImages && !src.startsWith('/')
         ? src.replace(/^https:\/\/image\.tmdb\.org\//, '/tmdbproxy/')
         : src;
+    fallbackImage = '/images/overseerr_poster_not_found.png';
   } else if (type === 'music') {
     // Cover Art Archive and TheAudioDB images
     imageUrl = src.startsWith('https://archive.org/')
@@ -33,14 +38,34 @@ const CachedImage = ({ src, type, ...props }: CachedImageProps) => {
         src.startsWith('https://r2.theaudiodb.com/')
       ? src.replace(/^https:\/\/r2\.theaudiodb\.com\//, '/tadbproxy/')
       : src;
+    fallbackImage = '/images/overseerr_poster_not_found_square.png';
   } else if (type === 'avatar') {
-    // jellyfin avatar (if any)
     imageUrl = src;
+    fallbackImage = '/images/user_placeholder.png';
   } else {
     return null;
   }
 
-  return <Image unoptimized loader={imageLoader} src={imageUrl} {...props} />;
+  const displaySrc =
+    (isLoading || isError) &&
+    type === 'music' &&
+    src.startsWith('https://archive.org/')
+      ? fallbackImage
+      : imageUrl;
+
+  return (
+    <Image
+      unoptimized
+      loader={imageLoader}
+      src={displaySrc}
+      {...props}
+      onLoad={() => setIsLoading(false)}
+      onError={() => {
+        setIsError(true);
+        setIsLoading(false);
+      }}
+    />
+  );
 };
 
 export default CachedImage;

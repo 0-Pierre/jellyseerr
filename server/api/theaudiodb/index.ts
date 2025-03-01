@@ -3,20 +3,13 @@ import { getRepository } from '@server/datasource';
 import MetadataArtist from '@server/entity/MetadataArtist';
 import cacheManager from '@server/lib/cache';
 import logger from '@server/logger';
-import EventEmitter from 'events';
+import { In } from 'typeorm';
 import type { TadbArtistResponse } from './interfaces';
 
 class TheAudioDb extends ExternalAPI {
   private static instance: TheAudioDb;
   private readonly apiKey = '195003';
-  private readonly fetchingIds: Set<string> = new Set();
-  private readonly pendingFetches: Map<
-    string,
-    Promise<{ artistThumb: string | null; artistBackground: string | null }>
-  > = new Map();
-  private readonly eventEmitter = new EventEmitter();
   private readonly CACHE_TTL = 43200;
-  private readonly BACKGROUND_TIMEOUT = 250;
   private readonly STALE_THRESHOLD = 30 * 24 * 60 * 60 * 1000;
 
   constructor() {
@@ -57,23 +50,31 @@ class TheAudioDb extends ExternalAPI {
     | null
     | undefined
   > {
-    const metadata = await getRepository(MetadataArtist).findOne({
-      where: { mbArtistId: id },
-      select: ['tadbThumb', 'tadbCover', 'tadbUpdatedAt'],
-    });
+    try {
+      const metadata = await getRepository(MetadataArtist).findOne({
+        where: { mbArtistId: id },
+        select: ['tadbThumb', 'tadbCover', 'tadbUpdatedAt'],
+      });
 
-    if (metadata) {
-      return {
-        artistThumb: metadata.tadbThumb,
-        artistBackground: metadata.tadbCover,
-      };
+      if (metadata) {
+        return {
+          artistThumb: metadata.tadbThumb,
+          artistBackground: metadata.tadbCover,
+        };
+      }
+      return undefined;
+    } catch (error) {
+      logger.error('Failed to fetch artist images from cache', {
+        label: 'TheAudioDb',
+        id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return null;
     }
-    return undefined;
   }
 
   public async getArtistImages(
-    id: string,
-    background = false
+    id: string
   ): Promise<{ artistThumb: string | null; artistBackground: string | null }> {
     try {
       const metadata = await getRepository(MetadataArtist).findOne({
@@ -92,45 +93,7 @@ class TheAudioDb extends ExternalAPI {
         return this.createEmptyResponse();
       }
 
-      if (this.pendingFetches.has(id)) {
-        const pendingFetch = this.pendingFetches.get(id);
-        if (!pendingFetch) {
-          throw new Error(`Pending fetch for id ${id} not found`);
-        }
-
-        if (background) {
-          const timeoutPromise = new Promise<{
-            artistThumb: string | null;
-            artistBackground: string | null;
-          }>((resolve) =>
-            setTimeout(
-              () => resolve(this.createEmptyResponse()),
-              this.BACKGROUND_TIMEOUT
-            )
-          );
-          return Promise.race([pendingFetch, timeoutPromise]);
-        }
-        return pendingFetch;
-      }
-
-      const fetchPromise = this.fetchArtistImages(id).finally(() =>
-        this.pendingFetches.delete(id)
-      );
-      this.pendingFetches.set(id, fetchPromise);
-
-      if (background) {
-        const timeoutPromise = new Promise<{
-          artistThumb: string | null;
-          artistBackground: string | null;
-        }>((resolve) =>
-          setTimeout(
-            () => resolve(this.createEmptyResponse()),
-            this.BACKGROUND_TIMEOUT
-          )
-        );
-        return Promise.race([fetchPromise, timeoutPromise]);
-      }
-      return fetchPromise;
+      return await this.fetchArtistImages(id);
     } catch (error) {
       logger.error('Failed to get artist images', {
         label: 'TheAudioDb',
@@ -145,11 +108,6 @@ class TheAudioDb extends ExternalAPI {
     artistThumb: string | null;
     artistBackground: string | null;
   }> {
-    if (this.fetchingIds.has(id)) {
-      return this.createEmptyResponse();
-    }
-
-    this.fetchingIds.add(id);
     try {
       const data = await this.get<TadbArtistResponse>(
         `/${this.apiKey}/artist-mb.php`,
@@ -175,11 +133,6 @@ class TheAudioDb extends ExternalAPI {
             conflictPaths: ['mbArtistId'],
           }
         )
-        .then(() => {
-          if (result.artistThumb || result.artistBackground) {
-            this.eventEmitter.emit('artistImagesFound', { id, urls: result });
-          }
-        })
         .catch((e) => {
           logger.error('Failed to save artist metadata', {
             label: 'TheAudioDb',
@@ -201,20 +154,73 @@ class TheAudioDb extends ExternalAPI {
         }
       );
       return this.createEmptyResponse();
-    } finally {
-      this.fetchingIds.delete(id);
     }
   }
 
-  public onArtistImagesFound(
-    callback: (data: {
-      id: string;
-      urls: { artistThumb: string | null; artistBackground: string | null };
-    }) => void
-  ): () => void {
-    this.eventEmitter.on('artistImagesFound', callback);
-    return () =>
-      this.eventEmitter.removeListener('artistImagesFound', callback);
+  public async batchGetArtistImages(ids: string[]): Promise<
+    Record<
+      string,
+      {
+        artistThumb: string | null;
+        artistBackground: string | null;
+      }
+    >
+  > {
+    if (!ids.length) return {};
+
+    const metadataRepository = getRepository(MetadataArtist);
+    const existingMetadata = await metadataRepository.find({
+      where: { mbArtistId: In(ids) },
+      select: ['mbArtistId', 'tadbThumb', 'tadbCover', 'tadbUpdatedAt'],
+    });
+
+    const results: Record<
+      string,
+      {
+        artistThumb: string | null;
+        artistBackground: string | null;
+      }
+    > = {};
+    const idsToFetch: string[] = [];
+
+    ids.forEach((id) => {
+      const metadata = existingMetadata.find((m) => m.mbArtistId === id);
+
+      if (metadata?.tadbThumb || metadata?.tadbCover) {
+        results[id] = {
+          artistThumb: metadata.tadbThumb,
+          artistBackground: metadata.tadbCover,
+        };
+      } else if (metadata && !this.isMetadataStale(metadata)) {
+        results[id] = {
+          artistThumb: null,
+          artistBackground: null,
+        };
+      } else {
+        idsToFetch.push(id);
+      }
+    });
+
+    if (idsToFetch.length > 0) {
+      const batchPromises = idsToFetch.map((id) =>
+        this.fetchArtistImages(id)
+          .then((response) => {
+            results[id] = response;
+            return true;
+          })
+          .catch(() => {
+            results[id] = {
+              artistThumb: null,
+              artistBackground: null,
+            };
+            return false;
+          })
+      );
+
+      await Promise.all(batchPromises);
+    }
+
+    return results;
   }
 }
 

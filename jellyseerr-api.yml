@@ -6615,6 +6615,26 @@ paths:
           schema:
             type: string
             example: en
+        - in: query
+          name: page
+          description: Page number for paginated results
+          schema:
+            type: integer
+            default: 1
+            example: 1
+        - in: query
+          name: pageSize
+          description: Number of items per page
+          schema:
+            type: integer
+            default: 20
+            example: 20
+        - in: query
+          name: albumType
+          description: Filter results by album type (Album, EP, Single, etc.)
+          schema:
+            type: string
+            example: 'Album'
       responses:
         '200':
           description: Returned person
@@ -6671,6 +6691,26 @@ paths:
           schema:
             type: string
             example: 'f27ec8db-af05-4f36-916e-3d57f91ecf5e'
+        - in: query
+          name: page
+          description: Page number for paginated results
+          schema:
+            type: integer
+            default: 1
+            example: 1
+        - in: query
+          name: pageSize
+          description: Number of items per page
+          schema:
+            type: integer
+            default: 20
+            example: 20
+        - in: query
+          name: albumType
+          description: Filter results by album type (Album, EP, Single, etc.)
+          schema:
+            type: string
+            example: 'Album'
       responses:
         '200':
           description: Artist details returned successfully
@@ -6731,11 +6771,42 @@ paths:
                         primary-type:
                           type: string
                           enum: ['Album', 'Single', 'EP', 'Other']
+                        secondary_types:
+                          type: array
+                          items:
+                            type: string
                         posterPath:
                           type: string
                           nullable: true
                         mediaInfo:
                           $ref: '#/components/schemas/MediaInfo'
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                        example: 1
+                      pageSize:
+                        type: integer
+                        example: 20
+                      totalItems:
+                        type: integer
+                        example: 100
+                      totalPages:
+                        type: integer
+                        example: 5
+                      albumType:
+                        type: string
+                        nullable: true
+                        example: 'Album'
+                  typeCounts:
+                    type: object
+                    additionalProperties:
+                      type: integer
+                    example:
+                      Album: 20
+                      Single: 15
+                      EP: 5
         '404':
           description: Artist not found
           content:
@@ -6813,6 +6884,16 @@ paths:
           schema:
             type: string
             example: b5b4bb4b-8ba5-3acf-88cb-4cae2699d8da
+        - in: query
+          name: page
+          schema:
+            type: number
+            default: 1
+        - in: query
+          name: pageSize
+          schema:
+            type: number
+            default: 20
       responses:
         '200':
           description: Artist details

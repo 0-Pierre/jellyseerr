@@ -1,10 +1,8 @@
 import AddedCard from '@app/components/AddedCard';
 import Slider from '@app/components/Slider';
-import { useCoverArtUpdates } from '@app/hooks/useCoverArtUpdates';
 import { Permission, useUser } from '@app/hooks/useUser';
 import defineMessages from '@app/utils/defineMessages';
 import type { MediaResultsResponse } from '@server/interfaces/api/mediaInterfaces';
-import { useEffect, useState } from 'react';
 import { useIntl } from 'react-intl';
 import useSWR from 'swr';
 
@@ -19,26 +17,6 @@ const RecentlyAddedSlider = () => {
     '/api/v1/media?filter=allavailable&take=20&sort=mediaAdded',
     { revalidateOnMount: true }
   );
-
-  const [mediaItems, setMediaItems] = useState(media?.results ?? []);
-
-  useEffect(() => {
-    setMediaItems(media?.results ?? []);
-  }, [media]);
-
-  useCoverArtUpdates((coverArtData) => {
-    setMediaItems((currentItems) =>
-      currentItems.map((item) => {
-        if (item.mediaType === 'music' && item.mbId === coverArtData.id) {
-          return Object.assign(Object.create(Object.getPrototypeOf(item)), {
-            ...item,
-            posterPath: coverArtData.url,
-          });
-        }
-        return item;
-      })
-    );
-  });
 
   if (
     (media && !media.results.length && !mediaError) ||
@@ -59,7 +37,7 @@ const RecentlyAddedSlider = () => {
       <Slider
         sliderKey="media"
         isLoading={!media}
-        items={mediaItems.map((item) => (
+        items={media?.results.map((item) => (
           <AddedCard
             key={`media-slider-item-${item.id}`}
             id={item.id}

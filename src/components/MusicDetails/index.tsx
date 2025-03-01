@@ -101,7 +101,7 @@ const MusicDetails = ({ music }: MusicDetailsProps) => {
   });
 
   const { data: artistData } = useSWR<{ artist: any }>(
-    data ? `/api/v1/music/${data.id}/artist` : null
+    data ? `/api/v1/music/${data.id}/artist?page=1&pageSize=20` : null
   );
 
   useEffect(() => {
@@ -722,6 +722,7 @@ const MusicDetails = ({ music }: MusicDetailsProps) => {
           artistName: data?.artist.name.split(/[&,]|\sfeat\./)[0].trim() ?? '',
         })}
         items={artistData?.artist.releaseGroups ?? []}
+        totalItems={artistData?.artist.pagination?.totalItems}
         linkUrl={`/music/${data.id}/discography`}
         hideWhenEmpty
       />

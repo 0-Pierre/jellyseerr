@@ -1,11 +1,14 @@
 import Header from '@app/components/Common/Header';
 import ListView from '@app/components/Common/ListView';
+import LoadingSpinner from '@app/components/Common/LoadingSpinner';
 import PageTitle from '@app/components/Common/PageTitle';
 import Error from '@app/pages/_error';
 import defineMessages from '@app/utils/defineMessages';
+import { refreshIntervalHelper } from '@app/utils/refreshIntervalHelper';
 import type { MusicDetails } from '@server/models/Music';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { useEffect, useState } from 'react';
 import { useIntl } from 'react-intl';
 import useSWR from 'swr';
 
@@ -17,20 +20,69 @@ const messages = defineMessages('components.MusicDetails', {
 const MusicArtistDiscography = () => {
   const intl = useIntl();
   const router = useRouter();
+  const musicId = router.query.musicId as string;
+  const [page, setPage] = useState(1);
+  const [allReleaseGroups, setAllReleaseGroups] = useState<any[]>([]);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
 
-  const { data: musicData } = useSWR<MusicDetails>(
-    `/api/v1/music/${router.query.musicId}`
+  const { data: musicData, error: musicError } = useSWR<MusicDetails>(
+    musicId ? `/api/v1/music/${musicId}` : null
   );
 
-  const { data: artistData } = useSWR(
-    musicData ? `/api/v1/music/${router.query.musicId}/artist` : null
+  const refreshInterval = musicData
+    ? refreshIntervalHelper(
+        {
+          downloadStatus: musicData.mediaInfo?.downloadStatus,
+          downloadStatus4k: undefined,
+        },
+        15000
+      )
+    : 0;
+
+  useSWR<MusicDetails>(musicId ? `/api/v1/music/${musicId}` : null, {
+    refreshInterval,
+    dedupingInterval: 0,
+  });
+
+  const { data: artistData, error: artistError } = useSWR<{ artist: any }>(
+    musicId ? `/api/v1/music/${musicId}/artist?page=${page}&pageSize=20` : null
   );
 
-  const releaseGroups = artistData?.artist?.releaseGroups ?? [];
+  useEffect(() => {
+    if (
+      artistData?.artist?.releaseGroups &&
+      artistData.artist.releaseGroups.length > 0
+    ) {
+      setAllReleaseGroups((prev) => {
+        const uniqueIds = new Set(prev.map((item) => item.id));
+        const newItems = artistData.artist.releaseGroups.filter(
+          (item: any) => !uniqueIds.has(item.id)
+        );
+        return [...prev, ...newItems];
+      });
+
+      const { pagination } = artistData.artist;
+      setHasMore(pagination.page < pagination.totalPages);
+      setIsLoadingMore(false);
+    }
+  }, [artistData]);
+
   const mainArtistName =
     musicData?.artist.name.split(/[&,]|\sfeat\./)[0].trim() ?? '';
 
-  if (!musicData && !artistData) {
+  const loadMore = () => {
+    if (!isLoadingMore && hasMore) {
+      setIsLoadingMore(true);
+      setPage((prevPage) => prevPage + 1);
+    }
+  };
+
+  if (!musicData && !musicError) {
+    return <LoadingSpinner />;
+  }
+
+  if (musicError || artistError) {
     return <Error statusCode={404} />;
   }
 
@@ -63,10 +115,10 @@ const MusicArtistDiscography = () => {
         </Header>
       </div>
       <ListView
-        items={releaseGroups}
-        isEmpty={releaseGroups.length === 0}
+        items={allReleaseGroups}
+        isEmpty={allReleaseGroups.length === 0}
         isLoading={!artistData}
-        onScrollBottom={() => undefined}
+        onScrollBottom={loadMore}
       />
     </>
   );
