@@ -1,3 +1,4 @@
+import Ellipsis from '@app/assets/ellipsis.svg';
 import Spinner from '@app/assets/spinner.svg';
 import BlacklistModal from '@app/components/BlacklistModal';
 import Button from '@app/components/Common/Button';
@@ -14,6 +15,7 @@ import MediaSlider from '@app/components/MediaSlider';
 import RequestButton from '@app/components/RequestButton';
 import StatusBadge from '@app/components/StatusBadge';
 import useDeepLinks from '@app/hooks/useDeepLinks';
+import { useProgressiveCovers } from '@app/hooks/useProgressiveCovers';
 import useSettings from '@app/hooks/useSettings';
 import { Permission, useUser } from '@app/hooks/useUser';
 import globalMessages from '@app/i18n/globalMessages';
@@ -31,15 +33,15 @@ import { IssueStatus } from '@server/constants/issue';
 import { MediaStatus, MediaType } from '@server/constants/media';
 import { MediaServerType } from '@server/constants/server';
 import type { MusicDetails as MusicDetailsType } from '@server/models/Music';
+import type { AlbumResult, ArtistResult } from '@server/models/Search';
 import 'country-flag-icons/3x2/flags.css';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useToasts } from 'react-toast-notifications';
-import useSWR from 'swr';
-import Ellipsis from '@app/assets/ellipsis.svg';
 import TruncateMarkup from 'react-truncate-markup';
+import useSWR from 'swr';
 
 const messages = defineMessages('components.MusicDetails', {
   biography: 'Biography',
@@ -69,6 +71,31 @@ const messages = defineMessages('components.MusicDetails', {
 
 interface MusicDetailsProps {
   music?: MusicDetailsType;
+}
+
+interface ArtistDetails {
+  artist: {
+    releaseGroups: AlbumResult[];
+    similarArtists: {
+      artists: {
+        tmdbPersonId: number;
+        artist_mbid: string;
+        name: string;
+        type: string;
+        artistThumb: string;
+        score: number;
+      }[];
+    };
+    pagination?: {
+      totalItems: number;
+    };
+  };
+}
+
+interface ItemWithCover {
+  id: string | number;
+  posterPath?: string;
+  needsCoverArt?: boolean;
 }
 
 const Biography = ({
@@ -139,8 +166,16 @@ const MusicDetails = ({ music }: MusicDetailsProps) => {
     ),
   });
 
-  const { data: artistData } = useSWR<{ artist: any }>(
+  const { data: artistData } = useSWR<ArtistDetails>(
     data ? `/api/v1/music/${data.id}/artist?page=1&pageSize=20` : null
+  );
+
+  const enhancedData = useProgressiveCovers<MusicDetailsType & ItemWithCover>(
+    [data].filter(Boolean) as (MusicDetailsType & ItemWithCover)[]
+  )[0];
+
+  const enhancedReleaseGroups = useProgressiveCovers<AlbumResult>(
+    artistData?.artist?.releaseGroups ?? []
   );
 
   useEffect(() => {
@@ -420,7 +455,8 @@ const MusicDetails = ({ music }: MusicDetailsProps) => {
           <CachedImage
             type="music"
             src={
-              data.posterPath || '/images/overseerr_poster_not_found_square.png'
+              enhancedData?.posterPath ||
+              '/images/overseerr_poster_not_found_square.png'
             }
             alt=""
             sizes="100vw"
@@ -639,7 +675,11 @@ const MusicDetails = ({ music }: MusicDetailsProps) => {
                       <div className="truncate text-gray-300">{track.name}</div>
                       <div className="text-xs text-gray-400">
                         {track.artists.map((artist, index) => (
-                          <>
+                          <Fragment
+                            key={`${track.recordingMbid}-artist-${
+                              artist.mbid || index
+                            }`}
+                          >
                             {index === 0 ? '' : index === 1 ? ' feat. ' : ', '}
                             <Link
                               href={
@@ -651,7 +691,7 @@ const MusicDetails = ({ music }: MusicDetailsProps) => {
                             >
                               {artist.name}
                             </Link>
-                          </>
+                          </Fragment>
                         ))}
                       </div>
                     </div>
@@ -764,31 +804,26 @@ const MusicDetails = ({ music }: MusicDetailsProps) => {
         title={intl.formatMessage(messages.discography, {
           artistName: data?.artist.name.split(/[&,]|\sfeat\./)[0].trim() ?? '',
         })}
-        items={artistData?.artist.releaseGroups ?? []}
+        items={enhancedReleaseGroups}
         totalItems={artistData?.artist.pagination?.totalItems}
         linkUrl={`/music/${data.id}/discography`}
         hideWhenEmpty
       />
+
       <MediaSlider
         sliderKey="artist-similar"
         title={intl.formatMessage(messages.similarArtists)}
         items={
           artistData?.artist.similarArtists.artists.map(
-            (artist: {
-              tmdbPersonId: number;
-              artist_mbid: string;
-              name: string;
-              type: string;
-              artistThumb: string;
-              score: number;
-            }) => ({
+            (artist): ArtistResult => ({
               id: artist.artist_mbid,
               mediaType: 'artist',
               name: artist.name,
-              type: artist.type,
+              type: artist.type as 'Group' | 'Person',
               artistThumb: artist.artistThumb,
               score: artist.score,
               tmdbPersonId: artist.tmdbPersonId,
+              'sort-name': artist.name,
             })
           ) ?? []
         }

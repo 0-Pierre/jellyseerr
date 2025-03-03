@@ -1,4 +1,3 @@
-import CoverArtArchive from '@server/api/coverartarchive';
 import ListenBrainzAPI from '@server/api/listenbrainz';
 import type { LbReleaseGroupExtended } from '@server/api/listenbrainz/interfaces';
 import MusicBrainz from '@server/api/musicbrainz';
@@ -16,12 +15,11 @@ const artistRoutes = Router();
 artistRoutes.get('/:id', async (req, res, next) => {
   const listenbrainz = new ListenBrainzAPI();
   const musicbrainz = new MusicBrainz();
-  const coverArtArchive = CoverArtArchive.getInstance();
   const theAudioDb = TheAudioDb.getInstance();
 
   const page = Number(req.query.page) || 1;
-  const pageSize = Number(req.query.pageSize) || 10;
-  const initialItemsPerType = 10;
+  const pageSize = Number(req.query.pageSize) || 20;
+  const initialItemsPerType = 20;
   const albumType = req.query.albumType as string | undefined;
 
   try {
@@ -107,21 +105,11 @@ artistRoutes.get('/:id', async (req, res, next) => {
       albumMetadata.map((metadata) => [metadata.mbAlbumId, metadata])
     );
 
-    const albumsNeedingCovers = mbIds.filter(
-      (mbid) => !metadataMap.get(mbid)?.caaUrl
-    );
-
-    const coverArtResults =
-      albumsNeedingCovers.length > 0
-        ? await coverArtArchive.batchGetCoverArt(albumsNeedingCovers)
-        : {};
-
     const mediaMap = new Map(relatedMedia.map((media) => [media.mbId, media]));
 
     const mappedReleaseGroups = releaseGroupsToProcess.map((releaseGroup) => {
       const metadata = metadataMap.get(releaseGroup.mbid);
-      const coverArtUrl =
-        metadata?.caaUrl || coverArtResults[releaseGroup.mbid] || null;
+      const coverArtUrl = metadata?.caaUrl || null;
 
       return {
         id: releaseGroup.mbid,
@@ -133,6 +121,7 @@ artistRoutes.get('/:id', async (req, res, next) => {
         secondary_types: releaseGroup.secondary_types || [],
         total_listen_count: releaseGroup.total_listen_count || 0,
         posterPath: coverArtUrl,
+        needsCoverArt: !coverArtUrl,
         mediaInfo: mediaMap.get(releaseGroup.mbid),
       };
     });

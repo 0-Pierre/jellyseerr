@@ -5,6 +5,7 @@ import ConfirmButton from '@app/components/Common/ConfirmButton';
 import RequestModal from '@app/components/RequestModal';
 import StatusBadge from '@app/components/StatusBadge';
 import useDeepLinks from '@app/hooks/useDeepLinks';
+import { useProgressiveCovers } from '@app/hooks/useProgressiveCovers';
 import useSettings from '@app/hooks/useSettings';
 import { Permission, useUser } from '@app/hooks/useUser';
 import globalMessages from '@app/i18n/globalMessages';
@@ -48,6 +49,11 @@ const messages = defineMessages('components.RequestList.RequestItem', {
   removearr: 'Remove from {arr}',
   profileName: 'Profile',
 });
+
+interface ExtendedMedia {
+  posterPath?: string;
+  needsCoverArt?: boolean;
+}
 
 const isMovie = (
   media: MovieDetails | TvDetails | MusicDetails
@@ -337,7 +343,7 @@ const RequestItem = ({ request, revalidateList }: RequestItemProps) => {
       : request.type === 'movie'
       ? `/api/v1/movie/${request.media.tmdbId}`
       : `/api/v1/tv/${request.media.tmdbId}`;
-  const { data: title, error } = useSWR<
+  const { data: titleData, error } = useSWR<
     MovieDetails | TvDetails | MusicDetails
   >(inView ? url : null);
   const { data: requestData, mutate: revalidate } = useSWR<
@@ -418,6 +424,28 @@ const RequestItem = ({ request, revalidateList }: RequestItemProps) => {
     iOSPlexUrl: requestData?.media?.iOSPlexUrl,
     iOSPlexUrl4k: requestData?.media?.iOSPlexUrl4k,
   });
+
+  const title =
+    useProgressiveCovers<MovieDetails | TvDetails | MusicDetails>(
+      requestData?.type === 'music' && titleData && isMusic(titleData)
+        ? [
+            {
+              ...titleData,
+              posterPath:
+                (requestData.media as ExtendedMedia)?.posterPath ||
+                titleData.posterPath,
+              needsCoverArt:
+                (requestData.media as ExtendedMedia)?.needsCoverArt !==
+                undefined
+                  ? (requestData.media as ExtendedMedia).needsCoverArt
+                  : (titleData as MusicDetails & { needsCoverArt?: boolean })
+                      .needsCoverArt,
+            } as MusicDetails,
+          ]
+        : titleData
+        ? [titleData]
+        : []
+    )[0] ?? titleData;
 
   if (!title && !error) {
     return (

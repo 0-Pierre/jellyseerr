@@ -1,4 +1,5 @@
 import TitleCard from '@app/components/TitleCard';
+import { useProgressiveCovers } from '@app/hooks/useProgressiveCovers';
 import { Permission, useUser } from '@app/hooks/useUser';
 import type { MovieDetails } from '@server/models/Movie';
 import type { MusicDetails } from '@server/models/Music';
@@ -15,6 +16,8 @@ export interface AddedCardProps {
   canExpand?: boolean;
   isAddedToWatchlist?: boolean;
   mutateParent?: () => void;
+  posterPath?: string | null;
+  needsCoverArt?: boolean;
 }
 
 const isMovie = (
@@ -38,6 +41,8 @@ const AddedCard = ({
   canExpand,
   isAddedToWatchlist = false,
   mutateParent,
+  posterPath: initialPosterPath,
+  needsCoverArt: initialNeedsCoverArt,
 }: AddedCardProps) => {
   const { hasPermission } = useUser();
 
@@ -52,9 +57,30 @@ const AddedCard = ({
       ? `/api/v1/movie/${tmdbId}`
       : `/api/v1/tv/${tmdbId}`;
 
-  const { data: title, error } = useSWR<
+  const { data: titleData, error } = useSWR<
     MovieDetails | TvDetails | MusicDetails
   >(inView ? url : null);
+
+  const title =
+    useProgressiveCovers<MovieDetails | TvDetails | MusicDetails>(
+      type === 'music' &&
+        titleData &&
+        isMusic(titleData) &&
+        (initialPosterPath || initialNeedsCoverArt)
+        ? [
+            {
+              ...titleData,
+              posterPath: initialPosterPath || titleData.posterPath,
+              needsCoverArt:
+                initialNeedsCoverArt ??
+                (titleData as MusicDetails & { needsCoverArt?: boolean })
+                  .needsCoverArt,
+            } as MusicDetails,
+          ]
+        : titleData
+        ? [titleData]
+        : []
+    )[0] ?? titleData;
 
   if (!title && !error) {
     return (

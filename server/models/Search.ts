@@ -109,6 +109,7 @@ export interface AlbumResult extends MbSearchResult {
     };
   }[];
   posterPath?: string;
+  needsCoverArt?: boolean;
   mediaInfo?: Media;
 }
 
@@ -223,8 +224,10 @@ export const mapAlbumResult = (
   'first-release-date': albumResult['first-release-date'],
   'artist-credit': albumResult['artist-credit'],
   posterPath: albumResult.posterPath,
+  needsCoverArt: !albumResult.posterPath,
   mediaInfo: media,
 });
+
 const isTmdbMovie = (
   result:
     | TmdbMovieResult

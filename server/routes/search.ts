@@ -1,4 +1,3 @@
-import CoverArtArchive from '@server/api/coverartarchive';
 import MusicBrainz from '@server/api/musicbrainz';
 import TheAudioDb from '@server/api/theaudiodb';
 import TheMovieDb from '@server/api/themoviedb';
@@ -40,7 +39,6 @@ searchRoutes.get('/', async (req, res, next) => {
     } else {
       const tmdb = new TheMovieDb();
       const musicbrainz = new MusicBrainz();
-      const coverArtArchive = CoverArtArchive.getInstance();
       const theAudioDb = TheAudioDb.getInstance();
       const personMapper = TmdbPersonMapper.getInstance();
 
@@ -139,10 +137,6 @@ searchRoutes.get('/', async (req, res, next) => {
         }
       });
 
-      const albumsNeedingCoverArt = albumIds.filter(
-        (id) => !albumMetadataMap.get(id)?.caaUrl
-      );
-
       const artistsNeedingMapping = artistResults
         .filter(
           (artist) =>
@@ -159,7 +153,6 @@ searchRoutes.get('/', async (req, res, next) => {
         return !metadata?.tadbThumb && !metadata?.tadbCover;
       });
 
-      type CoverArtResult = Record<string, string | null>;
       type PersonMappingResult = Record<
         string,
         { personId: number | null; profilePath: string | null }
@@ -169,18 +162,14 @@ searchRoutes.get('/', async (req, res, next) => {
         { artistThumb: string | null; artistBackground: string | null }
       >;
 
-      const [coverArtResults, personMappingResults, artistImageResults] =
-        await Promise.all([
-          albumsNeedingCoverArt.length > 0
-            ? coverArtArchive.batchGetCoverArt(albumsNeedingCoverArt)
-            : ({} as CoverArtResult),
-          artistsNeedingMapping.length > 0
-            ? personMapper.batchGetMappings(artistsNeedingMapping)
-            : ({} as PersonMappingResult),
-          artistsNeedingImages.length > 0
-            ? theAudioDb.batchGetArtistImages(artistsNeedingImages)
-            : ({} as ArtistImageResult),
-        ]);
+      const [personMappingResults, artistImageResults] = await Promise.all([
+        artistsNeedingMapping.length > 0
+          ? personMapper.batchGetMappings(artistsNeedingMapping)
+          : ({} as PersonMappingResult),
+        artistsNeedingImages.length > 0
+          ? theAudioDb.batchGetArtistImages(artistsNeedingImages)
+          : ({} as ArtistImageResult),
+      ]);
 
       let updatedArtistsMetadataMap = artistsMetadataMap;
       if (
@@ -202,13 +191,12 @@ searchRoutes.get('/', async (req, res, next) => {
 
       const albumsWithArt = albumResults.map((album) => {
         const metadata = albumMetadataMap.get(album.id);
-        const coverArtUrl =
-          metadata?.caaUrl || coverArtResults[album.id] || null;
 
         return {
           ...album,
           media_type: 'album' as const,
-          posterPath: coverArtUrl ?? undefined,
+          posterPath: metadata?.caaUrl ?? undefined,
+          needsCoverArt: !metadata?.caaUrl,
           score: album.score || 0,
         };
       });

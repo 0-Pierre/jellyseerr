@@ -5,6 +5,7 @@ import Tooltip from '@app/components/Common/Tooltip';
 import RequestModal from '@app/components/RequestModal';
 import StatusBadge from '@app/components/StatusBadge';
 import useDeepLinks from '@app/hooks/useDeepLinks';
+import { useProgressiveCovers } from '@app/hooks/useProgressiveCovers';
 import useSettings from '@app/hooks/useSettings';
 import { Permission, useUser } from '@app/hooks/useUser';
 import globalMessages from '@app/i18n/globalMessages';
@@ -55,6 +56,18 @@ const isAlbum = (
   media: MovieDetails | TvDetails | MusicDetails
 ): media is MusicDetails => {
   return (media as MusicDetails).artist?.id !== undefined;
+};
+
+const hasBackdropPath = (
+  media: MovieDetails | TvDetails | MusicDetails
+): media is MovieDetails | TvDetails => {
+  return 'backdropPath' in media;
+};
+
+const hasSeasons = (
+  media: MovieDetails | TvDetails | MusicDetails
+): media is TvDetails => {
+  return 'seasons' in media && Array.isArray((media as TvDetails).seasons);
 };
 
 const RequestCardPlaceholder = () => {
@@ -226,7 +239,10 @@ const RequestCardError = ({ requestData }: RequestCardErrorProps) => {
 
 interface RequestCardProps {
   request: NonFunctionProperties<MediaRequest>;
-  onTitleData?: (requestId: number, title: MovieDetails | TvDetails) => void;
+  onTitleData?: (
+    requestId: number,
+    title: MovieDetails | TvDetails | MusicDetails
+  ) => void;
 }
 
 const RequestCard = ({ request, onTitleData }: RequestCardProps) => {
@@ -246,9 +262,10 @@ const RequestCard = ({ request, onTitleData }: RequestCardProps) => {
       ? `/api/v1/tv/${request.media.tmdbId}`
       : `/api/v1/music/${request.media.mbId}`;
 
-  const { data: title, error } = useSWR<MovieDetails | TvDetails>(
-    inView ? `${url}` : null
-  );
+  const { data: titleData, error } = useSWR<
+    MovieDetails | TvDetails | MusicDetails
+  >(inView ? url : null);
+
   const {
     data: requestData,
     error: requestError,
@@ -320,12 +337,39 @@ const RequestCard = ({ request, onTitleData }: RequestCardProps) => {
   };
 
   useEffect(() => {
-    if (title && onTitleData) {
-      onTitleData(request.id, title);
+    if (titleData && onTitleData) {
+      onTitleData(request.id, titleData);
     }
-  }, [title, onTitleData, request]);
+  }, [titleData, onTitleData, request]);
 
-  if (!title && !error) {
+  interface ExtendedMedia {
+    posterPath?: string;
+    needsCoverArt?: boolean;
+  }
+
+  const title =
+    useProgressiveCovers<MovieDetails | TvDetails | MusicDetails>(
+      requestData?.type === 'music' && titleData && isAlbum(titleData)
+        ? [
+            {
+              ...titleData,
+              posterPath:
+                (requestData.media as ExtendedMedia)?.posterPath ||
+                titleData.posterPath,
+              needsCoverArt:
+                (requestData.media as ExtendedMedia)?.needsCoverArt !==
+                undefined
+                  ? (requestData.media as ExtendedMedia).needsCoverArt
+                  : (titleData as MusicDetails & { needsCoverArt?: boolean })
+                      .needsCoverArt,
+            } as MusicDetails,
+          ]
+        : titleData
+        ? [titleData]
+        : []
+    )[0] ?? titleData;
+
+  if (!titleData && !error) {
     return (
       <div ref={ref}>
         <RequestCardPlaceholder />
@@ -372,7 +416,7 @@ const RequestCard = ({ request, onTitleData }: RequestCardProps) => {
                   : title.posterPath
                   ? title.posterPath
                   : '/images/overseerr_poster_not_found_square.png'
-                : title.backdropPath
+                : hasBackdropPath(title) && title.backdropPath
                 ? `https://image.tmdb.org/t/p/w1920_and_h800_multi_faces/${title.backdropPath}`
                 : '/images/overseerr_poster_not_found.png'
             }
@@ -446,33 +490,35 @@ const RequestCard = ({ request, onTitleData }: RequestCardProps) => {
               </Link>
             </div>
           )}
-          {!isMovie(title) && request.seasons.length > 0 && (
-            <div className="my-0.5 hidden items-center text-sm sm:my-1 sm:flex">
-              <span className="mr-2 font-bold ">
-                {intl.formatMessage(messages.seasons, {
-                  seasonCount:
-                    (settings.currentSettings.enableSpecialEpisodes
-                      ? title.seasons.length
-                      : title.seasons.filter(
-                          (season) => season.seasonNumber !== 0
-                        ).length) === request.seasons.length
-                      ? 0
-                      : request.seasons.length,
-                })}
-              </span>
-              <div className="hide-scrollbar overflow-x-scroll">
-                {request.seasons.map((season) => (
-                  <span key={`season-${season.id}`} className="mr-2">
-                    <Badge>
-                      {season.seasonNumber === 0
-                        ? intl.formatMessage(globalMessages.specials)
-                        : season.seasonNumber}
-                    </Badge>
-                  </span>
-                ))}
+          {!isMovie(title) &&
+            hasSeasons(title) &&
+            request.seasons.length > 0 && (
+              <div className="my-0.5 hidden items-center text-sm sm:my-1 sm:flex">
+                <span className="mr-2 font-bold ">
+                  {intl.formatMessage(messages.seasons, {
+                    seasonCount:
+                      (settings.currentSettings.enableSpecialEpisodes
+                        ? title.seasons.length
+                        : title.seasons.filter(
+                            (season) => season.seasonNumber !== 0
+                          ).length) === request.seasons.length
+                        ? 0
+                        : request.seasons.length,
+                  })}
+                </span>
+                <div className="hide-scrollbar overflow-x-scroll">
+                  {request.seasons.map((season) => (
+                    <span key={`season-${season.id}`} className="mr-2">
+                      <Badge>
+                        {season.seasonNumber === 0
+                          ? intl.formatMessage(globalMessages.specials)
+                          : season.seasonNumber}
+                      </Badge>
+                    </span>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
           <div className="mt-2 flex items-center text-sm sm:mt-1">
             <span className="mr-2 hidden font-bold sm:block">
               {intl.formatMessage(globalMessages.status)}
@@ -498,7 +544,13 @@ const RequestCard = ({ request, onTitleData }: RequestCardProps) => {
                     requestData.is4k ? 'downloadStatus4k' : 'downloadStatus'
                   ]
                 }
-                title={isMovie(title) ? title.title : title.name}
+                title={
+                  isMovie(title)
+                    ? title.title
+                    : isAlbum(title)
+                    ? title.title
+                    : (title as TvDetails).name
+                }
                 inProgress={
                   (
                     requestData.media[

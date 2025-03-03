@@ -4,6 +4,7 @@ import ImageFader from '@app/components/Common/ImageFader';
 import LoadingSpinner from '@app/components/Common/LoadingSpinner';
 import PageTitle from '@app/components/Common/PageTitle';
 import TitleCard from '@app/components/TitleCard';
+import { useProgressiveCovers } from '@app/hooks/useProgressiveCovers';
 import globalMessages from '@app/i18n/globalMessages';
 import Error from '@app/pages/_error';
 import defineMessages from '@app/utils/defineMessages';
@@ -39,8 +40,7 @@ const messages = defineMessages('components.PersonDetails', {
   showless: 'Show Less',
 });
 
-const DISPLAY_COUNT = 10;
-const COLLAPSE_ANIMATION_DURATION = 300;
+const DISPLAY_COUNT = 20;
 
 const albumTypeMessages: Record<string, keyof typeof messages> = {
   Album: 'album',
@@ -59,7 +59,8 @@ interface Album {
   id: string;
   title?: string;
   'first-release-date'?: string;
-  posterPath?: string;
+  posterPath?: string | null;
+  needsCoverArt?: boolean;
   'primary-type'?: string;
   secondary_types?: string[];
   'artist-credit'?: { name: string }[];
@@ -88,6 +89,23 @@ interface AlbumTypeState {
 
 interface EnhancedPersonDetails extends Omit<PersonDetailsType, 'artist'> {
   artist?: ArtistWithTypeCounts;
+}
+
+interface MediaItem {
+  id: number;
+  title?: string;
+  name?: string;
+  posterPath?: string;
+  releaseDate?: string;
+  firstAirDate?: string;
+  mediaType: 'movie' | 'tv';
+  mediaInfo?: {
+    status?: MediaStatus;
+  };
+  character?: string;
+  job?: string;
+  backdropPath?: string;
+  popularity?: number;
 }
 
 const Biography = ({
@@ -144,12 +162,18 @@ const AlbumSection = ({
   const intl = useIntl();
   const { albums, isExpanded, isLoading, isHovered, isCollapsing } = state;
 
-  const displayAlbums = isExpanded ? albums : albums.slice(0, DISPLAY_COUNT);
+  const enhancedAlbums = useProgressiveCovers(albums);
+
+  const displayAlbums = isExpanded
+    ? enhancedAlbums
+    : enhancedAlbums.slice(0, DISPLAY_COUNT);
 
   const shouldShowExpandButton = totalCount > DISPLAY_COUNT;
 
   const remainingItems = totalCount - albums.length;
-  const placeholdersToShow = Math.min(remainingItems, 20);
+  const placeholdersToShow = isExpanded
+    ? Math.min(remainingItems, 20)
+    : Math.min(remainingItems, DISPLAY_COUNT);
 
   const messageKey = albumTypeMessages[type] || 'other';
   const title = intl.formatMessage(messages[messageKey]);
@@ -174,7 +198,7 @@ const AlbumSection = ({
                 id={media.id}
                 title={media.title ?? 'Unknown Album'}
                 year={media['first-release-date']}
-                image={media.posterPath}
+                image={media.posterPath ?? undefined}
                 mediaType="album"
                 artist={media['artist-credit']?.[0]?.name || artistName}
                 type={media['primary-type']}
@@ -258,7 +282,7 @@ const MediaSection = ({
   mediaItems,
 }: {
   title: React.ReactNode;
-  mediaItems: any[];
+  mediaItems: MediaItem[];
 }) => {
   if (!mediaItems.length) {
     return null;
@@ -276,7 +300,7 @@ const MediaSection = ({
           <li key={`media-${media.id}`}>
             <TitleCard
               id={media.id}
-              title={media.title || media.name}
+              title={media.title || media.name || 'Unknown Title'}
               image={media.posterPath}
               year={
                 media.releaseDate?.slice(0, 4) ||
@@ -293,7 +317,7 @@ const MediaSection = ({
   );
 };
 
-const sortCredits = (credits: any[]): any[] => {
+const sortCredits = (credits: MediaItem[]): MediaItem[] => {
   return orderBy(
     credits.filter((credit) => credit.releaseDate || credit.firstAirDate),
     [
@@ -352,7 +376,10 @@ const PersonDetails = () => {
               isCollapsing: false,
             };
           }
-          initialAlbumTypes[type].albums.push(album);
+          initialAlbumTypes[type].albums.push({
+            ...album,
+            needsCoverArt: !album.posterPath,
+          });
         }
       });
 
@@ -373,18 +400,20 @@ const PersonDetails = () => {
       }));
 
       try {
+        const pageSize = data?.artist?.typeCounts?.[albumType] || 100;
         const response = await fetch(
-          `/api/v1/person/${personId}?albumType=${albumType}&pageSize=${
-            data?.artist?.typeCounts?.[albumType] || 100
-          }`
+          `/api/v1/person/${personId}?albumType=${albumType}&pageSize=${pageSize}`
         );
 
         if (response.ok) {
           const responseData = await response.json();
           const validAlbums =
-            responseData.artist?.releaseGroups?.filter(
-              (album: Album) => album && album.id
-            ) || [];
+            responseData.artist?.releaseGroups
+              ?.filter((album: Album) => album && album.id)
+              .map((album: Album) => ({
+                ...album,
+                needsCoverArt: !album.posterPath,
+              })) || [];
 
           setAlbumTypes((prev) => ({
             ...prev,
@@ -395,10 +424,16 @@ const PersonDetails = () => {
               isLoading: false,
             },
           }));
+        } else {
+          setAlbumTypes((prev) => ({
+            ...prev,
+            [albumType]: {
+              ...prev[albumType],
+              isLoading: false,
+            },
+          }));
         }
-      } catch (error) {
-        console.error('Failed to load albums:', error);
-      } finally {
+      } catch {
         setAlbumTypes((prev) => ({
           ...prev,
           [albumType]: {
@@ -444,7 +479,7 @@ const PersonDetails = () => {
               isCollapsing: false,
             },
           }));
-        }, COLLAPSE_ANIMATION_DURATION);
+        }, 300);
       } else {
         const albums = albumTypes[albumType]?.albums || [];
         const typeCount = data?.artist?.typeCounts?.[albumType] || 0;
@@ -482,12 +517,14 @@ const PersonDetails = () => {
         Object.values(groupBy(cast, 'id')).map((group) => ({
           ...group[0],
           character: group.map((g) => g.character).join(', '),
+          mediaType: group[0].mediaType === 'movie' ? 'movie' : 'tv',
         }))
       ),
       crew: sortCredits(
         Object.values(groupBy(crew, 'id')).map((group) => ({
           ...group[0],
           job: group.map((g) => g.job).join(', '),
+          mediaType: group[0].mediaType === 'movie' ? 'movie' : 'tv',
         }))
       ),
     };

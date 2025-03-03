@@ -6678,6 +6678,33 @@ paths:
                       $ref: '#/components/schemas/CreditCrew'
                   id:
                     type: number
+  /coverart/batch/{ids}:
+    get:
+      summary: Batch fetch cover art
+      description: Fetches cover art for multiple albums by their MusicBrainz IDs in a single request. Designed for progressive loading of cover images.
+      tags:
+        - music
+      parameters:
+        - in: path
+          name: ids
+          required: true
+          schema:
+            type: string
+            example: '87f17f8a-c0e2-406c-a149-8c8e311bf330,b5b4bb4b-8ba5-3acf-88cb-4cae2699d8da'
+          description: Comma-separated list of MusicBrainz album IDs
+      responses:
+        '200':
+          description: Cover art URLs mapped to their MusicBrainz IDs
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+                  nullable: true
+                example:
+                  '87f17f8a-c0e2-406c-a149-8c8e311bf330': 'https://archive.org/download/mbid-87f17f8a-c0e2-406c-a149-8c8e311bf330/mbid-87f17f8a-c0e2-406c-a149-8c8e311bf330-23795455019.jpg'
+                  'b5b4bb4b-8ba5-3acf-88cb-4cae2699d8da': null
   /artist/{artistId}:
     get:
       summary: Get artist details

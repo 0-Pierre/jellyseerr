@@ -2,9 +2,11 @@ import Header from '@app/components/Common/Header';
 import ListView from '@app/components/Common/ListView';
 import PageTitle from '@app/components/Common/PageTitle';
 import useDiscover from '@app/hooks/useDiscover';
+import { useProgressiveCovers } from '@app/hooks/useProgressiveCovers';
 import Error from '@app/pages/_error';
 import defineMessages from '@app/utils/defineMessages';
 import type {
+  AlbumResult,
   MovieResult,
   PersonResult,
   TvResult,
@@ -29,13 +31,30 @@ const Search = () => {
     titles,
     fetchMore,
     error,
-  } = useDiscover<MovieResult | TvResult | PersonResult>(
+  } = useDiscover<MovieResult | TvResult | PersonResult | AlbumResult>(
     `/api/v1/search`,
     {
       query: router.query.query,
     },
     { hideAvailable: false }
   );
+
+  const enhancedItems = useProgressiveCovers(
+    titles?.filter((item): item is AlbumResult => {
+      return (
+        item.mediaType === 'album' &&
+        typeof item.id === 'string' &&
+        'needsCoverArt' in item
+      );
+    }) ?? []
+  );
+
+  const mergedResults = titles?.map((item) => {
+    if (item.mediaType === 'album') {
+      return enhancedItems.find((album) => album.id === item.id) ?? item;
+    }
+    return item;
+  });
 
   if (error) {
     return <Error statusCode={500} />;
@@ -48,7 +67,7 @@ const Search = () => {
         <Header>{intl.formatMessage(messages.searchresults)}</Header>
       </div>
       <ListView
-        items={titles}
+        items={mergedResults}
         isEmpty={isEmpty}
         isLoading={
           isLoadingInitialData || (isLoadingMore && (titles?.length ?? 0) > 0)

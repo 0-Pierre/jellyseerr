@@ -4,6 +4,7 @@ import ImageFader from '@app/components/Common/ImageFader';
 import LoadingSpinner from '@app/components/Common/LoadingSpinner';
 import PageTitle from '@app/components/Common/PageTitle';
 import TitleCard from '@app/components/TitleCard';
+import { useProgressiveCovers } from '@app/hooks/useProgressiveCovers';
 import Error from '@app/pages/_error';
 import defineMessages from '@app/utils/defineMessages';
 import { ArrowRightCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
@@ -32,14 +33,14 @@ const messages = defineMessages('components.ArtistDetails', {
   showless: 'Show Less',
 });
 
-const DISPLAY_COUNT = 10;
-const COLLAPSE_ANIMATION_DURATION = 300;
+const DISPLAY_COUNT = 20;
 
 interface Album {
   id: string;
   title?: string;
   'first-release-date'?: string;
-  posterPath?: string;
+  posterPath?: string | null;
+  needsCoverArt?: boolean;
   'primary-type'?: string;
   secondary_types?: string[];
   'artist-credit'?: { name: string }[];
@@ -141,7 +142,11 @@ const AlbumSection = ({
   const intl = useIntl();
   const { albums, isExpanded, isLoading, isHovered, isCollapsing } = state;
 
-  const displayAlbums = isExpanded ? albums : albums.slice(0, DISPLAY_COUNT);
+  const enhancedAlbums = useProgressiveCovers(albums);
+
+  const displayAlbums = isExpanded
+    ? enhancedAlbums
+    : enhancedAlbums.slice(0, DISPLAY_COUNT);
 
   const shouldShowExpandButton = totalCount > DISPLAY_COUNT;
 
@@ -170,7 +175,7 @@ const AlbumSection = ({
                 id={media.id}
                 title={media.title || 'Unknown Album'}
                 year={media['first-release-date']}
-                image={media.posterPath}
+                image={media.posterPath ?? undefined}
                 mediaType="album"
                 artist={media['artist-credit']?.[0]?.name || artistName}
                 type={media['primary-type']}
@@ -378,9 +383,12 @@ const ArtistDetails = () => {
 
         if (response.ok) {
           const responseData = await response.json();
-          const validAlbums = responseData.releaseGroups.filter(
-            (album: Album) => album && album.id
-          );
+          const validAlbums = responseData.releaseGroups
+            .filter((album: Album) => album && album.id)
+            .map((album: Album) => ({
+              ...album,
+              needsCoverArt: album.posterPath ? false : true,
+            }));
 
           setAlbumTypes((prev) => ({
             ...prev,
@@ -393,7 +401,6 @@ const ArtistDetails = () => {
           }));
         }
       } catch (error) {
-        // Failed to load albums silently
         setAlbumTypes((prev) => ({
           ...prev,
           [albumType]: {
@@ -429,7 +436,7 @@ const ArtistDetails = () => {
               isCollapsing: false,
             },
           }));
-        }, COLLAPSE_ANIMATION_DURATION);
+        }, 300);
       } else {
         const albums = albumTypes[albumType]?.albums || [];
         const typeCount = data?.typeCounts?.[albumType] || 0;

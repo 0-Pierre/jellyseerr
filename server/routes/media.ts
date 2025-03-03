@@ -1,4 +1,3 @@
-import CoverArtArchive from '@server/api/coverartarchive';
 import LidarrAPI from '@server/api/servarr/lidarr';
 import RadarrAPI from '@server/api/servarr/radarr';
 import SonarrAPI from '@server/api/servarr/sonarr';
@@ -7,6 +6,7 @@ import TheMovieDb from '@server/api/themoviedb';
 import { MediaStatus, MediaType } from '@server/constants/media';
 import { getRepository } from '@server/datasource';
 import Media from '@server/entity/Media';
+import MetadataAlbum from '@server/entity/MetadataAlbum';
 import { User } from '@server/entity/User';
 import type {
   MediaResultsResponse,
@@ -24,7 +24,7 @@ const mediaRoutes = Router();
 
 mediaRoutes.get('/', async (req, res, next) => {
   const mediaRepository = getRepository(Media);
-  const coverArtArchive = CoverArtArchive.getInstance();
+  const metadataAlbumRepository = getRepository(MetadataAlbum);
 
   const pageSize = req.query.take ? Number(req.query.take) : 20;
   const skip = req.query.skip ? Number(req.query.skip) : 0;
@@ -86,14 +86,25 @@ mediaRoutes.get('/', async (req, res, next) => {
 
     const mbIds = musicMediaItems.map((item) => item.mbId as string);
 
-    const coverArtResults =
-      mbIds.length > 0 ? await coverArtArchive.batchGetCoverArt(mbIds) : {};
+    const albumMetadata =
+      mbIds.length > 0
+        ? await metadataAlbumRepository.find({
+            where: { mbAlbumId: In(mbIds) },
+            select: ['mbAlbumId', 'caaUrl'],
+          })
+        : [];
+
+    const albumMetadataMap = new Map(
+      albumMetadata.map((metadata) => [metadata.mbAlbumId, metadata])
+    );
 
     const mediaWithCoverArt = media.map((item) => {
       if (item.mediaType === 'music' && item.mbId) {
+        const metadata = albumMetadataMap.get(item.mbId);
         return {
           ...item,
-          posterPath: coverArtResults[item.mbId] || null,
+          posterPath: metadata?.caaUrl || null,
+          needsCoverArt: !metadata?.caaUrl,
         };
       }
       return item;

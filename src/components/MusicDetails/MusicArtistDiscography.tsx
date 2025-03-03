@@ -2,10 +2,12 @@ import Header from '@app/components/Common/Header';
 import ListView from '@app/components/Common/ListView';
 import LoadingSpinner from '@app/components/Common/LoadingSpinner';
 import PageTitle from '@app/components/Common/PageTitle';
+import { useProgressiveCovers } from '@app/hooks/useProgressiveCovers';
 import Error from '@app/pages/_error';
 import defineMessages from '@app/utils/defineMessages';
 import { refreshIntervalHelper } from '@app/utils/refreshIntervalHelper';
 import type { MusicDetails } from '@server/models/Music';
+import type { AlbumResult } from '@server/models/Search';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
@@ -17,12 +19,43 @@ const messages = defineMessages('components.MusicDetails', {
   byartist: 'by',
 });
 
+interface ReleaseGroup {
+  id: string;
+  title: string;
+  'first-release-date'?: string;
+  'primary-type'?: string;
+  artistThumb?: string;
+  posterPath?: string;
+  mediaType: 'album';
+  'artist-credit'?: { name: string }[];
+  score?: number;
+  mediaInfo?: {
+    status?: number;
+    downloadStatus?: unknown[];
+    watchlists?: unknown[];
+  };
+}
+
+interface Pagination {
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  totalResults: number;
+}
+
+interface ArtistResponse {
+  artist: {
+    releaseGroups: ReleaseGroup[];
+    pagination: Pagination;
+  };
+}
+
 const MusicArtistDiscography = () => {
   const intl = useIntl();
   const router = useRouter();
   const musicId = router.query.musicId as string;
   const [page, setPage] = useState(1);
-  const [allReleaseGroups, setAllReleaseGroups] = useState<any[]>([]);
+  const [allReleaseGroups, setAllReleaseGroups] = useState<ReleaseGroup[]>([]);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 
@@ -45,7 +78,7 @@ const MusicArtistDiscography = () => {
     dedupingInterval: 0,
   });
 
-  const { data: artistData, error: artistError } = useSWR<{ artist: any }>(
+  const { data: artistData, error: artistError } = useSWR<ArtistResponse>(
     musicId ? `/api/v1/music/${musicId}/artist?page=${page}&pageSize=20` : null
   );
 
@@ -57,7 +90,7 @@ const MusicArtistDiscography = () => {
       setAllReleaseGroups((prev) => {
         const uniqueIds = new Set(prev.map((item) => item.id));
         const newItems = artistData.artist.releaseGroups.filter(
-          (item: any) => !uniqueIds.has(item.id)
+          (item: ReleaseGroup) => !uniqueIds.has(item.id)
         );
         return [...prev, ...newItems];
       });
@@ -77,6 +110,8 @@ const MusicArtistDiscography = () => {
       setPage((prevPage) => prevPage + 1);
     }
   };
+
+  const enhancedReleaseGroups = useProgressiveCovers(allReleaseGroups);
 
   if (!musicData && !musicError) {
     return <LoadingSpinner />;
@@ -115,7 +150,7 @@ const MusicArtistDiscography = () => {
         </Header>
       </div>
       <ListView
-        items={allReleaseGroups}
+        items={enhancedReleaseGroups as unknown as AlbumResult[]}
         isEmpty={allReleaseGroups.length === 0}
         isLoading={!artistData}
         onScrollBottom={loadMore}

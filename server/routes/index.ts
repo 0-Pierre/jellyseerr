@@ -31,6 +31,7 @@ import artistRoutes from './artist';
 import authRoutes from './auth';
 import blacklistRoutes from './blacklist';
 import collectionRoutes from './collection';
+import coverArtRoutes from './coverart';
 import discoverRoutes, { createTmdbWithRegionLanguage } from './discover';
 import issueRoutes from './issue';
 import issueCommentRoutes from './issueComment';
@@ -170,7 +171,7 @@ router.use(
   isAuthenticated(Permission.ADMIN),
   overrideRuleRoutes
 );
-
+router.use('/coverart', isAuthenticated(), coverArtRoutes);
 router.get('/regions', isAuthenticated(), async (req, res, next) => {
   const tmdb = new TheMovieDb();
 

@@ -1,9 +1,9 @@
-import CoverArtArchive from '@server/api/coverartarchive';
 import ListenBrainzAPI from '@server/api/listenbrainz';
 import TheAudioDb from '@server/api/theaudiodb';
 import TheMovieDb from '@server/api/themoviedb';
 import { getRepository } from '@server/datasource';
 import Media from '@server/entity/Media';
+import MetadataAlbum from '@server/entity/MetadataAlbum';
 import MetadataArtist from '@server/entity/MetadataArtist';
 import logger from '@server/logger';
 import {
@@ -12,6 +12,7 @@ import {
   mapPersonDetails,
 } from '@server/models/Person';
 import { Router } from 'express';
+import { In } from 'typeorm';
 
 const personRoutes = Router();
 
@@ -19,11 +20,10 @@ personRoutes.get('/:id', async (req, res, next) => {
   const tmdb = new TheMovieDb();
   const listenbrainz = new ListenBrainzAPI();
   const theAudioDb = TheAudioDb.getInstance();
-  const coverArtArchive = CoverArtArchive.getInstance();
 
   const page = Number(req.query.page) || 1;
-  const pageSize = Number(req.query.pageSize) || 10;
-  const initialItemsPerType = 10;
+  const pageSize = Number(req.query.pageSize) || 20;
+  const initialItemsPerType = 20;
   const albumType = req.query.albumType as string | undefined;
 
   try {
@@ -96,13 +96,17 @@ personRoutes.get('/:id', async (req, res, next) => {
 
         const allReleaseGroupIds = releaseGroupsToProcess.map((rg) => rg.mbid);
 
-        const [artistImagesPromise, relatedMedia, coverArtResults] =
+        const [artistImagesPromise, relatedMedia, albumMetadata] =
           await Promise.all([
             !existingMetadata.tadbThumb && !existingMetadata.tadbCover
               ? theAudioDb.getArtistImages(existingMetadata.mbArtistId)
               : Promise.resolve(null),
             Media.getRelatedMedia(req.user, allReleaseGroupIds),
-            coverArtArchive.batchGetCoverArt(allReleaseGroupIds),
+            getRepository(MetadataAlbum).find({
+              where: { mbAlbumId: In(allReleaseGroupIds) },
+              select: ['mbAlbumId', 'caaUrl'],
+              cache: true,
+            }),
           ]);
 
         if (artistImagesPromise) {
@@ -114,19 +118,29 @@ personRoutes.get('/:id', async (req, res, next) => {
           relatedMedia.map((media) => [media.mbId, media])
         );
 
+        const metadataMap = new Map(
+          albumMetadata.map((metadata) => [metadata.mbAlbumId, metadata])
+        );
+
         const transformedReleaseGroups = releaseGroupsToProcess.map(
-          (releaseGroup) => ({
-            id: releaseGroup.mbid,
-            mediaType: 'album',
-            title: releaseGroup.name,
-            'first-release-date': releaseGroup.date,
-            'artist-credit': [{ name: releaseGroup.artist_credit_name }],
-            'primary-type': releaseGroup.type || 'Other',
-            secondary_types: releaseGroup.secondary_types || [],
-            total_listen_count: releaseGroup.total_listen_count || 0,
-            posterPath: coverArtResults[releaseGroup.mbid] ?? undefined,
-            mediaInfo: mediaMap.get(releaseGroup.mbid),
-          })
+          (releaseGroup) => {
+            const metadata = metadataMap.get(releaseGroup.mbid);
+            const coverArtUrl = metadata?.caaUrl || null;
+
+            return {
+              id: releaseGroup.mbid,
+              mediaType: 'album',
+              title: releaseGroup.name,
+              'first-release-date': releaseGroup.date,
+              'artist-credit': [{ name: releaseGroup.artist_credit_name }],
+              'primary-type': releaseGroup.type || 'Other',
+              secondary_types: releaseGroup.secondary_types || [],
+              total_listen_count: releaseGroup.total_listen_count || 0,
+              posterPath: coverArtUrl,
+              needsCoverArt: !coverArtUrl,
+              mediaInfo: mediaMap.get(releaseGroup.mbid),
+            };
+          }
         );
 
         const typeCounts = Object.fromEntries(

@@ -1,4 +1,3 @@
-import CoverArtArchive from '@server/api/coverartarchive';
 import ListenBrainzAPI from '@server/api/listenbrainz';
 import MusicBrainz from '@server/api/musicbrainz';
 import TheAudioDb from '@server/api/theaudiodb';
@@ -19,7 +18,6 @@ const musicRoutes = Router();
 musicRoutes.get('/:id', async (req, res, next) => {
   const listenbrainz = new ListenBrainzAPI();
   const musicbrainz = new MusicBrainz();
-  const coverArtArchive = CoverArtArchive.getInstance();
   const personMapper = TmdbPersonMapper.getInstance();
   const theAudioDb = TheAudioDb.getInstance();
 
@@ -100,36 +98,27 @@ musicRoutes.get('/:id', async (req, res, next) => {
           }))
       );
 
-    const [
-      coverArtResult,
-      artistImages,
-      personMappingResult,
-      updatedArtistMetadata,
-    ] = await Promise.all([
-      !metadataAlbum?.caaUrl
-        ? coverArtArchive
-            .getCoverArt(req.params.id)
-            .catch(() => ({ images: [] }))
-        : Promise.resolve({ images: [] }),
-      artistId && !metadataArtist?.tadbThumb && !metadataArtist?.tadbCover
-        ? theAudioDb.getArtistImages(artistId)
-        : Promise.resolve(null),
-      artistId && isPerson && !metadataArtist?.tmdbPersonId
-        ? personMapper
-            .getMapping(
-              artistId,
-              albumDetails.release_group_metadata.artist.artists[0].name
+    const [artistImages, personMappingResult, updatedArtistMetadata] =
+      await Promise.all([
+        artistId && !metadataArtist?.tadbThumb && !metadataArtist?.tadbCover
+          ? theAudioDb.getArtistImages(artistId)
+          : Promise.resolve(null),
+        artistId && isPerson && !metadataArtist?.tmdbPersonId
+          ? personMapper
+              .getMapping(
+                artistId,
+                albumDetails.release_group_metadata.artist.artists[0].name
+              )
+              .catch(() => null)
+          : Promise.resolve(null),
+        trackArtistsToMap.length > 0
+          ? personMapper.batchGetMappings(trackArtistsToMap).then(() =>
+              getRepository(MetadataArtist).find({
+                where: { mbArtistId: In(trackArtistIds) },
+              })
             )
-            .catch(() => null)
-        : Promise.resolve(null),
-      trackArtistsToMap.length > 0
-        ? personMapper.batchGetMappings(trackArtistsToMap).then(() =>
-            getRepository(MetadataArtist).find({
-              where: { mbArtistId: In(trackArtistIds) },
-            })
-          )
-        : Promise.resolve(trackArtistMetadata),
-    ]);
+          : Promise.resolve(trackArtistMetadata),
+      ]);
 
     const updatedMetadataArtist =
       personMappingResult && artistId
@@ -138,19 +127,14 @@ musicRoutes.get('/:id', async (req, res, next) => {
           })
         : metadataArtist;
 
-    let coverArtUrl = metadataAlbum?.caaUrl ?? null;
-    if (!coverArtUrl && coverArtResult) {
-      const frontImage = coverArtResult.images.find((img) => img.front);
-      coverArtUrl = frontImage?.thumbnails?.[250] || null;
-    }
-
     const mappedDetails = mapMusicDetails(albumDetails, media, onUserWatchlist);
     const finalTrackArtistMetadata =
       updatedArtistMetadata || trackArtistMetadata;
 
     return res.status(200).json({
       ...mappedDetails,
-      posterPath: coverArtUrl,
+      posterPath: metadataAlbum?.caaUrl ?? null,
+      needsCoverArt: !metadataAlbum?.caaUrl,
       artistWikipedia,
       artistThumb:
         updatedMetadataArtist?.tmdbThumb ??
@@ -198,7 +182,6 @@ musicRoutes.get('/:id', async (req, res, next) => {
 musicRoutes.get('/:id/artist', async (req, res, next) => {
   try {
     const listenbrainzApi = new ListenBrainzAPI();
-    const coverArtArchive = CoverArtArchive.getInstance();
     const personMapper = TmdbPersonMapper.getInstance();
     const theAudioDb = TheAudioDb.getInstance();
     const metadataAlbumRepository = getRepository(MetadataAlbum);
@@ -267,10 +250,6 @@ musicRoutes.get('/:id/artist', async (req, res, next) => {
       similarArtistMetadata.map((metadata) => [metadata.mbArtistId, metadata])
     );
 
-    const albumsNeedingCovers = paginatedReleaseGroups
-      .filter((rg) => !albumMetadataMap.get(rg.mbid)?.caaUrl)
-      .map((rg) => rg.mbid);
-
     const artistsNeedingImages = similarArtistIds.filter((id) => {
       const metadata = similarArtistMetadataMap.get(id);
       return !metadata?.tadbThumb && !metadata?.tadbCover;
@@ -288,37 +267,29 @@ musicRoutes.get('/:id/artist', async (req, res, next) => {
           artistName: artist.name,
         })) ?? [];
 
-    type CoverArtResults = Record<string, string | null>;
     type ArtistImageResults = Record<
       string,
       { artistThumb: string | null; artistBackground: string | null }
     >;
 
-    const [
-      coverArtResults,
-      artistImageResults,
-      updatedArtistMetadata,
-      artistImagesResult,
-    ] = await Promise.all([
-      albumsNeedingCovers.length > 0
-        ? coverArtArchive.batchGetCoverArt(albumsNeedingCovers)
-        : ({} as CoverArtResults),
-      artistsNeedingImages.length > 0
-        ? theAudioDb.batchGetArtistImages(artistsNeedingImages)
-        : ({} as ArtistImageResults),
-      personArtists.length > 0
-        ? personMapper.batchGetMappings(personArtists).then(() =>
-            metadataArtistRepository.find({
-              where: { mbArtistId: In(similarArtistIds) },
-            })
-          )
-        : Promise.resolve(similarArtistMetadata),
-      !cachedTheAudioDb &&
-      !metadataArtist?.tadbThumb &&
-      !metadataArtist?.tadbCover
-        ? theAudioDb.getArtistImages(artistData.artist_mbid)
-        : Promise.resolve(null),
-    ]);
+    const [artistImageResults, updatedArtistMetadata, artistImagesResult] =
+      await Promise.all([
+        artistsNeedingImages.length > 0
+          ? theAudioDb.batchGetArtistImages(artistsNeedingImages)
+          : ({} as ArtistImageResults),
+        personArtists.length > 0
+          ? personMapper.batchGetMappings(personArtists).then(() =>
+              metadataArtistRepository.find({
+                where: { mbArtistId: In(similarArtistIds) },
+              })
+            )
+          : Promise.resolve(similarArtistMetadata),
+        !cachedTheAudioDb &&
+        !metadataArtist?.tadbThumb &&
+        !metadataArtist?.tadbCover
+          ? theAudioDb.getArtistImages(artistData.artist_mbid)
+          : Promise.resolve(null),
+      ]);
 
     const relatedMediaMap = new Map(
       relatedMedia.map((media) => [media.mbId, media])
@@ -334,9 +305,6 @@ musicRoutes.get('/:id/artist', async (req, res, next) => {
     const transformedReleaseGroups = paginatedReleaseGroups.map(
       (releaseGroup) => {
         const metadata = albumMetadataMap.get(releaseGroup.mbid);
-        const coverArtUrl =
-          metadata?.caaUrl || coverArtResults[releaseGroup.mbid] || null;
-
         return {
           id: releaseGroup.mbid,
           mediaType: 'album',
@@ -344,7 +312,8 @@ musicRoutes.get('/:id/artist', async (req, res, next) => {
           'first-release-date': releaseGroup.date,
           'artist-credit': [{ name: releaseGroup.artist_credit_name }],
           'primary-type': releaseGroup.type || 'Other',
-          posterPath: coverArtUrl,
+          posterPath: metadata?.caaUrl ?? null,
+          needsCoverArt: !metadata?.caaUrl,
           mediaInfo: relatedMediaMap.get(releaseGroup.mbid),
         };
       }
