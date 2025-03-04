@@ -16,7 +16,7 @@ export type CachedImageProps = ImageProps & {
  **/
 const CachedImage = ({ src, type, ...props }: CachedImageProps) => {
   const { currentSettings } = useSettings();
-  const [isLoading, setIsLoading] = useState(true);
+  const [, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
 
   let imageUrl: string;
@@ -46,12 +46,7 @@ const CachedImage = ({ src, type, ...props }: CachedImageProps) => {
     return null;
   }
 
-  const displaySrc =
-    (isLoading || isError) &&
-    type === 'music' &&
-    src.startsWith('https://archive.org/')
-      ? fallbackImage
-      : imageUrl;
+  const displaySrc = isError ? fallbackImage : imageUrl;
 
   return (
     <Image

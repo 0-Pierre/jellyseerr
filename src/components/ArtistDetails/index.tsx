@@ -33,8 +33,6 @@ const messages = defineMessages('components.ArtistDetails', {
   showless: 'Show Less',
 });
 
-const DISPLAY_COUNT = 20;
-
 interface Album {
   id: string;
   title?: string;
@@ -146,9 +144,9 @@ const AlbumSection = ({
 
   const displayAlbums = isExpanded
     ? enhancedAlbums
-    : enhancedAlbums.slice(0, DISPLAY_COUNT);
+    : enhancedAlbums.slice(0, 20);
 
-  const shouldShowExpandButton = totalCount > DISPLAY_COUNT;
+  const shouldShowExpandButton = totalCount > 20;
 
   const remainingItems = totalCount - albums.length;
   const placeholdersToShow = Math.min(remainingItems, 20);
@@ -230,7 +228,7 @@ const AlbumSection = ({
                         isExpanded ? messages.showless : messages.showall
                       )}
                     </div>
-                    {!isExpanded && totalCount > DISPLAY_COUNT && (
+                    {!isExpanded && totalCount > 20 && (
                       <div className="mt-1 text-sm text-gray-300">
                         {`${totalCount} total`}
                       </div>

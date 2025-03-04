@@ -40,8 +40,6 @@ const messages = defineMessages('components.PersonDetails', {
   showless: 'Show Less',
 });
 
-const DISPLAY_COUNT = 20;
-
 const albumTypeMessages: Record<string, keyof typeof messages> = {
   Album: 'album',
   EP: 'ep',
@@ -166,14 +164,14 @@ const AlbumSection = ({
 
   const displayAlbums = isExpanded
     ? enhancedAlbums
-    : enhancedAlbums.slice(0, DISPLAY_COUNT);
+    : enhancedAlbums.slice(0, 20);
 
-  const shouldShowExpandButton = totalCount > DISPLAY_COUNT;
+  const shouldShowExpandButton = totalCount > 20;
 
   const remainingItems = totalCount - albums.length;
   const placeholdersToShow = isExpanded
     ? Math.min(remainingItems, 20)
-    : Math.min(remainingItems, DISPLAY_COUNT);
+    : Math.min(remainingItems, 20);
 
   const messageKey = albumTypeMessages[type] || 'other';
   const title = intl.formatMessage(messages[messageKey]);
@@ -253,7 +251,7 @@ const AlbumSection = ({
                         isExpanded ? messages.showless : messages.showall
                       )}
                     </div>
-                    {!isExpanded && totalCount > DISPLAY_COUNT && (
+                    {!isExpanded && totalCount > 20 && (
                       <div className="mt-1 text-sm text-gray-300">
                         {`${totalCount} total`}
                       </div>
@@ -332,6 +330,7 @@ const PersonDetails = () => {
   const intl = useIntl();
   const router = useRouter();
   const personId = router.query.personId as string;
+  const [isFullyLoaded, setIsFullyLoaded] = useState(false);
 
   const { data, error } = useSWR<EnhancedPersonDetails>(
     personId ? `/api/v1/person/${personId}` : null,
@@ -351,6 +350,12 @@ const PersonDetails = () => {
         dedupingInterval: 30000,
       }
     );
+
+  useEffect(() => {
+    if ((data && combinedCredits) || (data && !data.knownForDepartment)) {
+      setIsFullyLoaded(true);
+    }
+  }, [data, combinedCredits]);
 
   const [showBio, setShowBio] = useState(false);
   const [albumTypes, setAlbumTypes] = useState<Record<string, AlbumTypeState>>(
@@ -595,6 +600,10 @@ const PersonDetails = () => {
     return <Error statusCode={404} />;
   }
 
+  if (!isFullyLoaded && data.knownForDepartment) {
+    return <LoadingSpinner />;
+  }
+
   const backgroundImages = [
     ...(sortedCredits.cast ?? []),
     ...(sortedCredits.crew ?? []),
@@ -684,27 +693,31 @@ const PersonDetails = () => {
         </div>
       )}
 
-      {data.knownForDepartment === 'Acting' ? (
+      {data.knownForDepartment && (
         <>
-          <MediaSection
-            title={intl.formatMessage(messages.appearsin)}
-            mediaItems={sortedCredits.cast}
-          />
-          <MediaSection
-            title={intl.formatMessage(messages.crewmember)}
-            mediaItems={sortedCredits.crew}
-          />
-        </>
-      ) : (
-        <>
-          <MediaSection
-            title={intl.formatMessage(messages.crewmember)}
-            mediaItems={sortedCredits.crew}
-          />
-          <MediaSection
-            title={intl.formatMessage(messages.appearsin)}
-            mediaItems={sortedCredits.cast}
-          />
+          {data.knownForDepartment === 'Acting' ? (
+            <>
+              <MediaSection
+                title={intl.formatMessage(messages.appearsin)}
+                mediaItems={sortedCredits.cast}
+              />
+              <MediaSection
+                title={intl.formatMessage(messages.crewmember)}
+                mediaItems={sortedCredits.crew}
+              />
+            </>
+          ) : (
+            <>
+              <MediaSection
+                title={intl.formatMessage(messages.crewmember)}
+                mediaItems={sortedCredits.crew}
+              />
+              <MediaSection
+                title={intl.formatMessage(messages.appearsin)}
+                mediaItems={sortedCredits.cast}
+              />
+            </>
+          )}
         </>
       )}
 
