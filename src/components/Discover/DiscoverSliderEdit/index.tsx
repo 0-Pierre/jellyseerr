@@ -173,6 +173,8 @@ const DiscoverSliderEdit = ({
         return intl.formatMessage(sliderTitles.tmdbtvstreamingservices);
       case DiscoverSliderType.POPULAR_ALBUMS:
         return intl.formatMessage(sliderTitles.popularalbums);
+      case DiscoverSliderType.POPULAR_ARTISTS:
+        return intl.formatMessage(sliderTitles.popularartists);
       default:
         return 'Unknown Slider';
     }

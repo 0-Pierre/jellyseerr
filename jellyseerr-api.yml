@@ -5806,6 +5806,91 @@ paths:
                       example: Genre Name
   /discover/music:
     get:
+      summary: Discover fresh music releases
+      description: Returns a list of recent music releases from ListenBrainz in a JSON object
+      tags:
+        - search
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: number
+            example: 1
+            default: 1
+        - in: query
+          name: days
+          schema:
+            type: number
+            example: 30
+            default: 30
+          description: Number of days to look back for fresh releases
+        - in: query
+          name: genre
+          schema:
+            type: string
+            example: 'Album,EP,Single'
+          description: Comma-separated list of music genres/types to filter by
+        - in: query
+          name: onlyWithCoverArt
+          schema:
+            type: string
+            enum:
+              - 'true'
+              - 'false'
+            default: 'false'
+            example: 'false'
+          description: Whether to hide releases without cover art (default is false)
+        - in: query
+          name: releaseDateGte
+          schema:
+            type: string
+            format: date
+            example: '2023-01-01'
+          description: Filter for releases on or after this date
+        - in: query
+          name: releaseDateLte
+          schema:
+            type: string
+            format: date
+            example: '2023-12-31'
+          description: Filter for releases on or before this date
+        - in: query
+          name: sortBy
+          schema:
+            type: string
+            enum:
+              - release_date.desc
+              - release_date.asc
+              - title.asc
+              - title.desc
+              - artist.asc
+              - artist.desc
+            default: release_date.desc
+            example: release_date.desc
+          description: Field and direction to sort results
+      responses:
+        '200':
+          description: Results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  page:
+                    type: number
+                    example: 1
+                  totalPages:
+                    type: number
+                    example: 20
+                  totalResults:
+                    type: number
+                    example: 200
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AlbumResult'
+  /discover/music/albums:
+    get:
       summary: Discover trending music albums
       description: Returns a list of trending albums from ListenBrainz in a JSON object
       tags:
@@ -5857,6 +5942,57 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/AlbumResult'
+  /discover/music/artists:
+    get:
+      summary: Discover trending music artists
+      description: Returns a list of trending artists from ListenBrainz in a JSON object
+      tags:
+        - search
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: number
+            example: 1
+            default: 1
+        - in: query
+          name: range
+          schema:
+            type: string
+            enum: [week, month, year, all]
+            default: month
+        - in: query
+          name: sortBy
+          schema:
+            type: string
+            enum:
+              - listen_count.desc
+              - listen_count.asc
+              - name.asc
+              - name.desc
+            default: listen_count.desc
+            example: listen_count.desc
+      responses:
+        '200':
+          description: Results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  page:
+                    type: number
+                    example: 1
+                  totalPages:
+                    type: number
+                    example: 20
+                  totalResults:
+                    type: number
+                    example: 200
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ArtistResult'
   /discover/watchlist:
     get:
       summary: Get the Plex watchlist.

@@ -167,11 +167,16 @@ const ListView = ({
                     title={title.title}
                     artist={title['artist-credit']?.[0]?.name}
                     type={title['primary-type']}
-                    year={title['first-release-date']?.split('-')[0]}
+                    year={
+                      title.releaseDate
+                        ? title.releaseDate.split('-')[0]
+                        : title['first-release-date']?.split('-')[0]
+                    }
                     mediaType={title.mediaType}
                     inProgress={
                       (title.mediaInfo?.downloadStatus ?? []).length > 0
                     }
+                    needsCoverArt={title.needsCoverArt}
                     canExpand
                   />
                 );

@@ -4,7 +4,6 @@ import ImageFader from '@app/components/Common/ImageFader';
 import LoadingSpinner from '@app/components/Common/LoadingSpinner';
 import PageTitle from '@app/components/Common/PageTitle';
 import TitleCard from '@app/components/TitleCard';
-import { useProgressiveCovers } from '@app/hooks/useProgressiveCovers';
 import Error from '@app/pages/_error';
 import defineMessages from '@app/utils/defineMessages';
 import { ArrowRightCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
@@ -140,11 +139,7 @@ const AlbumSection = ({
   const intl = useIntl();
   const { albums, isExpanded, isLoading, isHovered, isCollapsing } = state;
 
-  const enhancedAlbums = useProgressiveCovers(albums);
-
-  const displayAlbums = isExpanded
-    ? enhancedAlbums
-    : enhancedAlbums.slice(0, 20);
+  const displayAlbums = isExpanded ? albums : albums.slice(0, 20);
 
   const shouldShowExpandButton = totalCount > 20;
 
@@ -179,6 +174,7 @@ const AlbumSection = ({
                 type={media['primary-type']}
                 status={media.mediaInfo?.status ?? MediaStatus.UNKNOWN}
                 canExpand
+                needsCoverArt={!media.posterPath}
               />
             </li>
           ))}

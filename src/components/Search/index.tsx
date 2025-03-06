@@ -2,7 +2,6 @@ import Header from '@app/components/Common/Header';
 import ListView from '@app/components/Common/ListView';
 import PageTitle from '@app/components/Common/PageTitle';
 import useDiscover from '@app/hooks/useDiscover';
-import { useProgressiveCovers } from '@app/hooks/useProgressiveCovers';
 import Error from '@app/pages/_error';
 import defineMessages from '@app/utils/defineMessages';
 import type {
@@ -39,23 +38,6 @@ const Search = () => {
     { hideAvailable: false }
   );
 
-  const enhancedItems = useProgressiveCovers(
-    titles?.filter((item): item is AlbumResult => {
-      return (
-        item.mediaType === 'album' &&
-        typeof item.id === 'string' &&
-        'needsCoverArt' in item
-      );
-    }) ?? []
-  );
-
-  const mergedResults = titles?.map((item) => {
-    if (item.mediaType === 'album') {
-      return enhancedItems.find((album) => album.id === item.id) ?? item;
-    }
-    return item;
-  });
-
   if (error) {
     return <Error statusCode={500} />;
   }
@@ -67,7 +49,7 @@ const Search = () => {
         <Header>{intl.formatMessage(messages.searchresults)}</Header>
       </div>
       <ListView
-        items={mergedResults}
+        items={titles}
         isEmpty={isEmpty}
         isLoading={
           isLoadingInitialData || (isLoadingMore && (titles?.length ?? 0) > 0)

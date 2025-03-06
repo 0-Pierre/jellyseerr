@@ -202,3 +202,42 @@ export interface LbArtistDetails {
     };
   };
 }
+
+export interface LbArtist {
+  artist_mbid: string;
+  artist_name: string;
+  listen_count: number;
+}
+
+export interface LbTopArtistsResponse {
+  payload: {
+    count: number;
+    from_ts: number;
+    last_updated: number;
+    offset: number;
+    range: string;
+    artists: LbArtist[];
+    to_ts: number;
+  };
+}
+
+export interface LbRelease {
+  artist_credit_name: string;
+  artist_mbids: string[];
+  caa_id: number;
+  caa_release_mbid: string;
+  listen_count: number;
+  release_date: string;
+  release_group_mbid: string;
+  release_group_primary_type: string;
+  release_group_secondary_type: string;
+  release_mbid: string;
+  release_name: string;
+  release_tags: string[];
+}
+
+export interface LbFreshReleasesResponse {
+  payload: {
+    releases: LbRelease[];
+  };
+}

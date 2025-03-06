@@ -15,7 +15,6 @@ import MediaSlider from '@app/components/MediaSlider';
 import RequestButton from '@app/components/RequestButton';
 import StatusBadge from '@app/components/StatusBadge';
 import useDeepLinks from '@app/hooks/useDeepLinks';
-import { useProgressiveCovers } from '@app/hooks/useProgressiveCovers';
 import useSettings from '@app/hooks/useSettings';
 import { Permission, useUser } from '@app/hooks/useUser';
 import globalMessages from '@app/i18n/globalMessages';
@@ -92,12 +91,6 @@ interface ArtistDetails {
   };
 }
 
-interface ItemWithCover {
-  id: string | number;
-  posterPath?: string;
-  needsCoverArt?: boolean;
-}
-
 const Biography = ({
   content,
   showBio,
@@ -168,14 +161,6 @@ const MusicDetails = ({ music }: MusicDetailsProps) => {
 
   const { data: artistData } = useSWR<ArtistDetails>(
     data ? `/api/v1/music/${data.id}/artist?page=1&pageSize=20` : null
-  );
-
-  const enhancedData = useProgressiveCovers<MusicDetailsType & ItemWithCover>(
-    [data].filter(Boolean) as (MusicDetailsType & ItemWithCover)[]
-  )[0];
-
-  const enhancedReleaseGroups = useProgressiveCovers<AlbumResult>(
-    artistData?.artist?.releaseGroups ?? []
   );
 
   useEffect(() => {
@@ -455,7 +440,7 @@ const MusicDetails = ({ music }: MusicDetailsProps) => {
           <CachedImage
             type="music"
             src={
-              enhancedData?.posterPath ||
+              data?.posterPath ||
               '/images/overseerr_poster_not_found_square.png'
             }
             alt=""
@@ -804,7 +789,7 @@ const MusicDetails = ({ music }: MusicDetailsProps) => {
         title={intl.formatMessage(messages.discography, {
           artistName: data?.artist.name.split(/[&,]|\sfeat\./)[0].trim() ?? '',
         })}
-        items={enhancedReleaseGroups}
+        items={artistData?.artist.releaseGroups}
         totalItems={artistData?.artist.pagination?.totalItems}
         linkUrl={`/music/${data.id}/discography`}
         hideWhenEmpty

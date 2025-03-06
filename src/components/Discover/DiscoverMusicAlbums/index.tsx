@@ -1,49 +1,35 @@
-import Button from '@app/components/Common/Button';
 import Header from '@app/components/Common/Header';
 import ListView from '@app/components/Common/ListView';
 import PageTitle from '@app/components/Common/PageTitle';
-import {
-  countActiveFilters,
-  prepareFilterValues,
-} from '@app/components/Discover/constants';
-import FilterSlideover from '@app/components/Discover/FilterSlideover';
+import { prepareFilterValues } from '@app/components/Discover/constants';
 import useDiscover from '@app/hooks/useDiscover';
 import { useUpdateQueryParams } from '@app/hooks/useUpdateQueryParams';
 import Error from '@app/pages/_error';
 import defineMessages from '@app/utils/defineMessages';
-import { BarsArrowDownIcon, FunnelIcon } from '@heroicons/react/24/solid';
+import { BarsArrowDownIcon } from '@heroicons/react/24/solid';
 import type { AlbumResult } from '@server/models/Search';
 import { useRouter } from 'next/router';
-import { useState } from 'react';
 import { useIntl } from 'react-intl';
 
-const messages = defineMessages('components.Discover.DiscoverMusic', {
-  discovermusic: 'Music',
-  sortReleaseDateAsc: 'Release Date Ascending',
-  sortReleaseDateDesc: 'Release Date Descending',
+const messages = defineMessages('components.Discover.DiscoverMusicAlbums', {
+  discoveralbums: 'Albums',
+  sortPopularityDesc: 'Most Listened',
+  sortPopularityAsc: 'Least Listened',
   sortTitleAsc: 'Title (A-Z) Ascending',
   sortTitleDesc: 'Title (Z-A) Descending',
-  sortArtistAsc: 'Artist Name (A-Z) Ascending',
-  sortArtistDesc: 'Artist Name (Z-A) Descending',
-  activefilters:
-    '{count, plural, one {# Active Filter} other {# Active Filters}}',
-  filters: 'Filters',
 });
 
 const SortOptions = {
-  ReleaseDateDesc: 'release_date.desc',
-  ReleaseDateAsc: 'release_date.asc',
+  PopularityDesc: 'listen_count.desc',
+  PopularityAsc: 'listen_count.asc',
   TitleAsc: 'title.asc',
   TitleDesc: 'title.desc',
-  ArtistAsc: 'artist.asc',
-  ArtistDesc: 'artist.desc',
 } as const;
 
-const DiscoverMusic = () => {
+const DiscoverMusicAlbums = () => {
   const intl = useIntl();
   const router = useRouter();
   const updateQueryParams = useUpdateQueryParams({});
-  const [showFilters, setShowFilters] = useState(false);
 
   const preparedFilters = prepareFilterValues(router.query);
 
@@ -55,16 +41,16 @@ const DiscoverMusic = () => {
     titles,
     fetchMore,
     error,
-  } = useDiscover<AlbumResult>('/api/v1/discover/music', {
-    ...preparedFilters,
-    days: preparedFilters.days ?? '7',
-  });
+  } = useDiscover<AlbumResult>(
+    '/api/v1/discover/music/albums',
+    preparedFilters
+  );
 
   if (error) {
     return <Error statusCode={500} />;
   }
 
-  const title = intl.formatMessage(messages.discovermusic);
+  const title = intl.formatMessage(messages.discoveralbums);
 
   return (
     <>
@@ -83,11 +69,11 @@ const DiscoverMusic = () => {
               value={preparedFilters.sortBy}
               onChange={(e) => updateQueryParams('sortBy', e.target.value)}
             >
-              <option value={SortOptions.ReleaseDateDesc}>
-                {intl.formatMessage(messages.sortReleaseDateDesc)}
+              <option value={SortOptions.PopularityDesc}>
+                {intl.formatMessage(messages.sortPopularityDesc)}
               </option>
-              <option value={SortOptions.ReleaseDateAsc}>
-                {intl.formatMessage(messages.sortReleaseDateAsc)}
+              <option value={SortOptions.PopularityAsc}>
+                {intl.formatMessage(messages.sortPopularityAsc)}
               </option>
               <option value={SortOptions.TitleAsc}>
                 {intl.formatMessage(messages.sortTitleAsc)}
@@ -95,29 +81,7 @@ const DiscoverMusic = () => {
               <option value={SortOptions.TitleDesc}>
                 {intl.formatMessage(messages.sortTitleDesc)}
               </option>
-              <option value={SortOptions.ArtistAsc}>
-                {intl.formatMessage(messages.sortArtistAsc)}
-              </option>
-              <option value={SortOptions.ArtistDesc}>
-                {intl.formatMessage(messages.sortArtistDesc)}
-              </option>
             </select>
-          </div>
-          <FilterSlideover
-            type="music"
-            currentFilters={preparedFilters}
-            onClose={() => setShowFilters(false)}
-            show={showFilters}
-          />
-          <div className="mb-2 flex flex-grow sm:mb-0 lg:flex-grow-0">
-            <Button onClick={() => setShowFilters(true)} className="w-full">
-              <FunnelIcon />
-              <span>
-                {intl.formatMessage(messages.activefilters, {
-                  count: countActiveFilters(preparedFilters),
-                })}
-              </span>
-            </Button>
           </div>
         </div>
       </div>
@@ -134,4 +98,4 @@ const DiscoverMusic = () => {
   );
 };
 
-export default DiscoverMusic;
+export default DiscoverMusicAlbums;

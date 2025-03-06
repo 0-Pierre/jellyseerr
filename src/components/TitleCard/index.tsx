@@ -8,6 +8,7 @@ import RequestModal from '@app/components/RequestModal';
 import ErrorCard from '@app/components/TitleCard/ErrorCard';
 import Placeholder from '@app/components/TitleCard/Placeholder';
 import { useIsTouch } from '@app/hooks/useIsTouch';
+import { useProgressiveCovers } from '@app/hooks/useProgressiveCovers';
 import { Permission, UserType, useUser } from '@app/hooks/useUser';
 import globalMessages from '@app/i18n/globalMessages';
 import defineMessages from '@app/utils/defineMessages';
@@ -43,6 +44,7 @@ interface TitleCardProps {
   canExpand?: boolean;
   inProgress?: boolean;
   isAddedToWatchlist?: number | boolean;
+  needsCoverArt?: boolean;
   mutateParent?: () => void;
 }
 
@@ -70,6 +72,7 @@ const TitleCard = ({
   inProgress = false,
   canExpand = false,
   mutateParent,
+  needsCoverArt,
 }: TitleCardProps) => {
   const isTouch = useIsTouch();
   const intl = useIntl();
@@ -85,7 +88,16 @@ const TitleCard = ({
   const [showBlacklistModal, setShowBlacklistModal] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Just to get the year from the date
+  const enhancedItem = useProgressiveCovers([
+    {
+      id: id ?? '',
+      posterPath: image,
+      needsCoverArt: needsCoverArt,
+    },
+  ])[0];
+
+  const displayImage = enhancedItem?.posterPath ?? image;
+
   if (year) {
     year = year.slice(0, 4);
   }
@@ -373,8 +385,8 @@ const TitleCard = ({
                   className="h-full w-full rounded object-contain"
                   alt=""
                   src={
-                    image
-                      ? image
+                    displayImage
+                      ? displayImage
                       : '/images/overseerr_poster_not_found_square.png'
                   }
                   fill
@@ -414,8 +426,8 @@ const TitleCard = ({
               className="absolute inset-0 h-full w-full"
               alt=""
               src={
-                image
-                  ? `https://image.tmdb.org/t/p/w300_and_h450_face${image}`
+                displayImage
+                  ? `https://image.tmdb.org/t/p/w300_and_h450_face${displayImage}`
                   : '/images/jellyseerr_poster_not_found_logo_top.png'
               }
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}

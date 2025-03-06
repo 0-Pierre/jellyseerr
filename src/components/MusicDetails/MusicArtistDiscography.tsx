@@ -2,7 +2,6 @@ import Header from '@app/components/Common/Header';
 import ListView from '@app/components/Common/ListView';
 import LoadingSpinner from '@app/components/Common/LoadingSpinner';
 import PageTitle from '@app/components/Common/PageTitle';
-import { useProgressiveCovers } from '@app/hooks/useProgressiveCovers';
 import Error from '@app/pages/_error';
 import defineMessages from '@app/utils/defineMessages';
 import { refreshIntervalHelper } from '@app/utils/refreshIntervalHelper';
@@ -111,8 +110,6 @@ const MusicArtistDiscography = () => {
     }
   };
 
-  const enhancedReleaseGroups = useProgressiveCovers(allReleaseGroups);
-
   if (!musicData && !musicError) {
     return <LoadingSpinner />;
   }
@@ -150,7 +147,7 @@ const MusicArtistDiscography = () => {
         </Header>
       </div>
       <ListView
-        items={enhancedReleaseGroups as unknown as AlbumResult[]}
+        items={allReleaseGroups as unknown as AlbumResult[]}
         isEmpty={allReleaseGroups.length === 0}
         isLoading={!artistData}
         onScrollBottom={loadMore}

@@ -100,6 +100,7 @@ export interface AlbumResult extends MbSearchResult {
   title: string;
   'primary-type': 'Album' | 'Single' | 'EP';
   'first-release-date': string;
+  releaseDate?: string;
   'artist-credit': {
     name: string;
     artist: {

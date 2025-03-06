@@ -23,6 +23,7 @@ export enum DiscoverSliderType {
   TMDB_MOVIE_STREAMING_SERVICES,
   TMDB_TV_STREAMING_SERVICES,
   POPULAR_ALBUMS,
+  POPULAR_ARTISTS,
 }
 
 export const defaultSliders: Partial<DiscoverSlider>[] = [
@@ -103,5 +104,11 @@ export const defaultSliders: Partial<DiscoverSlider>[] = [
     enabled: true,
     isBuiltIn: true,
     order: 12,
+  },
+  {
+    type: DiscoverSliderType.POPULAR_ARTISTS,
+    enabled: true,
+    isBuiltIn: true,
+    order: 13,
   },
 ];

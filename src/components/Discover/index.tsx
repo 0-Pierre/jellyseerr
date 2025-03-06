@@ -410,8 +410,18 @@ const Discover = () => {
               <MediaSlider
                 sliderKey="popular-albums"
                 title={intl.formatMessage(sliderTitles.popularalbums)}
-                url="/api/v1/discover/music"
-                linkUrl="/discover/music"
+                url="/api/v1/discover/music/albums"
+                linkUrl="/discover/albums"
+              />
+            );
+            break;
+          case DiscoverSliderType.POPULAR_ARTISTS:
+            sliderComponent = (
+              <MediaSlider
+                sliderKey="popular-artists"
+                title={intl.formatMessage(sliderTitles.popularartists)}
+                url="/api/v1/discover/music/artists"
+                linkUrl="/discover/artists"
               />
             );
             break;

@@ -210,6 +210,7 @@ const MediaSlider = ({
               artist={title['artist-credit']?.[0]?.name}
               type={title['primary-type']}
               inProgress={(title.mediaInfo?.downloadStatus ?? []).length > 0}
+              needsCoverArt={title.needsCoverArt}
             />
           );
         case 'artist':

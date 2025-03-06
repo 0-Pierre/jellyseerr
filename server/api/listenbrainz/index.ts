@@ -3,7 +3,9 @@ import cacheManager from '@server/lib/cache';
 import type {
   LbAlbumDetails,
   LbArtistDetails,
+  LbFreshReleasesResponse,
   LbTopAlbumsResponse,
+  LbTopArtistsResponse,
 } from './interfaces';
 
 class ListenBrainzAPI extends ExternalAPI {
@@ -67,7 +69,7 @@ class ListenBrainzAPI extends ExternalAPI {
 
   public async getTopAlbums({
     offset = 0,
-    range = 'week',
+    range = 'month',
     count = 20,
   }: {
     offset?: number;
@@ -79,6 +81,49 @@ class ListenBrainzAPI extends ExternalAPI {
       {
         offset: offset.toString(),
         range,
+        count: count.toString(),
+      },
+      43200
+    );
+  }
+
+  public async getTopArtists({
+    offset = 0,
+    range = 'month',
+    count = 20,
+  }: {
+    offset?: number;
+    range?: string;
+    count?: number;
+  }): Promise<LbTopArtistsResponse> {
+    return this.get<LbTopArtistsResponse>(
+      '/stats/sitewide/artists',
+      {
+        offset: offset.toString(),
+        range,
+        count: count.toString(),
+      },
+      43200
+    );
+  }
+
+  public async getFreshReleases({
+    days = 7,
+    sort = 'release_date',
+    offset = 0,
+    count = 20,
+  }: {
+    days?: number;
+    sort?: string;
+    offset?: number;
+    count?: number;
+  } = {}): Promise<LbFreshReleasesResponse> {
+    return this.get<LbFreshReleasesResponse>(
+      '/explore/fresh-releases',
+      {
+        days: days.toString(),
+        sort,
+        offset: offset.toString(),
         count: count.toString(),
       },
       43200
