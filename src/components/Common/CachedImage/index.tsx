@@ -28,7 +28,7 @@ const CachedImage = ({ src, type, ...props }: CachedImageProps) => {
       currentSettings.cacheImages && !src.startsWith('/')
         ? src.replace(/^https:\/\/image\.tmdb\.org\//, '/tmdbproxy/')
         : src;
-    fallbackImage = '/images/overseerr_poster_not_found.png';
+    fallbackImage = '/images/jellyseerr_poster_not_found.png';
   } else if (type === 'music') {
     // Cover Art Archive and TheAudioDB images
     imageUrl = src.startsWith('https://archive.org/')
@@ -38,7 +38,7 @@ const CachedImage = ({ src, type, ...props }: CachedImageProps) => {
         src.startsWith('https://r2.theaudiodb.com/')
       ? src.replace(/^https:\/\/r2\.theaudiodb\.com\//, '/tadbproxy/')
       : src;
-    fallbackImage = '/images/overseerr_poster_not_found_square.png';
+    fallbackImage = '/images/jellyseerr_poster_not_found_square.png';
   } else if (type === 'avatar') {
     imageUrl = src;
     fallbackImage = '/images/user_placeholder.png';

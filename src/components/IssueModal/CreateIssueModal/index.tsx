@@ -200,10 +200,10 @@ const CreateIssueModal = ({
               data
                 ? isMusic(data)
                   ? data.posterPath ||
-                    '/images/overseerr_poster_not_found_square.png'
+                    '/images/jellyseerr_poster_not_found_square.png'
                   : data.backdropPath
                   ? `https://image.tmdb.org/t/p/w1920_and_h800_multi_faces/${data.backdropPath}`
-                  : '/images/overseerr_poster_not_found.png'
+                  : '/images/jellyseerr_poster_not_found.png'
                 : undefined
             }
           >

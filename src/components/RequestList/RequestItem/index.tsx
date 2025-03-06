@@ -492,10 +492,10 @@ const RequestItem = ({ request, revalidateList }: RequestItemProps) => {
                   ? title.artistThumb
                   : title.posterPath
                   ? title.posterPath
-                  : '/images/overseerr_poster_not_found_square.png'
+                  : '/images/jellyseerr_poster_not_found_square.png'
                 : title.backdropPath
                 ? `https://image.tmdb.org/t/p/w1920_and_h800_multi_faces/${title.backdropPath}`
-                : '/images/overseerr_poster_not_found.png'
+                : '/images/jellyseerr_poster_not_found.png'
             }
             alt=""
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -527,7 +527,7 @@ const RequestItem = ({ request, revalidateList }: RequestItemProps) => {
                   isMusic(title)
                     ? title.posterPath
                       ? title.posterPath
-                      : '/images/overseerr_poster_not_found_square.png'
+                      : '/images/jellyseerr_poster_not_found_square.png'
                     : title.posterPath
                     ? `https://image.tmdb.org/t/p/w600_and_h900_bestv2${title.posterPath}`
                     : '/images/jellyseerr_poster_not_found.png'

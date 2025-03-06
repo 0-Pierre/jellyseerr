@@ -271,7 +271,7 @@ const IssueDetails = () => {
             src={
               isMusic(data)
                 ? data.posterPath ||
-                  '/images/overseerr_poster_not_found_square.png'
+                  '/images/jellyseerr_poster_not_found_square.png'
                 : data.posterPath
                 ? `https://image.tmdb.org/t/p/w600_and_h900_bestv2${data.posterPath}`
                 : '/images/jellyseerr_poster_not_found.png'

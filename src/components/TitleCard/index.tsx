@@ -387,7 +387,7 @@ const TitleCard = ({
                   src={
                     displayImage
                       ? displayImage
-                      : '/images/overseerr_poster_not_found_square.png'
+                      : '/images/jellyseerr_poster_not_found_square.png'
                   }
                   fill
                 />

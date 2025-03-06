@@ -389,7 +389,7 @@ const MusicDetails = ({ music }: MusicDetailsProps) => {
             data.artistBackdrop ||
             data.artistThumb ||
             data.posterPath ||
-            '/images/overseerr_poster_not_found_square.png'
+            '/images/jellyseerr_poster_not_found_square.png'
           }
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           fill
@@ -441,7 +441,7 @@ const MusicDetails = ({ music }: MusicDetailsProps) => {
             type="music"
             src={
               data?.posterPath ||
-              '/images/overseerr_poster_not_found_square.png'
+              '/images/jellyseerr_poster_not_found_square.png'
             }
             alt=""
             sizes="100vw"
@@ -715,7 +715,7 @@ const MusicDetails = ({ music }: MusicDetailsProps) => {
                         data.artistThumb ??
                         data.artistBackdrop ??
                         data.posterPath ??
-                        '/images/overseerr_poster_not_found_square.png'
+                        '/images/jellyseerr_poster_not_found_square.png'
                       }
                       alt=""
                       style={{
