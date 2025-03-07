@@ -376,6 +376,7 @@ router.delete<{ id: string }>(
   async (req, res, next) => {
     try {
       const userRepository = getRepository(User);
+      const settings = getSettings();
 
       const user = await userRepository.findOne({
         where: { id: Number(req.params.id) },
@@ -398,6 +399,45 @@ router.delete<{ id: string }>(
           status: 405,
           message: 'You cannot delete users with administrative privileges.',
         });
+      }
+
+      if (user.userType === UserType.JELLYFIN && user.jellyfinUserId) {
+        try {
+          const admin = await userRepository.findOneOrFail({
+            where: { id: 1 },
+            select: ['id', 'jellyfinDeviceId', 'jellyfinUserId'],
+          });
+
+          const hostname = getHostname();
+          const jellyfinClient = new JellyfinAPI(
+            hostname,
+            settings.jellyfin.apiKey,
+            admin.jellyfinDeviceId ?? ''
+          );
+
+          await jellyfinClient
+            .deleteUser(user.jellyfinUserId)
+            .catch((error) => {
+              logger.warn(
+                'Failed to delete user from Jellyfin server, continuing with local deletion',
+                {
+                  label: 'API',
+                  userId: user.id,
+                  jellyfinUserId: user.jellyfinUserId,
+                  errorMessage: error.message,
+                }
+              );
+            });
+        } catch (error) {
+          logger.warn(
+            'Error setting up Jellyfin deletion, continuing with local deletion',
+            {
+              label: 'API',
+              userId: user.id,
+              errorMessage: error.message,
+            }
+          );
+        }
       }
 
       const requestRepository = getRepository(MediaRequest);
@@ -816,6 +856,16 @@ router.post(
         ? generatePassword.randomPassword({ length: 16 })
         : body.password;
 
+      let displayName = body.username;
+      if (body.username && body.username.includes('.')) {
+        const [firstname, lastname] = body.username.split('.');
+        if (firstname && lastname) {
+          displayName = `${firstname.charAt(0).toUpperCase()}${firstname.slice(
+            1
+          )} ${lastname.toUpperCase()}`;
+        }
+      }
+
       const jellyfinUser = await jellyfinClient.createUser({
         Name: body.username,
         Password: password,
@@ -828,6 +878,7 @@ router.post(
       const user = new User({
         email: body.email,
         jellyfinUsername: body.username,
+        username: displayName,
         jellyfinUserId: jellyfinUser.Id,
         jellyfinDeviceId: Buffer.from(
           `BOT_jellyseerr_${body.username}`
@@ -837,9 +888,7 @@ router.post(
         userType: UserType.JELLYFIN,
       });
 
-      if (body.genpassword) {
-        await user.setPassword(password);
-
+      if (body.genpassword && body.email) {
         const email = new PreparedEmail(settings.notifications.agents.email);
         await email.send({
           template: path.join(
@@ -856,8 +905,6 @@ router.post(
             recipientName: body.username,
           },
         });
-      } else {
-        await user.setPassword(body.password);
       }
 
       await userRepository.save(user);
