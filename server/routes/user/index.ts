@@ -937,6 +937,21 @@ router.post(
       const body = req.body;
       const hostname = getHostname();
 
+      const existingUser = await userRepository
+        .createQueryBuilder('user')
+        .where('user.email = :email', {
+          email: body.email.toLowerCase(),
+        })
+        .getOne();
+
+      if (existingUser) {
+        return next({
+          status: 409,
+          message: 'User already exists with submitted email.',
+          errors: ['USER_EXISTS'],
+        });
+      }
+
       const jellyfinClient = new JellyfinAPI(
         hostname,
         settings.jellyfin.apiKey
