@@ -1,4 +1,5 @@
 import JellyfinAPI from '@server/api/jellyfin';
+import PlexTvAPI from '@server/api/plextv';
 import { ApiErrorCode } from '@server/constants/error';
 import { MediaServerType } from '@server/constants/server';
 import { UserType } from '@server/constants/user';
@@ -188,9 +189,11 @@ userSettingsRoutes.post<
       : null;
 
     if (newSubscriptionStatus === 'active') {
-      const oneYearFromNow = new Date();
-      oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
-      user.subscriptionExpirationDate = oneYearFromNow;
+      if (previousSubscriptionStatus !== 'active' || !user.subscriptionExpirationDate) {
+        const oneYearFromNow = new Date();
+        oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+        user.subscriptionExpirationDate = oneYearFromNow;
+      }
     } else {
       user.subscriptionExpirationDate = null;
     }
