@@ -31,7 +31,7 @@ const subscriptionsSync = {
           const oldStatus = user.subscriptionStatus;
 
           user.subscriptionStatus = 'expired';
-          user.permissions = 23219699712;
+          user.permissions = 740343936;
 
           if (user.jellyfinUserId) {
             try {
