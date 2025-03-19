@@ -8,6 +8,7 @@ import { getSettings, NotificationAgentKey } from '@server/lib/settings';
 import logger from '@server/logger';
 import type { EmailOptions } from 'email-templates';
 import * as EmailValidator from 'email-validator';
+import fs from 'fs';
 import path from 'path';
 import { Notification, shouldSendAdminNotification } from '..';
 import type { NotificationAgent, NotificationPayload } from './agent';
@@ -42,6 +43,35 @@ class EmailAgent
     return false;
   }
 
+  private getLocalizedTemplatePath(
+    baseTemplateName: string,
+    userLocale: string
+  ): { templatePath: string; isLocalized: boolean } {
+    const baseTemplatePath = path.join(
+      __dirname,
+      `../../../templates/email/${baseTemplateName}`
+    );
+
+    const localizedPath = path.join(
+      __dirname,
+      `../../../templates/email/${baseTemplateName}/${userLocale}`
+    );
+
+    try {
+      if (fs.existsSync(localizedPath)) {
+        return { templatePath: localizedPath, isLocalized: true };
+      }
+    } catch (error) {
+      logger.error('Error checking localized template path', {
+        label: 'Notifications',
+        path: localizedPath,
+        errorMessage: error.message,
+      });
+    }
+
+    return { templatePath: baseTemplatePath, isLocalized: false };
+  }
+
   private buildMessage(
     type: Notification,
     payload: NotificationPayload,
@@ -49,6 +79,7 @@ class EmailAgent
     recipientName?: string
   ): EmailOptions | undefined {
     const { applicationUrl, applicationTitle } = getSettings().main;
+    const userLocale = payload.notifyUser?.settings?.locale || 'en';
 
     if (type === Notification.TEST_NOTIFICATION) {
       return {
@@ -67,11 +98,13 @@ class EmailAgent
     }
 
     if (type === Notification.SUBSCRIPTION_EXPIRED) {
+      const { templatePath } = this.getLocalizedTemplatePath(
+        'subscriptionexpired',
+        userLocale
+      );
+
       return {
-        template: path.join(
-          __dirname,
-          '../../../templates/email/subscriptionexpired'
-        ),
+        template: templatePath,
         message: {
           to: recipientEmail,
         },
@@ -80,9 +113,8 @@ class EmailAgent
           applicationTitle,
           recipientName,
           recipientEmail,
-          message:
-            payload.message ||
-            `Your ${applicationTitle} subscription has expired.`,
+          expirationDate: payload.notifyUser?.subscriptionExpirationDate,
+          message: payload.message,
         },
       };
     }

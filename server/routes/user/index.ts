@@ -9,6 +9,7 @@ import Media from '@server/entity/Media';
 import { MediaRequest } from '@server/entity/MediaRequest';
 import { User } from '@server/entity/User';
 import { UserPushSubscription } from '@server/entity/UserPushSubscription';
+import { UserSettings } from '@server/entity/UserSettings';
 import { Watchlist } from '@server/entity/Watchlist';
 import type { WatchlistResponse } from '@server/interfaces/api/discoverInterfaces';
 import type {
@@ -24,6 +25,7 @@ import logger from '@server/logger';
 import { isAuthenticated } from '@server/middleware/auth';
 import { getHostname } from '@server/utils/getHostname';
 import { Router } from 'express';
+import fs from 'fs';
 import gravatarUrl from 'gravatar-url';
 import { findIndex, sortBy } from 'lodash';
 import path from 'path';
@@ -993,13 +995,53 @@ router.post(
         userType: UserType.JELLYFIN,
       });
 
+      user.settings = new UserSettings({
+        locale: body.locale || settings.main.locale,
+      });
+
       if (body.genpassword && body.email) {
+        const userLocale = body.locale || settings.main.locale;
+
+        const baseTemplatePath = path.join(
+          __dirname,
+          '../../templates/email/generatedpassword'
+        );
+        const localizedPath = path.join(
+          __dirname,
+          `../../templates/email/generatedpassword/${userLocale}`
+        );
+
+        let templatePath = baseTemplatePath;
+        try {
+          if (fs.existsSync(localizedPath)) {
+            templatePath = localizedPath;
+            logger.debug(
+              `Using localized email template for locale: ${userLocale}`,
+              {
+                label: 'User Management',
+                path: localizedPath,
+              }
+            );
+          } else {
+            logger.debug(
+              `No localized template found for locale: ${userLocale}, using default`,
+              {
+                label: 'User Management',
+                path: baseTemplatePath,
+              }
+            );
+          }
+        } catch (e) {
+          logger.error('Error checking localized template path', {
+            label: 'User Management',
+            path: localizedPath,
+            errorMessage: e.message,
+          });
+        }
+
         const email = new PreparedEmail(settings.notifications.agents.email);
         await email.send({
-          template: path.join(
-            __dirname,
-            '../../templates/email/generatedpassword'
-          ),
+          template: templatePath,
           message: {
             to: body.email,
           },
@@ -1008,6 +1050,10 @@ router.post(
             applicationUrl: settings.main.applicationUrl,
             applicationTitle: settings.main.applicationTitle,
             recipientName: body.username,
+            externalHostname: settings.jellyfin.externalHostname,
+            name: settings.jellyfin.name,
+            locale: userLocale,
+            recipientEmail: body.email,
           },
         });
       }

@@ -189,7 +189,10 @@ userSettingsRoutes.post<
       : null;
 
     if (newSubscriptionStatus === 'active') {
-      if (previousSubscriptionStatus !== 'active' || !user.subscriptionExpirationDate) {
+      if (
+        previousSubscriptionStatus !== 'active' ||
+        !user.subscriptionExpirationDate
+      ) {
         const oneYearFromNow = new Date();
         oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
         user.subscriptionExpirationDate = oneYearFromNow;

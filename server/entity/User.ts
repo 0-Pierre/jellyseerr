@@ -11,6 +11,7 @@ import logger from '@server/logger';
 import { AfterDate } from '@server/utils/dateHelpers';
 import bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
+import fs from 'fs';
 import path from 'path';
 import { default as generatePassword } from 'secure-random-password';
 import {
@@ -196,15 +197,42 @@ export class User {
     const password = generatePassword.randomPassword({ length: 16 });
     this.setPassword(password);
 
-    const { applicationTitle, applicationUrl } = getSettings().main;
+    const settings = getSettings();
+    const { applicationTitle, applicationUrl } = settings.main;
+    const { externalHostname, name } = settings.jellyfin;
+
     try {
       logger.info(`Sending generated password email for ${this.email}`, {
         label: 'User Management',
       });
 
-      const email = new PreparedEmail(getSettings().notifications.agents.email);
+      const email = new PreparedEmail(settings.notifications.agents.email);
+      const userLocale = this.settings?.locale || 'en';
+
+      const baseTemplatePath = path.join(
+        __dirname,
+        '../templates/email/generatedpassword'
+      );
+      const localizedPath = path.join(
+        __dirname,
+        `../templates/email/generatedpassword/${userLocale}`
+      );
+
+      let templatePath = baseTemplatePath;
+      try {
+        if (fs.existsSync(localizedPath)) {
+          templatePath = localizedPath;
+        }
+      } catch (e) {
+        logger.error('Error checking localized template path', {
+          label: 'User Management',
+          path: localizedPath,
+          errorMessage: e.message,
+        });
+      }
+
       await email.send({
-        template: path.join(__dirname, '../templates/email/generatedpassword'),
+        template: templatePath,
         message: {
           to: this.email,
         },
@@ -213,6 +241,8 @@ export class User {
           applicationUrl,
           applicationTitle,
           recipientName: this.username,
+          externalHostname,
+          name,
         },
       });
     } catch (e) {

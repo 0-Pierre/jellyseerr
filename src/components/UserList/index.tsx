@@ -10,6 +10,8 @@ import SensitiveInput from '@app/components/Common/SensitiveInput';
 import Table from '@app/components/Common/Table';
 import BulkEditModal from '@app/components/UserList/BulkEditModal';
 import PlexImportModal from '@app/components/UserList/PlexImportModal';
+import { availableLanguages } from '@app/context/LanguageContext';
+import useLocale from '@app/hooks/useLocale';
 import useSettings from '@app/hooks/useSettings';
 import { useUpdateQueryParams } from '@app/hooks/useUpdateQueryParams';
 import type { User } from '@app/hooks/useUser';
@@ -91,6 +93,8 @@ const messages = defineMessages('components.UserList', {
   never: 'Never',
   validationUsernameFormat: 'Username must be in format firstname.lastname',
   validationUsernameRequired: 'Username is required',
+  applanguage: 'Display Language',
+  languageDefault: 'Default ({language})',
 });
 
 type Sort =
@@ -113,6 +117,7 @@ const UserList = () => {
   const [createJellyfinModal, setCreateJellyfinModal] = useState({
     isOpen: false,
   });
+  const { locale } = useLocale();
 
   const page = router.query.page ? Number(router.query.page) : 1;
   const pageIndex = page - 1;
@@ -606,6 +611,7 @@ const UserList = () => {
             email: '',
             password: '',
             genpassword: false,
+            locale: '',
           }}
           validationSchema={CreateJellyfinUserValidation}
           onSubmit={async (values) => {
@@ -622,6 +628,7 @@ const UserList = () => {
                     email: values.email,
                     password: values.genpassword ? null : values.password,
                     genpassword: values.genpassword,
+                    locale: values.locale,
                   }),
                 }
               );
@@ -642,6 +649,7 @@ const UserList = () => {
                   body: JSON.stringify({
                     jellyfinUserIds: [jellyfinUser.jellyfinUserId],
                     email: values.email,
+                    locale: values.locale,
                   }),
                 }
               );
@@ -782,6 +790,38 @@ const UserList = () => {
                         typeof errors.password === 'string' && (
                           <div className="error">{errors.password}</div>
                         )}
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <label htmlFor="locale" className="text-label">
+                      {intl.formatMessage(messages.applanguage)}
+                    </label>
+                    <div className="form-input-area">
+                      <div className="form-input-field">
+                        <Field as="select" id="locale" name="locale">
+                          <option value="" lang={locale}>
+                            {intl.formatMessage(messages.languageDefault, {
+                              language:
+                                availableLanguages[
+                                  settings.currentSettings.locale
+                                ].display,
+                            })}
+                          </option>
+                          {(
+                            Object.keys(
+                              availableLanguages
+                            ) as (keyof typeof availableLanguages)[]
+                          ).map((key) => (
+                            <option
+                              key={key}
+                              value={availableLanguages[key].code}
+                              lang={availableLanguages[key].code}
+                            >
+                              {availableLanguages[key].display}
+                            </option>
+                          ))}
+                        </Field>
+                      </div>
                     </div>
                   </div>
                 </Form>

@@ -31,43 +31,43 @@ div(style='display: block; background-color: #111827; padding: 2.5rem 0;')
         td(style='text-align: center;')
           div(style='margin: 1rem 0 0; font-size: 1.25em;')
             - var formattedName = recipientName.split('.')[0].charAt(0).toUpperCase() + recipientName.split('.')[0].slice(1)
-            | Hi, #{formattedName.replace(/\.|@/g, ((x) => x + '\ufeff'))}!
+            | Salut, #{formattedName.replace(/\.|@/g, ((x) => x + '\ufeff'))} !
     tr
       td(style='text-align: center;')
         div(style='margin: 1rem 0 0; font-size: 1.25em;')
-          | Your Jellyfin account has been created.
+          | Ton compte Jellyfin a été créé.
     tr
       td(style='text-align: center; padding: 10px 0;')
         div(style='margin: 15px 0; padding: 15px; background-color: #1f2937; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);')
-          div(style='margin-bottom: 10px; font-size: 1.1em; opacity: 0.7;') Username
+          div(style='margin-bottom: 10px; font-size: 1.1em; opacity: 0.7;') Nom d'utilisateur
           div(style='font-family: monospace; font-size: 1.2em; font-weight: 600; word-break: break-all;')
             | #{recipientName}
           div(style='height: 1px; background-color: rgba(255,255,255,0.1); margin: 15px 0;')
-          div(style='margin-bottom: 10px; font-size: 1.1em; opacity: 0.7;') Password
+          div(style='margin-bottom: 10px; font-size: 1.1em; opacity: 0.7;') Mot de passe
           div(style='font-family: monospace; font-size: 1.2em; font-weight: 600; word-break: break-all;')
             | #{password}
     tr
       td(style='text-align: center; padding: 20px 10px 10px;')
         div(style='margin: 15px 0; padding: 15px; background-color: #1f2937; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);')
-          div(style='margin-bottom: 10px; font-size: 1.1em; font-weight: 600; color: rgb(129, 140, 248);') How it works ?
+          div(style='margin-bottom: 10px; font-size: 1.1em; font-weight: 600; color: rgb(129, 140, 248);') Comment ça fonctionne ?
           div(style='font-size: 0.95em; text-align: left; line-height: 1.4;')
-            p(style='color: rgb(165, 165, 165);') Your account works with two connected applications:
+            p(style='color: rgb(165, 165, 165);') Ton compte fonctionne avec deux applications connectées :
             ul(style='padding-left: 20px; margin: 10px 0;')
               li
-                strong(style='color: rgb(129, 140, 248);') Jellyfin:
-                |  The media server where you can watch movies, TV shows, and listen to music.
+                strong(style='color: rgb(129, 140, 248);') Jellyfin :
+                |  Le serveur multimédia où tu peux regarder des films, des séries TV et écouter de la musique.
               li
-                strong(style='color: rgb(129, 140, 248);') Jellyseerr:
-                |  The request system where you can browse and request new content, check your request status, and manage your subscription.
-            p(style='margin-top: 10px; color: rgb(165, 165, 165);') These credentials work for both services, providing a seamless experience across our media platform.
+                strong(style='color: rgb(129, 140, 248);') Jellyseerr :
+                |  Le système de demandes où tu peux parcourir et demander du nouveau contenu, vérifier l'état de tes demandes et gérer ton abonnement.
+            p(style='margin-top: 10px; color: rgb(165, 165, 165);') Ces identifiants fonctionnent pour les deux services, offrant une expérience fluide sur notre plateforme multimédia.
       tr
         td(style='padding: 20px 10px 10px;')
           div(style='display: flex; flex-direction: column; gap: 15px;')
-            if externalHostname
-              a(href=externalHostname style='text-decoration: none; font-size: 1.0em; line-height: 2.25em;')
-                span(style='padding: 0.2rem; font-weight: 500; text-align: center; border-radius: 10px; background-color: rgb(99,102,241); color: #fff; display: block; border: 1px solid rgba(255,255,255,0.2);')
-                  | Open #{name}
             if applicationUrl
               a(href=applicationUrl style='text-decoration: none; font-size: 1.0em; line-height: 2.25em;')
                 span(style='padding: 0.2rem; font-weight: 500; text-align: center; border-radius: 10px; background-color: rgb(99,102,241); color: #fff; display: block; border: 1px solid rgba(255,255,255,0.2);')
-                  | Open #{applicationTitle}
+                  | Ouvrir #{applicationTitle}
+            if externalHostname
+              a(href=externalHostname style='text-decoration: none; font-size: 1.0em; line-height: 2.25em;')
+                span(style='padding: 0.2rem; font-weight: 500; text-align: center; border-radius: 10px; background-color: rgb(99,102,241); color: #fff; display: block; border: 1px solid rgba(255,255,255,0.2);')
+                  | Ouvrir #{name}
