@@ -119,6 +119,28 @@ class EmailAgent
       };
     }
 
+    if (type === Notification.SUBSCRIPTION_EXPIRING) {
+      const { templatePath } = this.getLocalizedTemplatePath(
+        'subscriptionexpiring',
+        userLocale
+      );
+
+      return {
+        template: templatePath,
+        message: {
+          to: recipientEmail,
+        },
+        locals: {
+          applicationUrl,
+          applicationTitle,
+          recipientName,
+          recipientEmail,
+          expirationDate: payload.notifyUser?.subscriptionExpirationDate,
+          message: payload.message,
+        },
+      };
+    }
+
     const mediaType = payload.media
       ? payload.media.mediaType === MediaType.MOVIE
         ? 'movie'

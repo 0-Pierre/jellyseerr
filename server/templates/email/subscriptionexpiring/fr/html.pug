@@ -35,11 +35,11 @@ div(style='display: block; background-color: #111827; padding: 2.5rem 0;')
     tr
       td(style='text-align: center;')
         div(style='margin: 1rem 0 0; font-size: 1.25em;')
-          | Ton abonnement Jellyfin a expiré le #{new Date(expirationDate).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}.
+          | Ton abonnement Jellyfin expirera le #{new Date(expirationDate).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}.
     tr
       td(style='text-align: center;')
         div(style='margin: 1rem 0 0; font-size: 1.25em;')
-          | Tu peux toujours accéder à ton compte, mais tu ne peux plus demander ou lire de médias.
+          | Après cette date, tu pourras toujours accéder à ton compte, mais tu ne pourras plus demander ou lire de médias.
     tr
       td
         if applicationUrl

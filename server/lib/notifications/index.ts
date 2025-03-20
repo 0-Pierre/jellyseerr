@@ -18,6 +18,7 @@ export enum Notification {
   ISSUE_REOPENED = 2048,
   MEDIA_AUTO_REQUESTED = 4096,
   SUBSCRIPTION_EXPIRED = 8192,
+  SUBSCRIPTION_EXPIRING = 16384,
 }
 
 export const hasNotificationType = (

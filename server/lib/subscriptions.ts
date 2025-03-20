@@ -17,6 +17,9 @@ const subscriptionsSync = {
       });
 
       const now = new Date();
+      const oneWeekFromNow = new Date();
+      oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
+
       const hostname = getHostname();
       const jellyfinClient = new JellyfinAPI(
         hostname,
@@ -82,6 +85,26 @@ const subscriptionsSync = {
 
           logger.info(
             `User ${user.id} subscription expired, permissions updated`
+          );
+        } else if (
+          user.subscriptionExpirationDate &&
+          new Date(user.subscriptionExpirationDate) <= oneWeekFromNow &&
+          new Date(user.subscriptionExpirationDate) > now
+        ) {
+          notificationManager.sendNotification(
+            Notification.SUBSCRIPTION_EXPIRING,
+            {
+              notifyUser: user,
+              subject: 'Subscription Expiring Soon',
+              message:
+                'Your subscription will expire soon. Please renew to avoid service interruption.',
+              notifyAdmin: false,
+              notifySystem: true,
+            }
+          );
+
+          logger.info(
+            `Warning sent to user ${user.id} about subscription expiring on ${user.subscriptionExpirationDate}`
           );
         }
       }

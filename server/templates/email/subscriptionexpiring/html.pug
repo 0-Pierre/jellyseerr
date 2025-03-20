@@ -31,18 +31,18 @@ div(style='display: block; background-color: #111827; padding: 2.5rem 0;')
         td(style='text-align: center;')
           div(style='margin: 1rem 0 0; font-size: 1.25em;')
             - var formattedName = recipientName.split('.')[0].charAt(0).toUpperCase() + recipientName.split('.')[0].slice(1)
-            | Salut, #{formattedName.split(' ')[0].replace(/\.|@/g, ((x) => x + '\ufeff'))}!
+            | Hello, #{formattedName.split(' ')[0].replace(/\.|@/g, ((x) => x + '\ufeff'))}!
     tr
       td(style='text-align: center;')
         div(style='margin: 1rem 0 0; font-size: 1.25em;')
-          | Ton abonnement Jellyfin a expiré le #{new Date(expirationDate).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}.
+          | Your Jellyfin subscription will expire on #{new Date(expirationDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}.
     tr
       td(style='text-align: center;')
         div(style='margin: 1rem 0 0; font-size: 1.25em;')
-          | Tu peux toujours accéder à ton compte, mais tu ne peux plus demander ou lire de médias.
+          | After this date, you will still have access to your account but you won't be able to request or play media.
     tr
       td
         if applicationUrl
           a(href=applicationUrl style='display: block; margin: 1.5rem 3rem; text-decoration: none; font-size: 1.0em; line-height: 2.25em;')
             span(style='padding: 0.2rem; font-weight: 500; text-align: center; border-radius: 10px; background-color: rgb(99,102,241); color: #fff; display: block; border: 1px solid rgba(255,255,255,0.2);')
-              | Renouveler mon abonnement
+              | Renew Subscription
