@@ -60,6 +60,13 @@ div(style='display: block; background-color: #111827; padding: 2.5rem 0;')
                 strong(style='color: rgb(129, 140, 248);') Jellyseerr:
                 |  The request system where you can browse and request new content, check your request status, and manage your subscription.
             p(style='margin-top: 10px; color: rgb(165, 165, 165);') These credentials work for both services, providing a seamless experience across our media platform.
+            if externalHostname
+              div(style='margin-top: 10px; padding: 10px; background-color: rgba(129, 140, 248, 0.1); border-left: 3px solid rgb(129, 140, 248); border-radius: 4px;')
+                p(style='margin: 0; font-size: 0.95em; color: rgb(165, 165, 165);')
+                  strong(style='color: rgb(129, 140, 248);') Jellyfin App Setup:
+                  |  When connecting via the Jellyfin app on your TV or smartphone, use
+                  strong(style='font-family: monospace; color: #fff;') #{externalHostname}
+                  |  as server address.
       tr
         td(style='padding: 20px 10px 10px;')
           div(style='display: flex; flex-direction: column; gap: 15px;')
