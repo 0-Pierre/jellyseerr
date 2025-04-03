@@ -132,6 +132,9 @@ export class User {
   @Column({ type: 'datetime', nullable: true })
   public subscriptionExpirationDate: Date | null;
 
+  @Column({ default: false })
+  public notifiedAboutExpiration: boolean;
+
   @Column({ default: 0 })
   public suspiciousActivityCount: number;
 

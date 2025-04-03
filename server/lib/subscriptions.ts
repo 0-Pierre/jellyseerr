@@ -35,6 +35,7 @@ const subscriptionsSync = {
 
           user.subscriptionStatus = 'expired';
           user.permissions = 740343936;
+          user.notifiedAboutExpiration = false;
 
           if (user.jellyfinUserId) {
             try {
@@ -89,8 +90,12 @@ const subscriptionsSync = {
         } else if (
           user.subscriptionExpirationDate &&
           new Date(user.subscriptionExpirationDate) <= oneWeekFromNow &&
-          new Date(user.subscriptionExpirationDate) > now
+          new Date(user.subscriptionExpirationDate) > now &&
+          !user.notifiedAboutExpiration
         ) {
+          user.notifiedAboutExpiration = true;
+          await userRepository.save(user);
+
           notificationManager.sendNotification(
             Notification.SUBSCRIPTION_EXPIRING,
             {
