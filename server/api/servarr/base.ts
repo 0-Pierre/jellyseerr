@@ -92,11 +92,13 @@ class ServarrBase<QueueItemAppendT> extends ExternalAPI {
     apiKey,
     cacheName,
     apiName,
+    timeout = 5000,
   }: {
     url: string;
     apiKey: string;
     cacheName: AvailableCacheIds;
     apiName: string;
+    timeout?: number;
   }) {
     super(
       url,
@@ -105,6 +107,7 @@ class ServarrBase<QueueItemAppendT> extends ExternalAPI {
       },
       {
         nodeCache: cacheManager.getCache(cacheName).data,
+        timeout,
       }
     );
 
@@ -113,9 +116,9 @@ class ServarrBase<QueueItemAppendT> extends ExternalAPI {
 
   public getSystemStatus = async (): Promise<SystemStatus> => {
     try {
-      const data = await this.get<SystemStatus>('/system/status');
+      const response = await this.axios.get<SystemStatus>('/system/status');
 
-      return data;
+      return response.data;
     } catch (e) {
       throw new Error(
         `[${this.apiName}] Failed to retrieve system status: ${e.message}`
@@ -157,15 +160,16 @@ class ServarrBase<QueueItemAppendT> extends ExternalAPI {
 
   public getQueue = async (): Promise<(QueueItem & QueueItemAppendT)[]> => {
     try {
-      const data = await this.get<QueueResponse<QueueItemAppendT>>(
+      const response = await this.axios.get<QueueResponse<QueueItemAppendT>>(
         `/queue`,
         {
-          includeEpisode: 'true',
-        },
-        0
+          params: {
+            includeEpisode: true,
+          },
+        }
       );
 
-      return data.records;
+      return response.data.records;
     } catch (e) {
       throw new Error(
         `[${this.apiName}] Failed to retrieve queue: ${e.message}`
@@ -175,9 +179,9 @@ class ServarrBase<QueueItemAppendT> extends ExternalAPI {
 
   public getTags = async (): Promise<Tag[]> => {
     try {
-      const data = await this.get<Tag[]>(`/tag`);
+      const response = await this.axios.get<Tag[]>(`/tag`);
 
-      return data;
+      return response.data;
     } catch (e) {
       throw new Error(
         `[${this.apiName}] Failed to retrieve tags: ${e.message}`
@@ -187,13 +191,32 @@ class ServarrBase<QueueItemAppendT> extends ExternalAPI {
 
   public createTag = async ({ label }: { label: string }): Promise<Tag> => {
     try {
-      const data = await this.post<Tag>(`/tag`, {
+      const response = await this.axios.post<Tag>(`/tag`, {
         label,
       });
 
-      return data;
+      return response.data;
     } catch (e) {
       throw new Error(`[${this.apiName}] Failed to create tag: ${e.message}`);
+    }
+  };
+
+  public renameTag = async ({
+    id,
+    label,
+  }: {
+    id: number;
+    label: string;
+  }): Promise<Tag> => {
+    try {
+      const response = await this.axios.put<Tag>(`/tag/${id}`, {
+        id,
+        label,
+      });
+
+      return response.data;
+    } catch (e) {
+      throw new Error(`[${this.apiName}] Failed to rename tag: ${e.message}`);
     }
   };
 
@@ -206,15 +229,10 @@ class ServarrBase<QueueItemAppendT> extends ExternalAPI {
     options: Record<string, unknown>
   ): Promise<void> {
     try {
-      await this.post(
-        `/command`,
-        {
-          name: commandName,
-          ...options,
-        },
-        {},
-        0
-      );
+      await this.axios.post(`/command`, {
+        name: commandName,
+        ...options,
+      });
     } catch (e) {
       throw new Error(`[${this.apiName}] Failed to run command: ${e.message}`);
     }

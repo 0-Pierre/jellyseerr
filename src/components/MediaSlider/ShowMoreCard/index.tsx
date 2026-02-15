@@ -1,7 +1,7 @@
+import CachedImage from '@app/components/Common/CachedImage';
 import TitleCard from '@app/components/TitleCard';
 import defineMessages from '@app/utils/defineMessages';
 import { ArrowRightCircleIcon } from '@heroicons/react/24/solid';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useInView } from 'react-intersection-observer';
@@ -48,19 +48,19 @@ const ShowMoreCard = ({ url, posters }: ShowMoreCardProps) => {
       tabIndex={0}
     >
       <div
-        className={`relative w-36 transform-gpu cursor-pointer
-       overflow-hidden rounded-xl text-white shadow-lg ring-1 transition duration-150 ease-in-out sm:w-36 md:w-44 ${
-         isHovered
-           ? 'scale-105 bg-gray-600 ring-gray-500'
-           : 'scale-100 bg-gray-800 ring-gray-700'
-       }`}
+        className={`relative w-36 transform-gpu cursor-pointer overflow-hidden rounded-xl text-white shadow-lg ring-1 transition duration-150 ease-in-out sm:w-36 md:w-44 ${
+          isHovered
+            ? 'scale-105 bg-gray-600 ring-gray-500'
+            : 'scale-100 bg-gray-800 ring-gray-700'
+        }`}
       >
         <div style={{ paddingBottom: '150%' }}>
           <div className="absolute inset-0 flex h-full w-full flex-col items-center p-2">
             <div className="relative z-10 grid h-full w-full grid-cols-2 items-center justify-center gap-2 opacity-30">
               {posters[0] && (
                 <div className="">
-                  <Image
+                  <CachedImage
+                    type="tmdb"
                     src={`https://image.tmdb.org/t/p/w300_and_h450_face${posters[0]}`}
                     alt=""
                     className="rounded-md"
@@ -71,7 +71,8 @@ const ShowMoreCard = ({ url, posters }: ShowMoreCardProps) => {
               )}
               {posters[1] && (
                 <div className="">
-                  <Image
+                  <CachedImage
+                    type="tmdb"
                     src={`https://image.tmdb.org/t/p/w300_and_h450_face${posters[1]}`}
                     alt=""
                     className="rounded-md"
@@ -82,7 +83,8 @@ const ShowMoreCard = ({ url, posters }: ShowMoreCardProps) => {
               )}
               {posters[2] && (
                 <div className="">
-                  <Image
+                  <CachedImage
+                    type="tmdb"
                     src={`https://image.tmdb.org/t/p/w300_and_h450_face${posters[2]}`}
                     alt=""
                     className="rounded-md"
@@ -93,7 +95,8 @@ const ShowMoreCard = ({ url, posters }: ShowMoreCardProps) => {
               )}
               {posters[3] && (
                 <div className="">
-                  <Image
+                  <CachedImage
+                    type="tmdb"
                     src={`https://image.tmdb.org/t/p/w300_and_h450_face${posters[3]}`}
                     alt=""
                     className="rounded-md"

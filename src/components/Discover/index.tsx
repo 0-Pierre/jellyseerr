@@ -28,6 +28,7 @@ import {
 } from '@heroicons/react/24/solid';
 import { DiscoverSliderType } from '@server/constants/discover';
 import type DiscoverSlider from '@server/entity/DiscoverSlider';
+import axios from 'axios';
 import { useEffect, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useToasts } from 'react-toast-notifications';
@@ -75,14 +76,7 @@ const Discover = () => {
 
   const updateSliders = async () => {
     try {
-      const res = await fetch('/api/v1/settings/discover', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(sliders),
-      });
-      if (!res.ok) throw new Error();
+      await axios.post('/api/v1/settings/discover', sliders);
 
       addToast(intl.formatMessage(messages.updatesuccess), {
         appearance: 'success',
@@ -100,10 +94,7 @@ const Discover = () => {
 
   const resetSliders = async () => {
     try {
-      const res = await fetch('/api/v1/settings/discover/reset', {
-        method: 'GET',
-      });
-      if (!res.ok) throw new Error();
+      await axios.get('/api/v1/settings/discover/reset');
 
       addToast(intl.formatMessage(messages.resetsuccess), {
         appearance: 'success',
@@ -136,7 +127,7 @@ const Discover = () => {
         <>
           {isEditing && (
             <div className="my-6 rounded-lg bg-gray-800">
-              <div className="flex items-center space-x-2 rounded-t-lg border-t border-l border-r border-gray-800 bg-gray-900 p-4 text-lg font-semibold text-gray-400">
+              <div className="flex items-center space-x-2 rounded-t-lg border-l border-r border-t border-gray-800 bg-gray-900 p-4 text-lg font-semibold text-gray-400">
                 <PlusIcon className="w-6" />
                 <span data-testid="create-slider-header">
                   {intl.formatMessage(messages.createnewslider)}
@@ -181,7 +172,7 @@ const Discover = () => {
             leave="transition duration-300"
             leaveFrom="opacity-100 translate-y-0"
             leaveTo="opacity-0 translate-y-6"
-            className="safe-shift-edit-menu fixed right-0 left-0 z-50 flex flex-col items-center justify-end space-x-0 space-y-2 border-t border-gray-700 bg-gray-800 bg-opacity-80 p-4 backdrop-blur sm:bottom-0 sm:flex-row sm:space-y-0 sm:space-x-3"
+            className="safe-shift-edit-menu fixed left-0 right-0 z-50 flex flex-col items-center justify-end space-x-0 space-y-2 border-t border-gray-700 bg-gray-800 bg-opacity-80 p-4 backdrop-blur sm:bottom-0 sm:flex-row sm:space-x-3 sm:space-y-0"
           >
             <Button
               buttonType="default"

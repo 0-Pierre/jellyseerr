@@ -4,11 +4,12 @@ import JellyfinSetup from '@app/components/Setup/JellyfinSetup';
 import { useUser } from '@app/hooks/useUser';
 import defineMessages from '@app/utils/defineMessages';
 import { MediaServerType } from '@server/constants/server';
+import axios from 'axios';
 import { useEffect, useState } from 'react';
 import { FormattedMessage } from 'react-intl';
 
 const messages = defineMessages('components.Setup', {
-  welcome: 'Welcome to Jellyseerr',
+  welcome: 'Welcome to Seerr',
   signinMessage: 'Get started by signing in',
   signin: 'Sign in to your account',
   signinWithJellyfin: 'Enter your Jellyfin details',
@@ -40,19 +41,11 @@ const SetupLogin: React.FC<LoginWithMediaServerProps> = ({
 
   useEffect(() => {
     const login = async () => {
-      const res = await fetch('/api/v1/auth/plex', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          authToken: authToken,
-        }),
+      const response = await axios.post('/api/v1/auth/plex', {
+        authToken: authToken,
       });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
 
-      if (data?.email) {
+      if (response.data?.email) {
         revalidate();
       }
     };

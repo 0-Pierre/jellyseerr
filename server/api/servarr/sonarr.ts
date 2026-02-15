@@ -111,15 +111,23 @@ class SonarrAPI extends ServarrBase<{
   episodeId: number;
   episode: EpisodeResult;
 }> {
-  constructor({ url, apiKey }: { url: string; apiKey: string }) {
-    super({ url, apiKey, apiName: 'Sonarr', cacheName: 'sonarr' });
+  constructor({
+    url,
+    apiKey,
+    timeout,
+  }: {
+    url: string;
+    apiKey: string;
+    timeout?: number;
+  }) {
+    super({ url, apiKey, apiName: 'Sonarr', cacheName: 'sonarr', timeout });
   }
 
   public async getSeries(): Promise<SonarrSeries[]> {
     try {
-      const data = await this.get<SonarrSeries[]>('/series');
+      const response = await this.axios.get<SonarrSeries[]>('/series');
 
-      return data;
+      return response.data;
     } catch (e) {
       throw new Error(`[Sonarr] Failed to retrieve series: ${e.message}`);
     }
@@ -127,9 +135,9 @@ class SonarrAPI extends ServarrBase<{
 
   public async getSeriesById(id: number): Promise<SonarrSeries> {
     try {
-      const data = await this.get<SonarrSeries>(`/series/${id}`);
+      const response = await this.axios.get<SonarrSeries>(`/series/${id}`);
 
-      return data;
+      return response.data;
     } catch (e) {
       throw new Error(`[Sonarr] Failed to retrieve series by ID: ${e.message}`);
     }
@@ -137,15 +145,17 @@ class SonarrAPI extends ServarrBase<{
 
   public async getSeriesByTitle(title: string): Promise<SonarrSeries[]> {
     try {
-      const data = await this.get<SonarrSeries[]>('/series/lookup', {
-        term: title,
+      const response = await this.axios.get<SonarrSeries[]>('/series/lookup', {
+        params: {
+          term: title,
+        },
       });
 
-      if (!data[0]) {
+      if (!response.data[0]) {
         throw new Error('No series found');
       }
 
-      return data;
+      return response.data;
     } catch (e) {
       logger.error('Error retrieving series by series title', {
         label: 'Sonarr API',
@@ -158,15 +168,17 @@ class SonarrAPI extends ServarrBase<{
 
   public async getSeriesByTvdbId(id: number): Promise<SonarrSeries> {
     try {
-      const data = await this.get<SonarrSeries[]>('/series/lookup', {
-        term: `tvdb:${id}`,
+      const response = await this.axios.get<SonarrSeries[]>('/series/lookup', {
+        params: {
+          term: `tvdb:${id}`,
+        },
       });
 
-      if (!data[0]) {
+      if (!response.data[0]) {
         throw new Error('Series not found');
       }
 
-      return data[0];
+      return response.data[0];
     } catch (e) {
       logger.error('Error retrieving series by tvdb ID', {
         label: 'Sonarr API',
@@ -189,27 +201,55 @@ class SonarrAPI extends ServarrBase<{
           : series.tags;
         series.seasons = this.buildSeasonList(options.seasons, series.seasons);
 
-        const newSeriesData = await this.put<SonarrSeries>(
+        const newSeriesResponse = await this.axios.put<SonarrSeries>(
           '/series',
-          series as any
+          series
         );
 
-        if (newSeriesData.id) {
+        if (newSeriesResponse.data.id) {
           logger.info('Updated existing series in Sonarr.', {
             label: 'Sonarr',
-            seriesId: newSeriesData.id,
-            seriesTitle: newSeriesData.title,
+            seriesId: newSeriesResponse.data.id,
+            seriesTitle: newSeriesResponse.data.title,
           });
           logger.debug('Sonarr update details', {
             label: 'Sonarr',
-            movie: newSeriesData,
+            series: newSeriesResponse.data,
           });
 
-          if (options.searchNow) {
-            this.searchSeries(newSeriesData.id);
+          try {
+            const episodes = await this.getEpisodes(newSeriesResponse.data.id);
+            const episodeIdsToMonitor = episodes
+              .filter(
+                (ep) =>
+                  options.seasons.includes(ep.seasonNumber) && !ep.monitored
+              )
+              .map((ep) => ep.id);
+
+            if (episodeIdsToMonitor.length > 0) {
+              logger.debug(
+                'Re-monitoring unmonitored episodes for requested seasons.',
+                {
+                  label: 'Sonarr',
+                  seriesId: newSeriesResponse.data.id,
+                  episodeCount: episodeIdsToMonitor.length,
+                }
+              );
+              await this.monitorEpisodes(episodeIdsToMonitor);
+            }
+          } catch (e) {
+            logger.warn('Failed to re-monitor episodes', {
+              label: 'Sonarr',
+              errorMessage: e.message,
+              seriesId: newSeriesResponse.data.id,
+            });
           }
 
-          return newSeriesData;
+          if (options.searchNow) {
+            this.searchSeries(newSeriesResponse.data.id);
+          }
+
+          return newSeriesResponse.data;
         } else {
           logger.error('Failed to update series in Sonarr', {
             label: 'Sonarr',
@@ -219,58 +259,54 @@ class SonarrAPI extends ServarrBase<{
         }
       }
 
-      const createdSeriesData = await this.post<SonarrSeries>('/series', {
-        tvdbId: options.tvdbid,
-        title: options.title,
-        qualityProfileId: options.profileId,
-        languageProfileId: options.languageProfileId,
-        seasons: this.buildSeasonList(
-          options.seasons,
-          series.seasons.map((season) => ({
-            seasonNumber: season.seasonNumber,
-            // We force all seasons to false if its the first request
-            monitored: false,
-          }))
-        ),
-        tags: options.tags,
-        seasonFolder: options.seasonFolder,
-        monitored: options.monitored,
-        rootFolderPath: options.rootFolderPath,
-        seriesType: options.seriesType,
-        addOptions: {
-          ignoreEpisodesWithFiles: true,
-          searchForMissingEpisodes: options.searchNow,
-        },
-      } as Partial<SonarrSeries>);
+      const createdSeriesResponse = await this.axios.post<SonarrSeries>(
+        '/series',
+        {
+          tvdbId: options.tvdbid,
+          title: options.title,
+          qualityProfileId: options.profileId,
+          languageProfileId: options.languageProfileId,
+          seasons: this.buildSeasonList(
+            options.seasons,
+            series.seasons.map((season) => ({
+              seasonNumber: season.seasonNumber,
+              // We force all seasons to false if its the first request
+              monitored: false,
+            }))
+          ),
+          tags: options.tags,
+          seasonFolder: options.seasonFolder,
+          monitored: options.monitored,
+          rootFolderPath: options.rootFolderPath,
+          seriesType: options.seriesType,
+          addOptions: {
+            ignoreEpisodesWithFiles: true,
+            searchForMissingEpisodes: options.searchNow,
+          },
+        } as Partial<SonarrSeries>
+      );
 
-      if (createdSeriesData.id) {
+      if (createdSeriesResponse.data.id) {
         logger.info('Sonarr accepted request', { label: 'Sonarr' });
         logger.debug('Sonarr add details', {
           label: 'Sonarr',
-          movie: createdSeriesData,
+          series: createdSeriesResponse.data,
         });
       } else {
-        logger.error('Failed to add movie to Sonarr', {
+        logger.error('Failed to add series to Sonarr', {
           label: 'Sonarr',
           options,
         });
         throw new Error('Failed to add series to Sonarr');
       }
 
-      return createdSeriesData;
+      return createdSeriesResponse.data;
     } catch (e) {
-      let errorData;
-      try {
-        errorData = await e.cause?.text();
-        errorData = JSON.parse(errorData);
-      } catch {
-        /* empty */
-      }
       logger.error('Something went wrong while adding a series to Sonarr.', {
         label: 'Sonarr API',
         errorMessage: e.message,
         options,
-        response: errorData,
+        response: e?.response?.data,
       });
       throw new Error('Failed to add series');
     }
@@ -318,6 +354,38 @@ class SonarrAPI extends ServarrBase<{
     }
   }
 
+  public async getEpisodes(seriesId: number): Promise<EpisodeResult[]> {
+    try {
+      const response = await this.axios.get<EpisodeResult[]>('/episode', {
+        params: { seriesId },
+      });
+      return response.data;
+    } catch (e) {
+      logger.error('Failed to retrieve episodes', {
+        label: 'Sonarr API',
+        errorMessage: e.message,
+        seriesId,
+      });
+      throw new Error('Failed to get episodes');
+    }
+  }
+
+  public async monitorEpisodes(episodeIds: number[]): Promise<void> {
+    try {
+      await this.axios.put('/episode/monitor', {
+        episodeIds,
+        monitored: true,
+      });
+    } catch (e) {
+      logger.error('Failed to monitor episodes', {
+        label: 'Sonarr API',
+        errorMessage: e.message,
+        episodeIds,
+      });
+      throw new Error('Failed to monitor episodes');
+    }
+  }
+
   private buildSeasonList(
     seasons: number[],
     existingSeasons?: SonarrSeason[]
@@ -342,17 +410,18 @@ class SonarrAPI extends ServarrBase<{
 
     return newSeasons;
   }
-
-  public removeSerie = async (serieId: number): Promise<void> => {
+  public removeSeries = async (serieId: number): Promise<void> => {
     try {
       const { id, title } = await this.getSeriesByTvdbId(serieId);
-      await this.delete(`/series/${id}`, {
-        deleteFiles: 'true',
-        addImportExclusion: 'false',
+      await this.axios.delete(`/series/${id}`, {
+        params: {
+          deleteFiles: true,
+          addImportExclusion: false,
+        },
       });
-      logger.info(`[Radarr] Removed serie ${title}`);
+      logger.info(`[Sonarr] Removed series ${title}`);
     } catch (e) {
-      throw new Error(`[Radarr] Failed to remove serie: ${e.message}`);
+      throw new Error(`[Sonarr] Failed to remove series: ${e.message}`);
     }
   };
 
@@ -368,18 +437,14 @@ class SonarrAPI extends ServarrBase<{
     if (tvdbId) {
       this.removeCache('/series/lookup', {
         term: `tvdb:${tvdbId}`,
-        headers: this.defaultHeaders,
       });
     }
     if (externalId) {
-      this.removeCache(`/series/${externalId}`, {
-        headers: this.defaultHeaders,
-      });
+      this.removeCache(`/series/${externalId}`);
     }
     if (title) {
       this.removeCache('/series/lookup', {
         term: title,
-        headers: this.defaultHeaders,
       });
     }
   };

@@ -13,6 +13,7 @@ import {
 import { MediaRequestStatus, MediaStatus } from '@server/constants/media';
 import type Media from '@server/entity/Media';
 import type { MediaRequest } from '@server/entity/MediaRequest';
+import axios from 'axios';
 import { useMemo, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { mutate } from 'swr';
@@ -78,15 +79,16 @@ const RequestButton = ({
   // Current user's pending request, or the first pending request
   const activeRequest = useMemo(() => {
     return activeRequests && activeRequests.length > 0
-      ? activeRequests.find((request) => request.requestedBy.id === user?.id) ??
-          activeRequests[0]
+      ? (activeRequests.find(
+          (request) => request.requestedBy.id === user?.id
+        ) ?? activeRequests[0])
       : undefined;
   }, [activeRequests, user]);
   const active4kRequest = useMemo(() => {
     return active4kRequests && active4kRequests.length > 0
-      ? active4kRequests.find(
+      ? (active4kRequests.find(
           (request) => request.requestedBy.id === user?.id
-        ) ?? active4kRequests[0]
+        ) ?? active4kRequests[0])
       : undefined;
   }, [active4kRequests, user]);
 
@@ -94,13 +96,9 @@ const RequestButton = ({
     request: MediaRequest,
     type: 'approve' | 'decline'
   ) => {
-    const res = await fetch(`/api/v1/request/${request.id}/${type}`, {
-      method: 'POST',
-    });
-    if (!res.ok) throw new Error();
-    const data = await res.json();
+    const response = await axios.post(`/api/v1/request/${request.id}/${type}`);
 
-    if (data) {
+    if (response) {
       onUpdate();
       mutate('/api/v1/request/count');
     }
@@ -116,11 +114,7 @@ const RequestButton = ({
 
     await Promise.all(
       requests.map(async (request) => {
-        const res = await fetch(`/api/v1/request/${request.id}/${type}`, {
-          method: 'POST',
-        });
-        if (!res.ok) throw new Error();
-        return res.json();
+        return axios.post(`/api/v1/request/${request.id}/${type}`);
       })
     );
 
@@ -275,7 +269,9 @@ const RequestButton = ({
 
   // Standard request button
   if (
-    (!media || media.status === MediaStatus.UNKNOWN) &&
+    (!media ||
+      media.status === MediaStatus.UNKNOWN ||
+      (media.status === MediaStatus.DELETED && !activeRequest)) &&
     hasPermission(
       [
         Permission.REQUEST,
@@ -302,8 +298,7 @@ const RequestButton = ({
       type: 'or',
     }) &&
     media &&
-    media.status !== MediaStatus.AVAILABLE &&
-    media.status !== MediaStatus.BLACKLISTED &&
+    media.status !== MediaStatus.BLOCKLISTED &&
     !isShowComplete
   ) {
     buttons.push({
@@ -319,7 +314,9 @@ const RequestButton = ({
 
   // 4K request button
   if (
-    (!media || media.status4k === MediaStatus.UNKNOWN) &&
+    (!media ||
+      media.status4k === MediaStatus.UNKNOWN ||
+      (media.status4k === MediaStatus.DELETED && !active4kRequest)) &&
     hasPermission(
       [
         Permission.REQUEST_4K,
@@ -348,8 +345,7 @@ const RequestButton = ({
       type: 'or',
     }) &&
     media &&
-    media.status4k !== MediaStatus.AVAILABLE &&
-    media.status !== MediaStatus.BLACKLISTED &&
+    media.status4k !== MediaStatus.BLOCKLISTED &&
     !is4kShowComplete &&
     settings.currentSettings.series4kEnabled
   ) {

@@ -3,8 +3,9 @@ import { MediaStatus } from '@server/constants/media';
 import type { NotificationAgentWebhook } from '@server/lib/settings';
 import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
+import axios from 'axios';
 import { get } from 'lodash';
-import { hasNotificationType, Notification } from '..';
+import { Notification, hasNotificationType } from '..';
 import type { NotificationAgent, NotificationPayload } from './agent';
 import { BaseAgent } from './agent';
 
@@ -121,7 +122,7 @@ class WebhookAgent
             `{{${keymapKey}}}`,
             typeof keymapValue === 'function'
               ? keymapValue(payload, type)
-              : get(payload, keymapValue) ?? ''
+              : (get(payload, keymapValue) ?? '')
           );
         });
       } else if (finalPayload[key] && typeof finalPayload[key] === 'object') {
@@ -176,36 +177,45 @@ class WebhookAgent
       subject: payload.subject,
     });
 
-    try {
-      const response = await fetch(settings.options.webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(settings.options.authHeader
-            ? { Authorization: settings.options.authHeader }
-            : {}),
-        },
-        body: JSON.stringify(this.buildPayload(type, payload)),
+    let webhookUrl = settings.options.webhookUrl;
+
+    if (settings.options.supportVariables) {
+      Object.keys(KeyMap).forEach((keymapKey) => {
+        const keymapValue = KeyMap[keymapKey as keyof typeof KeyMap];
+        const variableValue =
+          type === Notification.TEST_NOTIFICATION
+            ? 'test'
+            : typeof keymapValue === 'function'
+              ? keymapValue(payload, type)
+              : get(payload, keymapValue) || 'test';
+        webhookUrl = webhookUrl.replace(
+          new RegExp(`{{${keymapKey}}}`, 'g'),
+          encodeURIComponent(variableValue)
+        );
       });
-      if (!response.ok) {
-        throw new Error(response.statusText, { cause: response });
-      }
+    }
+
+    try {
+      await axios.post(
+        webhookUrl,
+        this.buildPayload(type, payload),
+        settings.options.authHeader
+          ? {
+              headers: {
+                Authorization: settings.options.authHeader,
+              },
+            }
+          : undefined
+      );
 
       return true;
     } catch (e) {
-      let errorData;
-      try {
-        errorData = await e.cause?.text();
-        errorData = JSON.parse(errorData);
-      } catch {
-        /* empty */
-      }
       logger.error('Error sending webhook notification', {
         label: 'Notifications',
         type: Notification[type],
         subject: payload.subject,
         errorMessage: e.message,
-        response: errorData,
+        response: e?.response?.data,
       });
 
       return false;

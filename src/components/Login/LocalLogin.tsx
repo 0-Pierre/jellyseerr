@@ -3,6 +3,7 @@ import SensitiveInput from '@app/components/Common/SensitiveInput';
 import useSettings from '@app/hooks/useSettings';
 import defineMessages from '@app/utils/defineMessages';
 import { ArrowLeftOnRectangleIcon } from '@heroicons/react/24/outline';
+import axios from 'axios';
 import { Field, Form, Formik } from 'formik';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -54,17 +55,10 @@ const LocalLogin = ({ revalidate }: LocalLoginProps) => {
       validateOnBlur={false}
       onSubmit={async (values) => {
         try {
-          const res = await fetch('/api/v1/auth/local', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              email: values.email,
-              password: values.password,
-            }),
+          await axios.post('/api/v1/auth/local', {
+            email: values.email,
+            password: values.password,
           });
-          if (!res.ok) throw new Error();
         } catch (e) {
           setLoginError(intl.formatMessage(messages.loginerror));
         } finally {
@@ -77,13 +71,13 @@ const LocalLogin = ({ revalidate }: LocalLoginProps) => {
           <>
             <Form data-form-type="login">
               <div>
-                <h2 className="mb-6 -mt-1 text-center text-lg font-bold text-neutral-200">
+                <h2 className="-mt-1 mb-6 text-center text-lg font-bold text-neutral-200">
                   {intl.formatMessage(messages.loginwithapp, {
                     appName: settings.currentSettings.applicationTitle,
                   })}
                 </h2>
 
-                <div className="mt-1 mb-4">
+                <div className="mb-4 mt-1">
                   <div className="form-input-field">
                     <Field
                       id="email"
@@ -104,7 +98,7 @@ const LocalLogin = ({ revalidate }: LocalLoginProps) => {
                       <div className="error">{errors.email}</div>
                     )}
                 </div>
-                <div className="mt-1 mb-2">
+                <div className="mb-2 mt-1">
                   <div className="form-input-field">
                     <SensitiveInput
                       as="field"
@@ -138,7 +132,7 @@ const LocalLogin = ({ revalidate }: LocalLoginProps) => {
                   </div>
                 </div>
                 {loginError && (
-                  <div className="mt-1 mb-2 sm:col-span-2 sm:mt-0">
+                  <div className="mb-2 mt-1 sm:col-span-2 sm:mt-0">
                     <div className="error">{loginError}</div>
                   </div>
                 )}

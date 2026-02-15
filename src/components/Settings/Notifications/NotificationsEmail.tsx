@@ -5,17 +5,20 @@ import SettingsBadge from '@app/components/Settings/SettingsBadge';
 import globalMessages from '@app/i18n/globalMessages';
 import defineMessages from '@app/utils/defineMessages';
 import { ArrowDownOnSquareIcon, BeakerIcon } from '@heroicons/react/24/outline';
+import axios from 'axios';
 import { Field, Form, Formik } from 'formik';
 import { useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useToasts } from 'react-toast-notifications';
 import useSWR, { mutate } from 'swr';
+import validator from 'validator';
 import * as Yup from 'yup';
 
 const messages = defineMessages('components.Settings.Notifications', {
   validationSmtpHostRequired: 'You must provide a valid hostname or IP address',
   validationSmtpPortRequired: 'You must provide a valid port number',
   agentenabled: 'Enable Agent',
+  embedPoster: 'Embed Poster',
   userEmailRequired: 'Require user email',
   emailsender: 'Sender Address',
   smtpHost: 'SMTP Host',
@@ -75,19 +78,18 @@ const NotificationsEmail = () => {
             .required(intl.formatMessage(messages.validationEmail)),
           otherwise: Yup.string().nullable(),
         })
-        .email(intl.formatMessage(messages.validationEmail)),
-      smtpHost: Yup.string()
-        .when('enabled', {
-          is: true,
-          then: Yup.string()
-            .nullable()
-            .required(intl.formatMessage(messages.validationSmtpHostRequired)),
-          otherwise: Yup.string().nullable(),
-        })
-        .matches(
-          /^(((([a-z]|\d|_|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*)?([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])):((([a-z]|\d|_|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*)?([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]))@)?(([a-z]|\d|_|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*)?([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])$/i,
-          intl.formatMessage(messages.validationSmtpHostRequired)
+        .test(
+          'email',
+          intl.formatMessage(messages.validationEmail),
+          (value) => !value || validator.isEmail(value, { require_tld: false })
         ),
+      smtpHost: Yup.string().when('enabled', {
+        is: true,
+        then: Yup.string()
+          .nullable()
+          .required(intl.formatMessage(messages.validationSmtpHostRequired)),
+        otherwise: Yup.string().nullable(),
+      }),
       smtpPort: Yup.number().when('enabled', {
         is: true,
         then: Yup.number()
@@ -126,6 +128,7 @@ const NotificationsEmail = () => {
     <Formik
       initialValues={{
         enabled: data.enabled,
+        embedPoster: data.embedPoster,
         userEmailRequired: data.options.userEmailRequired,
         emailFrom: data.options.emailFrom,
         smtpHost: data.options.smtpHost,
@@ -133,10 +136,10 @@ const NotificationsEmail = () => {
         encryption: data.options.secure
           ? 'implicit'
           : data.options.requireTls
-          ? 'opportunistic'
-          : data.options.ignoreTls
-          ? 'none'
-          : 'default',
+            ? 'opportunistic'
+            : data.options.ignoreTls
+              ? 'none'
+              : 'default',
         authUser: data.options.authUser,
         authPass: data.options.authPass,
         allowSelfSigned: data.options.allowSelfSigned,
@@ -147,31 +150,25 @@ const NotificationsEmail = () => {
       validationSchema={NotificationsEmailSchema}
       onSubmit={async (values) => {
         try {
-          const res = await fetch('/api/v1/settings/notifications/email', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
+          await axios.post('/api/v1/settings/notifications/email', {
+            enabled: values.enabled,
+            embedPoster: values.embedPoster,
+            options: {
+              userEmailRequired: values.userEmailRequired,
+              emailFrom: values.emailFrom,
+              smtpHost: values.smtpHost,
+              smtpPort: Number(values.smtpPort),
+              secure: values.encryption === 'implicit',
+              ignoreTls: values.encryption === 'none',
+              requireTls: values.encryption === 'opportunistic',
+              authUser: values.authUser,
+              authPass: values.authPass,
+              allowSelfSigned: values.allowSelfSigned,
+              senderName: values.senderName,
+              pgpPrivateKey: values.pgpPrivateKey,
+              pgpPassword: values.pgpPassword,
             },
-            body: JSON.stringify({
-              enabled: values.enabled,
-              options: {
-                userEmailRequired: values.userEmailRequired,
-                emailFrom: values.emailFrom,
-                smtpHost: values.smtpHost,
-                smtpPort: Number(values.smtpPort),
-                secure: values.encryption === 'implicit',
-                ignoreTls: values.encryption === 'none',
-                requireTls: values.encryption === 'opportunistic',
-                authUser: values.authUser,
-                authPass: values.authPass,
-                allowSelfSigned: values.allowSelfSigned,
-                senderName: values.senderName,
-                pgpPrivateKey: values.pgpPrivateKey,
-                pgpPassword: values.pgpPassword,
-              },
-            }),
           });
-          if (!res.ok) throw new Error();
           mutate('/api/v1/settings/public');
 
           addToast(intl.formatMessage(messages.emailsettingssaved), {
@@ -203,33 +200,24 @@ const NotificationsEmail = () => {
                 toastId = id;
               }
             );
-            const res = await fetch(
-              '/api/v1/settings/notifications/email/test',
-              {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  enabled: true,
-                  options: {
-                    emailFrom: values.emailFrom,
-                    smtpHost: values.smtpHost,
-                    smtpPort: Number(values.smtpPort),
-                    secure: values.encryption === 'implicit',
-                    ignoreTls: values.encryption === 'none',
-                    requireTls: values.encryption === 'opportunistic',
-                    authUser: values.authUser,
-                    authPass: values.authPass,
-                    allowSelfSigned: values.allowSelfSigned,
-                    senderName: values.senderName,
-                    pgpPrivateKey: values.pgpPrivateKey,
-                    pgpPassword: values.pgpPassword,
-                  },
-                }),
-              }
-            );
-            if (!res.ok) throw new Error();
+            await axios.post('/api/v1/settings/notifications/email/test', {
+              enabled: true,
+              embedPoster: values.embedPoster,
+              options: {
+                emailFrom: values.emailFrom,
+                smtpHost: values.smtpHost,
+                smtpPort: Number(values.smtpPort),
+                secure: values.encryption === 'implicit',
+                ignoreTls: values.encryption === 'none',
+                requireTls: values.encryption === 'opportunistic',
+                authUser: values.authUser,
+                authPass: values.authPass,
+                allowSelfSigned: values.allowSelfSigned,
+                senderName: values.senderName,
+                pgpPrivateKey: values.pgpPrivateKey,
+                pgpPassword: values.pgpPassword,
+              },
+            });
 
             if (toastId) {
               removeToast(toastId);
@@ -260,6 +248,14 @@ const NotificationsEmail = () => {
               </label>
               <div className="form-input-area">
                 <Field type="checkbox" id="enabled" name="enabled" />
+              </div>
+            </div>
+            <div className="form-row">
+              <label htmlFor="embedPoster" className="checkbox-label">
+                {intl.formatMessage(messages.embedPoster)}
+              </label>
+              <div className="form-input-area">
+                <Field type="checkbox" id="embedPoster" name="embedPoster" />
               </div>
             </div>
             <div className="form-row">

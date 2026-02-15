@@ -5,6 +5,7 @@ import defineMessages from '@app/utils/defineMessages';
 import { ArrowLeftOnRectangleIcon } from '@heroicons/react/24/outline';
 import { ApiErrorCode } from '@server/constants/error';
 import { MediaServerType, ServerType } from '@server/constants/server';
+import axios from 'axios';
 import { Field, Form, Formik } from 'formik';
 import { useIntl } from 'react-intl';
 import { useToasts } from 'react-toast-notifications';
@@ -44,8 +45,8 @@ const JellyfinLogin: React.FC<JellyfinLoginProps> = ({
       serverType === MediaServerType.JELLYFIN
         ? ServerType.JELLYFIN
         : serverType === MediaServerType.EMBY
-        ? ServerType.EMBY
-        : 'Media Server',
+          ? ServerType.EMBY
+          : 'Media Server',
   };
 
   const LoginSchema = Yup.object().shape({
@@ -71,28 +72,14 @@ const JellyfinLogin: React.FC<JellyfinLoginProps> = ({
         validateOnBlur={false}
         onSubmit={async (values) => {
           try {
-            const res = await fetch('/api/v1/auth/jellyfin', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                username: values.username,
-                password: values.password,
-                email: values.username,
-              }),
+            await axios.post('/api/v1/auth/jellyfin', {
+              username: values.username,
+              password: values.password,
+              email: values.username,
             });
-            if (!res.ok) throw new Error(res.statusText, { cause: res });
           } catch (e) {
-            let errorData;
-            try {
-              errorData = await e.cause?.text();
-              errorData = JSON.parse(errorData);
-            } catch {
-              /* empty */
-            }
             let errorMessage = null;
-            switch (errorData?.message) {
+            switch (e?.response?.data?.message) {
               case ApiErrorCode.InvalidUrl:
                 errorMessage = messages.invalidurlerror;
                 break;
@@ -126,13 +113,13 @@ const JellyfinLogin: React.FC<JellyfinLoginProps> = ({
             <>
               <Form data-form-type="login">
                 <div>
-                  <h2 className="mb-6 -mt-1 text-center text-lg font-bold text-neutral-200">
+                  <h2 className="-mt-1 mb-6 text-center text-lg font-bold text-neutral-200">
                     {intl.formatMessage(messages.loginwithapp, {
                       appName: mediaServerFormatValues.mediaServerName,
                     })}
                   </h2>
 
-                  <div className="mt-1 mb-4">
+                  <div className="mb-4 mt-1">
                     <div className="form-input-field">
                       <Field
                         id="username"
@@ -148,7 +135,7 @@ const JellyfinLogin: React.FC<JellyfinLoginProps> = ({
                     )}
                   </div>
 
-                  <div className="mt-1 mb-2">
+                  <div className="mb-2 mt-1">
                     <div className="form-input-field">
                       <SensitiveInput
                         as="field"

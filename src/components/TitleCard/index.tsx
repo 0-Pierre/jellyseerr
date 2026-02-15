@@ -1,5 +1,5 @@
 import Spinner from '@app/assets/spinner.svg';
-import BlacklistModal from '@app/components/BlacklistModal';
+import BlocklistModal from '@app/components/BlocklistModal';
 import Button from '@app/components/Common/Button';
 import CachedImage from '@app/components/Common/CachedImage';
 import StatusBadgeMini from '@app/components/Common/StatusBadgeMini';
@@ -23,6 +23,7 @@ import {
 import { MediaStatus } from '@server/constants/media';
 import type { Watchlist } from '@server/entity/Watchlist';
 import type { MediaType } from '@server/models/Search';
+import axios from 'axios';
 import Link from 'next/link';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
@@ -75,10 +76,9 @@ const TitleCard = ({
   const [showDetail, setShowDetail] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const { addToast } = useToasts();
-  const [toggleWatchlist, setToggleWatchlist] = useState<boolean>(
-    !isAddedToWatchlist
-  );
-  const [showBlacklistModal, setShowBlacklistModal] = useState(false);
+  const [toggleWatchlist, setToggleWatchlist] =
+    useState<boolean>(!isAddedToWatchlist);
+  const [showBlocklistModal, setShowBlocklistModal] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   // Just to get the year from the date
@@ -100,29 +100,21 @@ const TitleCard = ({
     []
   );
 
-  const closeBlacklistModal = useCallback(
-    () => setShowBlacklistModal(false),
+  const closeBlocklistModal = useCallback(
+    () => setShowBlocklistModal(false),
     []
   );
 
   const onClickWatchlistBtn = async (): Promise<void> => {
     setIsUpdating(true);
     try {
-      const res = await fetch('/api/v1/watchlist', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          tmdbId: id,
-          mediaType,
-          title,
-        }),
+      const response = await axios.post<Watchlist>('/api/v1/watchlist', {
+        tmdbId: id,
+        mediaType,
+        title,
       });
-      if (!res.ok) throw new Error();
-      const data: Watchlist = await res.json();
       mutate('/api/v1/discover/watchlist');
-      if (data) {
+      if (response.data) {
         addToast(
           <span>
             {intl.formatMessage(messages.watchlistSuccess, {
@@ -147,11 +139,9 @@ const TitleCard = ({
   const onClickDeleteWatchlistBtn = async (): Promise<void> => {
     setIsUpdating(true);
     try {
-      const res = await fetch('/api/v1/watchlist/' + id, {
-        method: 'DELETE',
-      });
-      if (!res.ok) throw new Error();
-      if (res.status === 204) {
+      const response = await axios.delete<Watchlist>('/api/v1/watchlist/' + id);
+
+      if (response.status === 204) {
         addToast(
           <span>
             {intl.formatMessage(messages.watchlistDeleted, {
@@ -182,71 +172,63 @@ const TitleCard = ({
     const topNode = cardRef.current;
 
     if (topNode) {
-      const res = await fetch('/api/v1/blacklist', {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      try {
+        await axios.post('/api/v1/blocklist', {
           tmdbId: id,
           mediaType,
           title,
           user: user?.id,
-        }),
-      });
-
-      if (res.status === 201) {
+        });
         addToast(
           <span>
-            {intl.formatMessage(globalMessages.blacklistSuccess, {
+            {intl.formatMessage(globalMessages.blocklistSuccess, {
               title,
               strong: (msg: React.ReactNode) => <strong>{msg}</strong>,
             })}
           </span>,
           { appearance: 'success', autoDismiss: true }
         );
-        setCurrentStatus(MediaStatus.BLACKLISTED);
-      } else if (res.status === 412) {
-        addToast(
-          <span>
-            {intl.formatMessage(globalMessages.blacklistDuplicateError, {
-              title,
-              strong: (msg: React.ReactNode) => <strong>{msg}</strong>,
-            })}
-          </span>,
-          { appearance: 'info', autoDismiss: true }
-        );
-      } else {
-        addToast(intl.formatMessage(globalMessages.blacklistError), {
-          appearance: 'error',
-          autoDismiss: true,
-        });
+        setCurrentStatus(MediaStatus.BLOCKLISTED);
+      } catch (e) {
+        if (e?.response?.status === 412) {
+          addToast(
+            <span>
+              {intl.formatMessage(globalMessages.blocklistDuplicateError, {
+                title,
+                strong: (msg: React.ReactNode) => <strong>{msg}</strong>,
+              })}
+            </span>,
+            { appearance: 'info', autoDismiss: true }
+          );
+        } else {
+          addToast(intl.formatMessage(globalMessages.blocklistError), {
+            appearance: 'error',
+            autoDismiss: true,
+          });
+        }
       }
 
       setIsUpdating(false);
-      closeBlacklistModal();
+      closeBlocklistModal();
     } else {
-      addToast(intl.formatMessage(globalMessages.blacklistError), {
+      addToast(intl.formatMessage(globalMessages.blocklistError), {
         appearance: 'error',
         autoDismiss: true,
       });
     }
   };
 
-  const onClickShowBlacklistBtn = async (): Promise<void> => {
+  const onClickShowBlocklistBtn = async (): Promise<void> => {
     setIsUpdating(true);
     const topNode = cardRef.current;
 
     if (topNode) {
-      const res = await fetch('/api/v1/blacklist/' + id, {
-        method: 'DELETE',
-      });
+      const res = await axios.delete('/api/v1/blocklist/' + id);
 
       if (res.status === 204) {
         addToast(
           <span>
-            {intl.formatMessage(globalMessages.removeFromBlacklistSuccess, {
+            {intl.formatMessage(globalMessages.removeFromBlocklistSuccess, {
               title,
               strong: (msg: React.ReactNode) => <strong>{msg}</strong>,
             })}
@@ -255,13 +237,13 @@ const TitleCard = ({
         );
         setCurrentStatus(MediaStatus.UNKNOWN);
       } else {
-        addToast(intl.formatMessage(globalMessages.blacklistError), {
+        addToast(intl.formatMessage(globalMessages.blocklistError), {
           appearance: 'error',
           autoDismiss: true,
         });
       }
     } else {
-      addToast(intl.formatMessage(globalMessages.blacklistError), {
+      addToast(intl.formatMessage(globalMessages.blocklistError), {
         appearance: 'error',
         autoDismiss: true,
       });
@@ -282,7 +264,7 @@ const TitleCard = ({
     { type: 'or' }
   );
 
-  const showHideButton = hasPermission([Permission.MANAGE_BLACKLIST], {
+  const showHideButton = hasPermission([Permission.MANAGE_BLOCKLIST], {
     type: 'or',
   });
 
@@ -299,24 +281,24 @@ const TitleCard = ({
           mediaType === 'movie'
             ? 'movie'
             : mediaType === 'collection'
-            ? 'collection'
-            : 'tv'
+              ? 'collection'
+              : 'tv'
         }
         onComplete={requestComplete}
         onUpdating={requestUpdating}
         onCancel={closeModal}
       />
-      <BlacklistModal
+      <BlocklistModal
         tmdbId={id}
         type={
           mediaType === 'movie'
             ? 'movie'
             : mediaType === 'collection'
-            ? 'collection'
-            : 'tv'
+              ? 'collection'
+              : 'tv'
         }
-        show={showBlacklistModal}
-        onCancel={closeBlacklistModal}
+        show={showBlocklistModal}
+        onCancel={closeBlocklistModal}
         onComplete={onClickHideItemBtn}
         isUpdating={isUpdating}
       />
@@ -352,7 +334,7 @@ const TitleCard = ({
             src={
               image
                 ? `https://image.tmdb.org/t/p/w300_and_h450_face${image}`
-                : `/images/jellyseerr_poster_not_found_logo_top.png`
+                : `/images/seerr_poster_not_found_logo_top.png`
             }
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             fill
@@ -369,11 +351,11 @@ const TitleCard = ({
                 {mediaType === 'movie'
                   ? intl.formatMessage(globalMessages.movie)
                   : mediaType === 'collection'
-                  ? intl.formatMessage(globalMessages.collection)
-                  : intl.formatMessage(globalMessages.tvshow)}
+                    ? intl.formatMessage(globalMessages.collection)
+                    : intl.formatMessage(globalMessages.tvshow)}
               </div>
             </div>
-            {showDetail && currentStatus !== MediaStatus.BLACKLISTED && (
+            {showDetail && currentStatus !== MediaStatus.BLOCKLISTED && (
               <div className="flex flex-col gap-1">
                 {user?.userType !== UserType.PLEX &&
                   (toggleWatchlist ? (
@@ -403,7 +385,7 @@ const TitleCard = ({
                       buttonType={'ghost'}
                       className="z-40"
                       buttonSize={'sm'}
-                      onClick={() => setShowBlacklistModal(true)}
+                      onClick={() => setShowBlocklistModal(true)}
                     >
                       <EyeSlashIcon className={'h-3'} />
                     </Button>
@@ -412,17 +394,17 @@ const TitleCard = ({
             )}
             {showDetail &&
               showHideButton &&
-              currentStatus == MediaStatus.BLACKLISTED && (
+              currentStatus == MediaStatus.BLOCKLISTED && (
                 <Tooltip
                   content={intl.formatMessage(
-                    globalMessages.removefromBlacklist
+                    globalMessages.removefromBlocklist
                   )}
                 >
                   <Button
                     buttonType={'ghost'}
                     className="z-40"
                     buttonSize={'sm'}
-                    onClick={() => onClickShowBlacklistBtn()}
+                    onClick={() => onClickShowBlocklistBtn()}
                   >
                     <EyeIcon className={'h-3'} />
                   </Button>
@@ -471,8 +453,8 @@ const TitleCard = ({
                   mediaType === 'movie'
                     ? `/movie/${id}`
                     : mediaType === 'collection'
-                    ? `/collection/${id}`
-                    : `/tv/${id}`
+                      ? `/collection/${id}`
+                      : `/tv/${id}`
                 }
                 className="absolute inset-0 h-full w-full cursor-pointer overflow-hidden text-left"
                 style={{
@@ -484,7 +466,9 @@ const TitleCard = ({
                   <div
                     className={`px-2 text-white ${
                       !showRequestButton ||
-                      (currentStatus && currentStatus !== MediaStatus.UNKNOWN)
+                      (currentStatus &&
+                        currentStatus !== MediaStatus.UNKNOWN &&
+                        currentStatus !== MediaStatus.DELETED)
                         ? 'pb-2'
                         : 'pb-11'
                     }`}
@@ -510,7 +494,8 @@ const TitleCard = ({
                         WebkitLineClamp:
                           !showRequestButton ||
                           (currentStatus &&
-                            currentStatus !== MediaStatus.UNKNOWN)
+                            currentStatus !== MediaStatus.UNKNOWN &&
+                            currentStatus !== MediaStatus.DELETED)
                             ? 5
                             : 3,
                         display: '-webkit-box',
@@ -527,7 +512,9 @@ const TitleCard = ({
 
               <div className="absolute bottom-0 left-0 right-0 flex justify-between px-2 py-2">
                 {showRequestButton &&
-                  (!currentStatus || currentStatus === MediaStatus.UNKNOWN) && (
+                  (!currentStatus ||
+                    currentStatus === MediaStatus.UNKNOWN ||
+                    currentStatus === MediaStatus.DELETED) && (
                     <Button
                       buttonType="primary"
                       buttonSize="sm"

@@ -1,13 +1,15 @@
+import { DbAwareColumn } from '@server/utils/DbColumnHelper';
 import {
   Column,
-  CreateDateColumn,
   Entity,
   ManyToOne,
   PrimaryGeneratedColumn,
+  Unique,
 } from 'typeorm';
 import { User } from './User';
 
 @Entity()
+@Unique(['endpoint', 'user'])
 export class UserPushSubscription {
   @PrimaryGeneratedColumn()
   public id: number;
@@ -30,7 +32,11 @@ export class UserPushSubscription {
   @Column({ nullable: true })
   public userAgent: string;
 
-  @CreateDateColumn({ nullable: true })
+  @DbAwareColumn({
+    type: 'datetime',
+    default: () => 'CURRENT_TIMESTAMP',
+    nullable: true,
+  })
   public createdAt: Date;
 
   constructor(init?: Partial<UserPushSubscription>) {

@@ -15,6 +15,7 @@ import useSettings from '@app/hooks/useSettings';
 import defineMessages from '@app/utils/defineMessages';
 import { MediaServerType } from '@server/constants/server';
 import type { Library } from '@server/lib/settings';
+import axios from 'axios';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useState } from 'react';
@@ -24,7 +25,7 @@ import useSWR, { mutate } from 'swr';
 import SetupLogin from './SetupLogin';
 
 const messages = defineMessages('components.Setup', {
-  welcome: 'Welcome to Jellyseerr',
+  welcome: 'Welcome to Seerr',
   subtitle: 'Get started by choosing your media server',
   configjellyfin: 'Configure Jellyfin',
   configplex: 'Configure Plex',
@@ -57,27 +58,15 @@ const Setup = () => {
 
   const finishSetup = async () => {
     setIsUpdating(true);
-    const res = await fetch('/api/v1/settings/initialize', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-    if (!res.ok) throw new Error();
-    const data: { initialized: boolean } = await res.json();
+    const response = await axios.post<{ initialized: boolean }>(
+      '/api/v1/settings/initialize'
+    );
 
     setIsUpdating(false);
-    if (data.initialized) {
-      const mainRes = await fetch('/api/v1/settings/main', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ locale }),
-      });
-      if (!mainRes.ok) throw new Error();
-
+    if (response.data.initialized) {
+      await axios.post('/api/v1/settings/main', { locale });
       mutate('/api/v1/settings/public');
+
       router.push('/');
     }
   };
@@ -94,11 +83,9 @@ const Setup = () => {
       const endpoint = endpointMap[mediaServerType];
       if (!endpoint) return;
 
-      const res = await fetch(endpoint);
-      if (!res.ok) throw new Error('Fetch failed');
-      const data = await res.json();
+      const response = await axios.get(endpoint);
 
-      const hasEnabledLibraries = data?.libraries?.some(
+      const hasEnabledLibraries = response.data?.libraries?.some(
         (library: Library) => library.enabled
       );
 
@@ -167,7 +154,7 @@ const Setup = () => {
           ) ?? []
         }
       />
-      <div className="absolute top-4 right-4 z-50">
+      <div className="absolute right-4 top-4 z-50">
         <LanguagePicker />
       </div>
       <div className="relative z-40 px-4 sm:mx-auto sm:w-full sm:max-w-4xl">
@@ -217,7 +204,7 @@ const Setup = () => {
               </div>
               <div className="grid grid-cols-3">
                 <div className="flex flex-col divide-y divide-gray-600 rounded-l border border-gray-600 py-2">
-                  <div className="mb-2 flex flex-1 items-center justify-center py-2 px-2">
+                  <div className="mb-2 flex flex-1 items-center justify-center px-2 py-2">
                     <JellyfinLogo className="h-10" />
                   </div>
                   <div className="px-2 pt-2">
@@ -233,7 +220,7 @@ const Setup = () => {
                   </div>
                 </div>
                 <div className="flex flex-col divide-y divide-gray-600 border-y border-gray-600 py-2">
-                  <div className="mb-2 flex flex-1 items-center justify-center py-2 px-2">
+                  <div className="mb-2 flex flex-1 items-center justify-center px-2 py-2">
                     <PlexLogo className="h-8" />
                   </div>
                   <div className="px-2 pt-2">
@@ -249,7 +236,7 @@ const Setup = () => {
                   </div>
                 </div>
                 <div className="flex flex-col divide-y divide-gray-600 rounded-r border border-gray-600 py-2">
-                  <div className="mb-2 flex flex-1 items-center justify-center py-2 px-2">
+                  <div className="mb-2 flex flex-1 items-center justify-center px-2 py-2">
                     <EmbyLogo className="h-9" />
                   </div>
                   <div className="px-2 pt-2">

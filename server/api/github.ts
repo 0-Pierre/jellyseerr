@@ -1,6 +1,6 @@
-import ExternalAPI from '@server/api/externalapi';
 import cacheManager from '@server/lib/cache';
 import logger from '@server/logger';
+import ExternalAPI from './externalapi';
 
 interface GitHubRelease {
   url: string;
@@ -57,7 +57,7 @@ interface GithubCommit {
       sha: string;
       url: string;
       html_url: string;
-    }
+    },
   ];
 }
 
@@ -67,35 +67,41 @@ class GithubAPI extends ExternalAPI {
       'https://api.github.com',
       {},
       {
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
         nodeCache: cacheManager.getCache('github').data,
       }
     );
   }
 
-  public async getJellyseerrReleases({
+  public async getSeerrReleases({
     take = 20,
   }: {
     take?: number;
   } = {}): Promise<GitHubRelease[]> {
     try {
       const data = await this.get<GitHubRelease[]>(
-        '/repos/fallenbagel/jellyseerr/releases',
+        '/repos/seerr-team/seerr/releases',
         {
-          per_page: take.toString(),
+          params: {
+            per_page: take,
+          },
         }
       );
 
       return data;
     } catch (e) {
       logger.warn(
-        "Failed to retrieve GitHub releases. This may be an issue on GitHub's end. Jellyseerr can't check if it's on the latest version.",
+        "Failed to retrieve GitHub releases. This may be an issue on GitHub's end. Seerr can't check if it's on the latest version.",
         { label: 'GitHub API', errorMessage: e.message }
       );
       return [];
     }
   }
 
-  public async getJellyseerrCommits({
+  public async getSeerrCommits({
     take = 20,
     branch = 'develop',
   }: {
@@ -104,17 +110,19 @@ class GithubAPI extends ExternalAPI {
   } = {}): Promise<GithubCommit[]> {
     try {
       const data = await this.get<GithubCommit[]>(
-        '/repos/fallenbagel/jellyseerr/commits',
+        '/repos/seerr-team/seerr/commits',
         {
-          per_page: take.toString(),
-          branch,
+          params: {
+            per_page: take,
+            branch,
+          },
         }
       );
 
       return data;
     } catch (e) {
       logger.warn(
-        "Failed to retrieve GitHub commits. This may be an issue on GitHub's end. Jellyseerr can't check if it's on the latest version.",
+        "Failed to retrieve GitHub commits. This may be an issue on GitHub's end. Seerr can't check if it's on the latest version.",
         { label: 'GitHub API', errorMessage: e.message }
       );
       return [];

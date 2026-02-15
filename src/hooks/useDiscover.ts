@@ -1,6 +1,7 @@
 import { MediaStatus } from '@server/constants/media';
 import useSWRInfinite from 'swr/infinite';
 import useSettings from './useSettings';
+import { Permission, useUser } from './useUser';
 
 export interface BaseSearchResult<T> {
   page: number;
@@ -49,13 +50,14 @@ export const encodeURIExtraParams = (string: string): string => {
 const useDiscover = <
   T extends BaseMedia,
   S = Record<string, never>,
-  O = Record<string, unknown>
+  O = Record<string, unknown>,
 >(
   endpoint: string,
   options?: O,
-  { hideAvailable = true } = {}
+  { hideAvailable = true, hideBlocklisted = true } = {}
 ): DiscoverResult<T, S> => {
   const settings = useSettings();
+  const { hasPermission } = useUser();
   const { data, error, size, setSize, isValidating, mutate } = useSWRInfinite<
     BaseSearchResult<T> & S
   >(
@@ -81,6 +83,8 @@ const useDiscover = <
     {
       initialSize: 3,
       revalidateFirstPage: false,
+      dedupingInterval: 30000,
+      revalidateOnFocus: false,
     }
   );
 
@@ -120,10 +124,23 @@ const useDiscover = <
     );
   }
 
+  if (
+    settings.currentSettings.hideBlocklisted &&
+    hideBlocklisted &&
+    hasPermission(Permission.MANAGE_BLOCKLIST)
+  ) {
+    titles = titles.filter(
+      (i) =>
+        (i.mediaType === 'movie' || i.mediaType === 'tv') &&
+        i.mediaInfo?.status !== MediaStatus.BLOCKLISTED
+    );
+  }
+
   const isEmpty = !isLoadingInitialData && titles?.length === 0;
   const isReachingEnd =
     isEmpty ||
     (!!data && (data[data?.length - 1]?.results.length ?? 0) < 20) ||
+    (!!data && (data[data?.length - 1]?.totalResults ?? 0) <= size * 20) ||
     (!!data && (data[data?.length - 1]?.totalResults ?? 0) < 41);
 
   return {

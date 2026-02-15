@@ -2,8 +2,10 @@ import Modal from '@app/components/Common/Modal';
 import useSettings from '@app/hooks/useSettings';
 import defineMessages from '@app/utils/defineMessages';
 import { Transition } from '@headlessui/react';
+import axios from 'axios';
 import { Field, Formik } from 'formik';
 import { useIntl } from 'react-intl';
+import validator from 'validator';
 import * as Yup from 'yup';
 
 const messages = defineMessages('components.Login', {
@@ -35,7 +37,11 @@ const AddEmailModal: React.FC<AddEmailModalProps> = ({
 
   const EmailSettingsSchema = Yup.object().shape({
     email: Yup.string()
-      .email(intl.formatMessage(messages.validationEmailFormat))
+      .test(
+        'email',
+        intl.formatMessage(messages.validationEmailFormat),
+        (value) => !value || validator.isEmail(value, { require_tld: false })
+      )
       .required(intl.formatMessage(messages.validationEmailRequired)),
   });
 
@@ -57,18 +63,11 @@ const AddEmailModal: React.FC<AddEmailModalProps> = ({
         validationSchema={EmailSettingsSchema}
         onSubmit={async (values) => {
           try {
-            const res = await fetch('/api/v1/auth/jellyfin', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                username: username,
-                password: password,
-                email: values.email,
-              }),
+            await axios.post('/api/v1/auth/jellyfin', {
+              username: username,
+              password: password,
+              email: values.email,
             });
-            if (!res.ok) throw new Error();
 
             onSave();
           } catch (e) {
@@ -96,7 +95,7 @@ const AddEmailModal: React.FC<AddEmailModalProps> = ({
               <label htmlFor="email" className="text-label">
                 {intl.formatMessage(messages.email)}
               </label>
-              <div className="mt-1 mb-2 sm:col-span-2 sm:mt-0">
+              <div className="mb-2 mt-1 sm:col-span-2 sm:mt-0">
                 <div className="flex rounded-md shadow-sm">
                   <Field
                     id="email"

@@ -8,7 +8,7 @@ import {
 import { getRepository } from '@server/datasource';
 import Media from '@server/entity/Media';
 import {
-  BlacklistedMediaError,
+  BlocklistedMediaError,
   DuplicateMediaRequestError,
   MediaRequest,
   NoSeasonsAvailableError,
@@ -38,13 +38,13 @@ requestRoutes.get<Record<string, unknown>, RequestResultsResponse>(
       const requestedBy = req.query.requestedBy
         ? Number(req.query.requestedBy)
         : null;
+      const mediaType = (req.query.mediaType as MediaType | 'all') || 'all';
 
       let statusFilter: MediaRequestStatus[];
 
       switch (req.query.filter) {
         case 'approved':
         case 'processing':
-        case 'available':
           statusFilter = [MediaRequestStatus.APPROVED];
           break;
         case 'pending':
@@ -59,12 +59,18 @@ requestRoutes.get<Record<string, unknown>, RequestResultsResponse>(
         case 'failed':
           statusFilter = [MediaRequestStatus.FAILED];
           break;
+        case 'completed':
+        case 'available':
+        case 'deleted':
+          statusFilter = [MediaRequestStatus.COMPLETED];
+          break;
         default:
           statusFilter = [
             MediaRequestStatus.PENDING,
             MediaRequestStatus.APPROVED,
             MediaRequestStatus.DECLINED,
             MediaRequestStatus.FAILED,
+            MediaRequestStatus.COMPLETED,
           ];
       }
 
@@ -83,6 +89,9 @@ requestRoutes.get<Record<string, unknown>, RequestResultsResponse>(
             MediaStatus.PARTIALLY_AVAILABLE,
           ];
           break;
+        case 'deleted':
+          mediaStatusFilter = [MediaStatus.DELETED];
+          break;
         default:
           mediaStatusFilter = [
             MediaStatus.UNKNOWN,
@@ -90,6 +99,7 @@ requestRoutes.get<Record<string, unknown>, RequestResultsResponse>(
             MediaStatus.PROCESSING,
             MediaStatus.PARTIALLY_AVAILABLE,
             MediaStatus.AVAILABLE,
+            MediaStatus.DELETED,
           ];
       }
 
@@ -148,6 +158,21 @@ requestRoutes.get<Record<string, unknown>, RequestResultsResponse>(
         query = query.andWhere('requestedBy.id = :id', {
           id: requestedBy,
         });
+      }
+
+      switch (mediaType) {
+        case 'all':
+          break;
+        case 'movie':
+          query = query.andWhere('request.type = :type', {
+            type: MediaType.MOVIE,
+          });
+          break;
+        case 'tv':
+          query = query.andWhere('request.type = :type', {
+            type: MediaType.TV,
+          });
+          break;
       }
 
       const [requests, requestCount] = await query
@@ -250,6 +275,24 @@ requestRoutes.get<Record<string, unknown>, RequestResultsResponse>(
           page: Math.ceil(skip / pageSize) + 1,
         },
         results: mappedRequests,
+        serviceErrors: {
+          radarr: radarrServers
+            .filter((s) => !s.profiles)
+            .map((s) => ({
+              id: s.id,
+              name:
+                settings.radarr.find((r) => r.id === s.id)?.name ||
+                `Radarr ${s.id}`,
+            })),
+          sonarr: sonarrServers
+            .filter((s) => !s.profiles)
+            .map((s) => ({
+              id: s.id,
+              name:
+                settings.sonarr.find((r) => r.id === s.id)?.name ||
+                `Sonarr ${s.id}`,
+            })),
+        },
       });
     } catch (e) {
       next({ status: 500, message: e.message });
@@ -283,7 +326,7 @@ requestRoutes.post<never, MediaRequest, MediaRequestBody>(
           return next({ status: 409, message: error.message });
         case NoSeasonsAvailableError:
           return next({ status: 202, message: error.message });
-        case BlacklistedMediaError:
+        case BlocklistedMediaError:
           return next({ status: 403, message: error.message });
         default:
           return next({ status: 500, message: error.message });
@@ -298,7 +341,7 @@ requestRoutes.get('/count', async (_req, res, next) => {
   try {
     const query = requestRepository
       .createQueryBuilder('request')
-      .leftJoinAndSelect('request.media', 'media');
+      .innerJoinAndSelect('request.media', 'media');
 
     const totalCount = await query.getCount();
 
@@ -356,6 +399,12 @@ requestRoutes.get('/count', async (_req, res, next) => {
       )
       .getCount();
 
+    const completedCount = await query
+      .where('request.status = :requestStatus', {
+        requestStatus: MediaRequestStatus.COMPLETED,
+      })
+      .getCount();
+
     return res.status(200).json({
       total: totalCount,
       movie: movieCount,
@@ -365,6 +414,7 @@ requestRoutes.get('/count', async (_req, res, next) => {
       declined: declinedCount,
       processing: processingCount,
       available: availableCount,
+      completed: completedCount,
     });
   } catch (e) {
     logger.error('Something went wrong retrieving request counts', {
@@ -492,7 +542,8 @@ requestRoutes.put<{ requestId: string }>(
             (r) =>
               r.is4k === request.is4k &&
               r.id !== request.id &&
-              r.status !== MediaRequestStatus.DECLINED
+              r.status !== MediaRequestStatus.DECLINED &&
+              r.status !== MediaRequestStatus.COMPLETED
           )
           .reduce((seasons, r) => {
             const combinedSeasons = r.seasons.map(

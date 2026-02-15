@@ -74,6 +74,14 @@ const MediaSlider = ({
     );
   }
 
+  if (settings.currentSettings.hideBlocklisted) {
+    titles = titles.filter(
+      (i) =>
+        (i.mediaType === 'movie' || i.mediaType === 'tv') &&
+        i.mediaInfo?.status !== MediaStatus.BLOCKLISTED
+    );
+  }
+
   useEffect(() => {
     if (
       titles.length < 24 &&
@@ -94,18 +102,18 @@ const MediaSlider = ({
     return null;
   }
 
-  const blacklistVisibility = hasPermission(
-    [Permission.MANAGE_BLACKLIST, Permission.VIEW_BLACKLIST],
+  const blocklistVisibility = hasPermission(
+    [Permission.MANAGE_BLOCKLIST, Permission.VIEW_BLOCKLIST],
     { type: 'or' }
   );
 
   const finalTitles = titles
     .slice(0, 20)
     .filter((title) => {
-      if (!blacklistVisibility)
+      if (!blocklistVisibility)
         return (
           (title as TvResult | MovieResult).mediaInfo?.status !==
-          MediaStatus.BLACKLISTED
+          MediaStatus.BLOCKLISTED
         );
       return title;
     })

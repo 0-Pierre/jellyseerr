@@ -5,6 +5,7 @@ import LanguagePicker from '@app/components/Layout/LanguagePicker';
 import globalMessages from '@app/i18n/globalMessages';
 import defineMessages from '@app/utils/defineMessages';
 import { LifebuoyIcon } from '@heroicons/react/24/outline';
+import axios from 'axios';
 import { Form, Formik } from 'formik';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -61,7 +62,7 @@ const ResetPassword = () => {
           '/images/rotate6.jpg',
         ]}
       />
-      <div className="absolute top-4 right-4 z-50">
+      <div className="absolute right-4 top-4 z-50">
         <LanguagePicker />
       </div>
       <div className="relative z-40 mt-10 flex flex-col items-center px-4 sm:mx-auto sm:w-full sm:max-w-md">
@@ -99,21 +100,14 @@ const ResetPassword = () => {
                 }}
                 validationSchema={ResetSchema}
                 onSubmit={async (values) => {
-                  const res = await fetch(
+                  const response = await axios.post(
                     `/api/v1/auth/reset-password/${guid}`,
                     {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({
-                        password: values.password,
-                      }),
+                      password: values.password,
                     }
                   );
-                  if (!res.ok) throw new Error();
 
-                  if (res.status === 200) {
+                  if (response.status === 200) {
                     setSubmitted(true);
                   }
                 }}
@@ -128,7 +122,7 @@ const ResetPassword = () => {
                         >
                           {intl.formatMessage(messages.password)}
                         </label>
-                        <div className="mt-1 mb-2 sm:col-span-2 sm:mt-0">
+                        <div className="mb-2 mt-1 sm:col-span-2 sm:mt-0">
                           <div className="form-input-field">
                             <SensitiveInput
                               as="field"
@@ -151,7 +145,7 @@ const ResetPassword = () => {
                         >
                           {intl.formatMessage(messages.confirmpassword)}
                         </label>
-                        <div className="mt-1 mb-2 sm:col-span-2 sm:mt-0">
+                        <div className="mb-2 mt-1 sm:col-span-2 sm:mt-0">
                           <div className="form-input-field">
                             <SensitiveInput
                               as="field"

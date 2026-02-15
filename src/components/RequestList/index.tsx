@@ -5,15 +5,17 @@ import PageTitle from '@app/components/Common/PageTitle';
 import Tooltip from '@app/components/Common/Tooltip';
 import RequestItem from '@app/components/RequestList/RequestItem';
 import { useUpdateQueryParams } from '@app/hooks/useUpdateQueryParams';
-import { useUser } from '@app/hooks/useUser';
+import { Permission, useUser } from '@app/hooks/useUser';
 import globalMessages from '@app/i18n/globalMessages';
 import defineMessages from '@app/utils/defineMessages';
+import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import {
   ArrowDownIcon,
   ArrowUpIcon,
   Bars3BottomLeftIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  CircleStackIcon,
   FunnelIcon,
 } from '@heroicons/react/24/solid';
 import type { RequestResultsResponse } from '@server/interfaces/api/requestInterfaces';
@@ -29,6 +31,8 @@ const messages = defineMessages('components.RequestList', {
   sortAdded: 'Most Recent',
   sortModified: 'Last Modified',
   sortDirection: 'Toggle Sort Direction',
+  unableToConnect:
+    'Unable to connect to {services}. Some information may be unavailable.',
 });
 
 enum Filter {
@@ -39,11 +43,15 @@ enum Filter {
   AVAILABLE = 'available',
   UNAVAILABLE = 'unavailable',
   FAILED = 'failed',
+  DELETED = 'deleted',
+  COMPLETED = 'completed',
 }
 
 type Sort = 'added' | 'modified';
 
 type SortDirection = 'asc' | 'desc';
+
+type MediaType = 'all' | 'movie' | 'tv';
 
 const RequestList = () => {
   const router = useRouter();
@@ -51,9 +59,10 @@ const RequestList = () => {
   const { user } = useUser({
     id: Number(router.query.userId),
   });
-  const { user: currentUser } = useUser();
+  const { user: currentUser, hasPermission } = useUser();
   const [currentFilter, setCurrentFilter] = useState<Filter>(Filter.PENDING);
   const [currentSort, setCurrentSort] = useState<Sort>('added');
+  const [currentMediaType, setCurrentMediaType] = useState<string>('all');
   const [currentSortDirection, setCurrentSortDirection] =
     useState<SortDirection>('desc');
   const [currentPageSize, setCurrentPageSize] = useState<number>(10);
@@ -69,12 +78,12 @@ const RequestList = () => {
   } = useSWR<RequestResultsResponse>(
     `/api/v1/request?take=${currentPageSize}&skip=${
       pageIndex * currentPageSize
-    }&filter=${currentFilter}&sort=${currentSort}&sortDirection=${currentSortDirection}${
+    }&filter=${currentFilter}&mediaType=${currentMediaType}&sort=${currentSort}&sortDirection=${currentSortDirection}${
       router.pathname.startsWith('/profile')
         ? `&requestedBy=${currentUser?.id}`
         : router.query.userId
-        ? `&requestedBy=${router.query.userId}`
-        : ''
+          ? `&requestedBy=${router.query.userId}`
+          : ''
     }`
   );
 
@@ -105,12 +114,19 @@ const RequestList = () => {
       'rl-filter-settings',
       JSON.stringify({
         currentFilter,
+        currentMediaType,
         currentSort,
         currentSortDirection,
         currentPageSize,
       })
     );
-  }, [currentFilter, currentSort, currentSortDirection, currentPageSize]);
+  }, [
+    currentFilter,
+    currentMediaType,
+    currentSort,
+    currentSortDirection,
+    currentPageSize,
+  ]);
 
   if (!data && !error) {
     return <LoadingSpinner />;
@@ -152,6 +168,36 @@ const RequestList = () => {
         <div className="mt-2 flex flex-grow flex-col sm:flex-row lg:flex-grow-0">
           <div className="mb-2 flex flex-grow sm:mb-0 sm:mr-2 lg:flex-grow-0">
             <span className="inline-flex cursor-default items-center rounded-l-md border border-r-0 border-gray-500 bg-gray-800 px-3 text-sm text-gray-100">
+              <CircleStackIcon className="h-6 w-6" />
+            </span>
+            <select
+              id="mediaType"
+              name="mediaType"
+              onChange={(e) => {
+                setCurrentMediaType(e.target.value as MediaType);
+                router.push({
+                  pathname: router.pathname,
+                  query: router.query.userId
+                    ? { userId: router.query.userId }
+                    : {},
+                });
+              }}
+              value={currentMediaType}
+              className="rounded-r-only"
+            >
+              <option value="all">
+                {intl.formatMessage(globalMessages.all)}
+              </option>
+              <option value="movie">
+                {intl.formatMessage(globalMessages.movies)}
+              </option>
+              <option value="tv">
+                {intl.formatMessage(globalMessages.tvshows)}
+              </option>
+            </select>
+          </div>
+          <div className="mb-2 flex flex-grow sm:mb-0 sm:mr-2 lg:flex-grow-0">
+            <span className="inline-flex cursor-default items-center rounded-l-md border border-r-0 border-gray-500 bg-gray-800 px-3 text-sm text-gray-100">
               <FunnelIcon className="h-6 w-6" />
             </span>
             <select
@@ -178,6 +224,9 @@ const RequestList = () => {
               <option value="approved">
                 {intl.formatMessage(globalMessages.approved)}
               </option>
+              <option value="completed">
+                {intl.formatMessage(globalMessages.completed)}
+              </option>
               <option value="processing">
                 {intl.formatMessage(globalMessages.processing)}
               </option>
@@ -189,6 +238,9 @@ const RequestList = () => {
               </option>
               <option value="unavailable">
                 {intl.formatMessage(globalMessages.unavailable)}
+              </option>
+              <option value="deleted">
+                {intl.formatMessage(globalMessages.deleted)}
               </option>
             </select>
           </div>
@@ -239,6 +291,25 @@ const RequestList = () => {
           </div>
         </div>
       </div>
+
+      {data.serviceErrors &&
+        (data.serviceErrors.radarr.length > 0 ||
+          data.serviceErrors.sonarr.length > 0) &&
+        (hasPermission(Permission.MANAGE_REQUESTS) ||
+          hasPermission(Permission.REQUEST_ADVANCED)) && (
+          <div className="service-error-banner">
+            <ExclamationTriangleIcon className="h-5 w-5 flex-shrink-0" />
+            <span>
+              {intl.formatMessage(messages.unableToConnect, {
+                services: [
+                  ...data.serviceErrors.radarr.map((s) => s.name),
+                  ...data.serviceErrors.sonarr.map((s) => s.name),
+                ].join(', '),
+              })}
+            </span>
+          </div>
+        )}
+
       {data.results.map((request) => {
         return (
           <div className="py-2" key={`request-list-${request.id}`}>
@@ -255,11 +326,15 @@ const RequestList = () => {
           <span className="text-2xl text-gray-400">
             {intl.formatMessage(globalMessages.noresults)}
           </span>
-          {currentFilter !== Filter.ALL && (
+          {(currentFilter !== Filter.ALL ||
+            currentMediaType !== Filter.ALL) && (
             <div className="mt-4">
               <Button
                 buttonType="primary"
-                onClick={() => setCurrentFilter(Filter.ALL)}
+                onClick={() => {
+                  setCurrentFilter(Filter.ALL);
+                  setCurrentMediaType(Filter.ALL);
+                }}
               >
                 {intl.formatMessage(messages.showallrequests)}
               </Button>

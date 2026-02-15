@@ -5,9 +5,10 @@ import { Watchlist } from '@server/entity/Watchlist';
 import type { QuotaResponse } from '@server/interfaces/api/userInterfaces';
 import PreparedEmail from '@server/lib/email';
 import type { PermissionCheckOptions } from '@server/lib/permissions';
-import { hasPermission, Permission } from '@server/lib/permissions';
+import { Permission, hasPermission } from '@server/lib/permissions';
 import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
+import { DbAwareColumn } from '@server/utils/DbColumnHelper';
 import { AfterDate } from '@server/utils/dateHelpers';
 import bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
@@ -17,14 +18,12 @@ import { default as generatePassword } from 'secure-random-password';
 import {
   AfterLoad,
   Column,
-  CreateDateColumn,
   Entity,
   Not,
   OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
   RelationCount,
-  UpdateDateColumn,
 } from 'typeorm';
 import Issue from './Issue';
 import { MediaRequest } from './MediaRequest';
@@ -151,10 +150,14 @@ export class User {
   @OneToMany(() => Issue, (issue) => issue.createdBy, { cascade: true })
   public createdIssues: Issue[];
 
-  @CreateDateColumn()
+  @DbAwareColumn({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   public createdAt: Date;
 
-  @UpdateDateColumn()
+  @DbAwareColumn({
+    type: 'datetime',
+    default: () => 'CURRENT_TIMESTAMP',
+    onUpdate: 'CURRENT_TIMESTAMP',
+  })
   public updatedAt: Date;
 
   public warnings: string[] = [];
@@ -310,7 +313,7 @@ export class User {
     });
 
     const movieQuotaLimit = !canBypass
-      ? this.movieQuotaLimit ?? defaultQuotas.movie.quotaLimit
+      ? (this.movieQuotaLimit ?? defaultQuotas.movie.quotaLimit)
       : 0;
     const movieQuotaDays = this.movieQuotaDays ?? defaultQuotas.movie.quotaDays;
 
@@ -334,7 +337,7 @@ export class User {
       : 0;
 
     const tvQuotaLimit = !canBypass
-      ? this.tvQuotaLimit ?? defaultQuotas.tv.quotaLimit
+      ? (this.tvQuotaLimit ?? defaultQuotas.tv.quotaLimit)
       : 0;
     const tvQuotaDays = this.tvQuotaDays ?? defaultQuotas.tv.quotaDays;
 

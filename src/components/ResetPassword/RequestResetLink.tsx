@@ -4,11 +4,13 @@ import PageTitle from '@app/components/Common/PageTitle';
 import LanguagePicker from '@app/components/Layout/LanguagePicker';
 import defineMessages from '@app/utils/defineMessages';
 import { ArrowLeftIcon, EnvelopeIcon } from '@heroicons/react/24/solid';
+import axios from 'axios';
 import { Field, Form, Formik } from 'formik';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useIntl } from 'react-intl';
+import validator from 'validator';
 import * as Yup from 'yup';
 
 const messages = defineMessages('components.ResetPassword', {
@@ -28,7 +30,11 @@ const ResetPassword = () => {
 
   const ResetSchema = Yup.object().shape({
     email: Yup.string()
-      .email(intl.formatMessage(messages.validationemailrequired))
+      .test(
+        'email',
+        intl.formatMessage(messages.validationemailrequired),
+        (value) => !value || validator.isEmail(value, { require_tld: false })
+      )
       .required(intl.formatMessage(messages.validationemailrequired)),
   });
 
@@ -46,7 +52,7 @@ const ResetPassword = () => {
           '/images/rotate6.jpg',
         ]}
       />
-      <div className="absolute top-4 right-4 z-50">
+      <div className="absolute right-4 top-4 z-50">
         <LanguagePicker />
       </div>
       <div className="relative z-40 mt-10 flex flex-col items-center px-4 sm:mx-auto sm:w-full sm:max-w-md">
@@ -84,18 +90,14 @@ const ResetPassword = () => {
                 }}
                 validationSchema={ResetSchema}
                 onSubmit={async (values) => {
-                  const res = await fetch(`/api/v1/auth/reset-password`, {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
+                  const response = await axios.post(
+                    `/api/v1/auth/reset-password`,
+                    {
                       email: values.email,
-                    }),
-                  });
-                  if (!res.ok) throw new Error();
+                    }
+                  );
 
-                  if (res.status === 200) {
+                  if (response.status === 200) {
                     setSubmitted(true);
                   }
                 }}
@@ -110,7 +112,7 @@ const ResetPassword = () => {
                         >
                           {intl.formatMessage(messages.email)}
                         </label>
-                        <div className="mt-1 mb-2 sm:col-span-2 sm:mt-0">
+                        <div className="mb-2 mt-1 sm:col-span-2 sm:mt-0">
                           <div className="form-input-field">
                             <Field
                               id="email"

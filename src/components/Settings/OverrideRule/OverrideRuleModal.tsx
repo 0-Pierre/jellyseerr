@@ -11,11 +11,8 @@ import globalMessages from '@app/i18n/globalMessages';
 import defineMessages from '@app/utils/defineMessages';
 import { Transition } from '@headlessui/react';
 import type OverrideRule from '@server/entity/OverrideRule';
-import type {
-  DVRSettings,
-  RadarrSettings,
-  SonarrSettings,
-} from '@server/lib/settings';
+import type { RadarrSettings, SonarrSettings } from '@server/lib/settings';
+import axios from 'axios';
 import { Field, Formik } from 'formik';
 import { useCallback, useEffect, useState } from 'react';
 import { useIntl } from 'react-intl';
@@ -80,39 +77,37 @@ const OverrideRuleModal = ({
   });
 
   const getServiceInfos = useCallback(
-    async ({
-      hostname,
-      port,
-      apiKey,
-      baseUrl,
-      useSsl = false,
-    }: {
-      hostname: string;
-      port: number;
-      apiKey: string;
-      baseUrl?: string;
-      useSsl?: boolean;
-    }) => {
+    async (
+      {
+        hostname,
+        port,
+        apiKey,
+        baseUrl,
+        useSsl = false,
+      }: {
+        hostname: string;
+        port: number;
+        apiKey: string;
+        baseUrl?: string;
+        useSsl?: boolean;
+      },
+      type: 'radarr' | 'sonarr'
+    ) => {
       setIsTesting(true);
       try {
-        const res = await fetch('/api/v1/settings/sonarr/test', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
+        const response = await axios.post<DVRTestResponse>(
+          `/api/v1/settings/${type}/test`,
+          {
             hostname,
             apiKey,
             port: Number(port),
             baseUrl,
             useSsl,
-          }),
-        });
-        if (!res.ok) throw new Error();
-        const data: DVRTestResponse = await res.json();
+          }
+        );
 
         setIsValidated(true);
-        setTestResponse(data);
+        setTestResponse(response.data);
       } catch (e) {
         setIsValidated(false);
       } finally {
@@ -123,15 +118,19 @@ const OverrideRuleModal = ({
   );
 
   useEffect(() => {
-    let service: DVRSettings | null = null;
-    if (rule?.radarrServiceId !== null && rule?.radarrServiceId !== undefined) {
-      service = radarrServices[rule?.radarrServiceId] || null;
+    if (
+      rule?.radarrServiceId !== null &&
+      rule?.radarrServiceId !== undefined &&
+      radarrServices[rule?.radarrServiceId]
+    ) {
+      getServiceInfos(radarrServices[rule?.radarrServiceId], 'radarr');
     }
-    if (rule?.sonarrServiceId !== null && rule?.sonarrServiceId !== undefined) {
-      service = sonarrServices[rule?.sonarrServiceId] || null;
-    }
-    if (service) {
-      getServiceInfos(service);
+    if (
+      rule?.sonarrServiceId !== null &&
+      rule?.sonarrServiceId !== undefined &&
+      sonarrServices[rule?.sonarrServiceId]
+    ) {
+      getServiceInfos(sonarrServices[rule?.sonarrServiceId], 'sonarr');
     }
   }, [
     getServiceInfos,
@@ -179,27 +178,13 @@ const OverrideRuleModal = ({
               sonarrServiceId: values.sonarrServiceId,
             };
             if (!rule) {
-              const res = await fetch('/api/v1/overrideRule', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(submission),
-              });
-              if (!res.ok) throw new Error();
+              await axios.post('/api/v1/overrideRule', submission);
               addToast(intl.formatMessage(messages.ruleCreated), {
                 appearance: 'success',
                 autoDismiss: true,
               });
             } else {
-              const res = await fetch(`/api/v1/overrideRule/${rule.id}`, {
-                method: 'PUT',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(submission),
-              });
-              if (!res.ok) throw new Error();
+              await axios.put(`/api/v1/overrideRule/${rule.id}`, submission);
               addToast(intl.formatMessage(messages.ruleUpdated), {
                 appearance: 'success',
                 autoDismiss: true,
@@ -228,8 +213,8 @@ const OverrideRuleModal = ({
                 isSubmitting
                   ? intl.formatMessage(globalMessages.saving)
                   : rule
-                  ? intl.formatMessage(globalMessages.save)
-                  : intl.formatMessage(messages.create)
+                    ? intl.formatMessage(globalMessages.save)
+                    : intl.formatMessage(messages.create)
               }
               okDisabled={
                 isSubmitting ||
@@ -274,13 +259,13 @@ const OverrideRuleModal = ({
                             setFieldValue('radarrServiceId', id);
                             setFieldValue('sonarrServiceId', null);
                             if (radarrServices[id]) {
-                              getServiceInfos(radarrServices[id]);
+                              getServiceInfos(radarrServices[id], 'radarr');
                             }
                           } else if (e.target.value.startsWith('sonarr-')) {
                             setFieldValue('radarrServiceId', null);
                             setFieldValue('sonarrServiceId', id);
                             if (sonarrServices[id]) {
-                              getServiceInfos(sonarrServices[id]);
+                              getServiceInfos(sonarrServices[id], 'sonarr');
                             }
                           } else {
                             setFieldValue('radarrServiceId', null);
@@ -355,7 +340,13 @@ const OverrideRuleModal = ({
                   <div className="form-input-area">
                     <div className="form-input-field">
                       <GenreSelector
-                        type={values.radarrServiceId ? 'movie' : 'tv'}
+                        type={
+                          values.radarrServiceId != null
+                            ? 'movie'
+                            : values.sonarrServiceId != null
+                              ? 'tv'
+                              : 'tv'
+                        }
                         defaultValue={values.genre}
                         isMulti
                         isDisabled={!isValidated || isTesting}

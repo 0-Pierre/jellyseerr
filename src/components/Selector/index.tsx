@@ -12,14 +12,14 @@ import type {
   TmdbGenre,
   TmdbKeywordSearchResponse,
 } from '@server/api/themoviedb/interfaces';
-import type { GenreSliderItem } from '@server/interfaces/api/discoverInterfaces';
 import type { UserResultsResponse } from '@server/interfaces/api/userInterfaces';
 import type {
   Keyword,
   ProductionCompany,
   WatchProviderDetails,
 } from '@server/models/common';
-import { orderBy } from 'lodash';
+import axios from 'axios';
+import orderBy from 'lodash/orderBy';
 import { useEffect, useMemo, useState } from 'react';
 import { useIntl } from 'react-intl';
 import type { MultiValue, SingleValue } from 'react-select';
@@ -80,9 +80,11 @@ export const CompanySelector = ({
         return;
       }
 
-      const res = await fetch(`/api/v1/studio/${defaultValue}`);
-      if (!res.ok) throw new Error();
-      const studio: ProductionCompany = await res.json();
+      const response = await axios.get<ProductionCompany>(
+        `/api/v1/studio/${defaultValue}`
+      );
+
+      const studio = response.data;
 
       setDefaultDataValue([
         {
@@ -100,15 +102,16 @@ export const CompanySelector = ({
       return [];
     }
 
-    const res = await fetch(
-      `/api/v1/search/company?query=${encodeURIExtraParams(inputValue)}`
+    const results = await axios.get<TmdbCompanySearchResponse>(
+      '/api/v1/search/company',
+      {
+        params: {
+          query: encodeURIExtraParams(inputValue),
+        },
+      }
     );
-    if (!res.ok) {
-      throw new Error('Network response was not ok');
-    }
-    const results: TmdbCompanySearchResponse = await res.json();
 
-    return results.results.map((result) => ({
+    return results.data.results.map((result) => ({
       label: result.name,
       value: result.id,
     }));
@@ -164,15 +167,11 @@ export const GenreSelector = ({
 
       const genres = defaultValue.split(',');
 
-      const res = await fetch(`/api/v1/genres/${type}`);
-      if (!res.ok) {
-        throw new Error('Network response was not ok');
-      }
-      const response: TmdbGenre[] = await res.json();
+      const response = await axios.get<TmdbGenre[]>(`/api/v1/genres/${type}`);
 
       const genreData = genres
-        .filter((genre) => response.find((gd) => gd.id === Number(genre)))
-        .map((g) => response.find((gd) => gd.id === Number(g)))
+        .filter((genre) => response.data.find((gd) => gd.id === Number(genre)))
+        .map((g) => response.data.find((gd) => gd.id === Number(g)))
         .map((g) => ({
           label: g?.name ?? '',
           value: g?.id ?? 0,
@@ -185,11 +184,9 @@ export const GenreSelector = ({
   }, [defaultValue, type]);
 
   const loadGenreOptions = async (inputValue: string) => {
-    const res = await fetch(`/api/v1/discover/genreslider/${type}`);
-    if (!res.ok) throw new Error();
-    const results: GenreSliderItem[] = await res.json();
+    const results = await axios.get<TmdbGenre[]>(`/api/v1/genres/${type}`);
 
-    return results
+    return results.data
       .map((result) => ({
         label: result.name,
         value: result.id,
@@ -201,7 +198,7 @@ export const GenreSelector = ({
 
   return (
     <AsyncSelect
-      key={`genre-select-${defaultDataValue}`}
+      key={`genre-select-${type}-${defaultDataValue}`}
       className="react-select-container"
       classNamePrefix="react-select"
       defaultValue={isMulti ? defaultDataValue : defaultDataValue?.[0]}
@@ -309,18 +306,19 @@ export const KeywordSelector = ({
 
       const keywords = await Promise.all(
         defaultValue.split(',').map(async (keywordId) => {
-          const res = await fetch(`/api/v1/keyword/${keywordId}`);
-          if (!res.ok) {
-            throw new Error('Network response was not ok');
-          }
-          const keyword: Keyword = await res.json();
-
-          return keyword;
+          const keyword = await axios.get<Keyword | null>(
+            `/api/v1/keyword/${keywordId}`
+          );
+          return keyword.data;
         })
       );
 
+      const validKeywords: Keyword[] = keywords.filter(
+        (keyword): keyword is Keyword => keyword !== null
+      );
+
       setDefaultDataValue(
-        keywords.map((keyword) => ({
+        validKeywords.map((keyword) => ({
           label: keyword.name,
           value: keyword.id,
         }))
@@ -331,15 +329,16 @@ export const KeywordSelector = ({
   }, [defaultValue]);
 
   const loadKeywordOptions = async (inputValue: string) => {
-    const res = await fetch(
-      `/api/v1/search/keyword?query=${encodeURIExtraParams(inputValue)}`
+    const results = await axios.get<TmdbKeywordSearchResponse>(
+      '/api/v1/search/keyword',
+      {
+        params: {
+          query: encodeURIExtraParams(inputValue),
+        },
+      }
     );
-    if (!res.ok) {
-      throw new Error('Network response was not ok');
-    }
-    const results: TmdbKeywordSearchResponse = await res.json();
 
-    return results.results.map((result) => ({
+    return results.data.results.map((result) => ({
       label: result.name,
       value: result.id,
     }));
@@ -389,8 +388,8 @@ export const WatchProviderSelector = ({
     region
       ? region
       : currentSettings.discoverRegion
-      ? currentSettings.discoverRegion
-      : 'US'
+        ? currentSettings.discoverRegion
+        : 'US'
   );
   const [activeProvider, setActiveProvider] = useState<number[]>(
     activeProviders ?? []
@@ -477,7 +476,7 @@ export const WatchProviderSelector = ({
                       />
                     </div>
                     {isActive && (
-                      <div className="pointer-events-none absolute -top-1 -left-1 flex items-center justify-center text-indigo-100 opacity-90">
+                      <div className="pointer-events-none absolute -left-1 -top-1 flex items-center justify-center text-indigo-100 opacity-90">
                         <CheckCircleIcon className="h-6 w-6" />
                       </div>
                     )}
@@ -520,7 +519,7 @@ export const WatchProviderSelector = ({
                         />
                       </div>
                       {isActive && (
-                        <div className="pointer-events-none absolute -top-1 -left-1 flex items-center justify-center text-indigo-100 opacity-90">
+                        <div className="pointer-events-none absolute -left-1 -top-1 flex items-center justify-center text-indigo-100 opacity-90">
                           <CheckCircleIcon className="h-6 w-6" />
                         </div>
                       )}
@@ -578,14 +577,10 @@ export const UserSelector = ({
 
       const users = defaultValue.split(',');
 
-      const res = await fetch(
+      const res = await axios.get(
         `/api/v1/user?includeIds=${encodeURIComponent(defaultValue)}`
       );
-
-      if (!res.ok) {
-        throw new Error('Network response was not ok');
-      }
-      const response: UserResultsResponse = await res.json();
+      const response: UserResultsResponse = res.data;
 
       const genreData = users
         .filter((u) => response.results.find((user) => user.id === Number(u)))
@@ -602,11 +597,10 @@ export const UserSelector = ({
   }, [defaultValue]);
 
   const loadUserOptions = async (inputValue: string) => {
-    const res = await fetch(
+    const res = await axios.get(
       `/api/v1/user${inputValue ? `?q=${encodeURIComponent(inputValue)}` : ''}`
     );
-    if (!res.ok) throw new Error();
-    const results: UserResultsResponse = await res.json();
+    const results: UserResultsResponse = res.data;
 
     return results.results
       .map((result) => ({
@@ -637,3 +631,5 @@ export const UserSelector = ({
     />
   );
 };
+
+export { default as USCertificationSelector } from './USCertificationSelector';

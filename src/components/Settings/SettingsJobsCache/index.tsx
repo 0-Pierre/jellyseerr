@@ -20,7 +20,9 @@ import type {
   CacheResponse,
 } from '@server/interfaces/api/settingsInterfaces';
 import type { JobId } from '@server/lib/settings';
+import axios from 'axios';
 import cronstrue from 'cronstrue/i18n';
+import { formatDuration, intervalToDuration } from 'date-fns';
 import { Fragment, useReducer, useState } from 'react';
 import type { MessageDescriptor } from 'react-intl';
 import { FormattedRelativeTime, useIntl } from 'react-intl';
@@ -33,7 +35,7 @@ const messages: { [messageName: string]: MessageDescriptor } = defineMessages(
     jobsandcache: 'Jobs & Cache',
     jobs: 'Jobs',
     jobsDescription:
-      'Jellyseerr performs certain maintenance tasks as regularly-scheduled jobs, but they can also be manually triggered below. Manually running a job will not alter its schedule.',
+      'Seerr performs certain maintenance tasks as regularly-scheduled jobs, but they can also be manually triggered below. Manually running a job will not alter its schedule.',
     jobname: 'Job Name',
     jobtype: 'Type',
     nextexecution: 'Next Execution',
@@ -45,7 +47,7 @@ const messages: { [messageName: string]: MessageDescriptor } = defineMessages(
     command: 'Command',
     cache: 'Cache',
     cacheDescription:
-      'Jellyseerr caches requests to external API endpoints to optimize performance and avoid making unnecessary API calls.',
+      'Seerr caches requests to external API endpoints to optimize performance and avoid making unnecessary API calls.',
     cacheflushed: '{cachename} cache flushed.',
     cachename: 'Cache Name',
     cachehits: 'Hits',
@@ -54,6 +56,26 @@ const messages: { [messageName: string]: MessageDescriptor } = defineMessages(
     cacheksize: 'Key Size',
     cachevsize: 'Value Size',
     flushcache: 'Flush Cache',
+    dnsCache: 'DNS Cache',
+    dnsCacheDescription:
+      'Seerr caches DNS lookups to optimize performance and avoid making unnecessary API calls.',
+    dnscacheflushed: '{hostname} dns cache flushed.',
+    dnscachename: 'Hostname',
+    dnscacheactiveaddress: 'Active Address',
+    dnscachehits: 'Hits',
+    dnscachemisses: 'Misses',
+    dnscacheage: 'Age',
+    flushdnscache: 'Flush DNS Cache',
+    dnsCacheGlobalStats: 'Global DNS Cache Stats',
+    dnsCacheGlobalStatsDescription:
+      'These stats are aggregated across all DNS cache entries.',
+    dnsNoCacheEntries: 'No DNS lookups have been cached yet.',
+    size: 'Size',
+    hits: 'Hits',
+    misses: 'Misses',
+    failures: 'Failures',
+    ipv4Fallbacks: 'IPv4 Fallbacks',
+    hitRate: 'Hit Rate',
     unknownJob: 'Unknown Job',
     'plex-recently-added-scan': 'Plex Recently Added Scan',
     'plex-full-scan': 'Plex Full Library Scan',
@@ -68,11 +90,14 @@ const messages: { [messageName: string]: MessageDescriptor } = defineMessages(
     'download-sync-reset': 'Download Sync Reset',
     'image-cache-cleanup': 'Image Cache Cleanup',
     'subscription-check': 'Subscription Check',
+    'process-blocklisted-tags': 'Process Blocklisted Tags',
     editJobSchedule: 'Modify Job',
     jobScheduleEditSaved: 'Job edited successfully!',
     jobScheduleEditFailed: 'Something went wrong while saving the job.',
     editJobScheduleCurrent: 'Current Frequency',
     editJobSchedulePrompt: 'New Frequency',
+    editJobScheduleSelectorDays:
+      'Every {jobScheduleDays, plural, one {day} other {{jobScheduleDays} days}}',
     editJobScheduleSelectorHours:
       'Every {jobScheduleHours, plural, one {hour} other {{jobScheduleHours} hours}}',
     editJobScheduleSelectorMinutes:
@@ -81,7 +106,7 @@ const messages: { [messageName: string]: MessageDescriptor } = defineMessages(
       'Every {jobScheduleSeconds, plural, one {second} other {{jobScheduleSeconds} seconds}}',
     imagecache: 'Image Cache',
     imagecacheDescription:
-      'When enabled in settings, Jellyseerr will proxy and cache images from pre-configured external sources. Cached images are saved into your config folder. You can find the files in <code>{appDataPath}/cache/images</code>.',
+      'When enabled in settings, Seerr will proxy and cache images from pre-configured external sources. Cached images are saved into your config folder. You can find the files in <code>{appDataPath}/cache/images</code>.',
     imagecachecount: 'Images Cached',
     imagecachesize: 'Total Cache Size',
     usersavatars: "Users' Avatars",
@@ -92,7 +117,7 @@ interface Job {
   id: JobId;
   name: string;
   type: 'process' | 'command';
-  interval: 'seconds' | 'minutes' | 'hours' | 'fixed';
+  interval: 'seconds' | 'minutes' | 'hours' | 'days' | 'fixed';
   cronSchedule: string;
   nextExecutionTime: string;
   running: boolean;
@@ -101,13 +126,20 @@ interface Job {
 type JobModalState = {
   isOpen?: boolean;
   job?: Job;
+  scheduleDays: number;
   scheduleHours: number;
   scheduleMinutes: number;
   scheduleSeconds: number;
 };
 
 type JobModalAction =
-  | { type: 'set'; hours?: number; minutes?: number; seconds?: number }
+  | {
+      type: 'set';
+      days?: number;
+      hours?: number;
+      minutes?: number;
+      seconds?: number;
+    }
   | {
       type: 'close';
     }
@@ -128,6 +160,7 @@ const jobModalReducer = (
       return {
         isOpen: true,
         job: action.job,
+        scheduleDays: 1,
         scheduleHours: 1,
         scheduleMinutes: 5,
         scheduleSeconds: 30,
@@ -136,6 +169,7 @@ const jobModalReducer = (
     case 'set':
       return {
         ...state,
+        scheduleDays: action.days ?? state.scheduleDays,
         scheduleHours: action.hours ?? state.scheduleHours,
         scheduleMinutes: action.minutes ?? state.scheduleMinutes,
         scheduleSeconds: action.seconds ?? state.scheduleSeconds,
@@ -164,6 +198,7 @@ const SettingsJobs = () => {
 
   const [jobModalState, dispatch] = useReducer(jobModalReducer, {
     isOpen: false,
+    scheduleDays: 1,
     scheduleHours: 1,
     scheduleMinutes: 5,
     scheduleSeconds: 30,
@@ -190,10 +225,7 @@ const SettingsJobs = () => {
   }
 
   const runJob = async (job: Job) => {
-    const res = await fetch(`/api/v1/settings/jobs/${job.id}/run`, {
-      method: 'POST',
-    });
-    if (!res.ok) throw new Error();
+    await axios.post(`/api/v1/settings/jobs/${job.id}/run`);
     addToast(
       intl.formatMessage(messages.jobstarted, {
         jobname: intl.formatMessage(messages[job.id] ?? messages.unknownJob),
@@ -207,10 +239,7 @@ const SettingsJobs = () => {
   };
 
   const cancelJob = async (job: Job) => {
-    const res = await fetch(`/api/v1/settings/jobs/${job.id}/cancel`, {
-      method: 'POST',
-    });
-    if (!res.ok) throw new Error();
+    await axios.post(`/api/v1/settings/jobs/${job.id}/cancel`);
     addToast(
       intl.formatMessage(messages.jobcancelled, {
         jobname: intl.formatMessage(messages[job.id] ?? messages.unknownJob),
@@ -224,12 +253,21 @@ const SettingsJobs = () => {
   };
 
   const flushCache = async (cache: CacheItem) => {
-    const res = await fetch(`/api/v1/settings/cache/${cache.id}/flush`, {
-      method: 'POST',
-    });
-    if (!res.ok) throw new Error();
+    await axios.post(`/api/v1/settings/cache/${cache.id}/flush`);
     addToast(
       intl.formatMessage(messages.cacheflushed, { cachename: cache.name }),
+      {
+        appearance: 'success',
+        autoDismiss: true,
+      }
+    );
+    cacheRevalidate();
+  };
+
+  const flushDnsCache = async (hostname: string) => {
+    await axios.post(`/api/v1/settings/cache/dns/${hostname}/flush`);
+    addToast(
+      intl.formatMessage(messages.dnscacheflushed, { hostname: hostname }),
       {
         appearance: 'success',
         autoDismiss: true,
@@ -248,25 +286,21 @@ const SettingsJobs = () => {
         jobScheduleCron[1] = `*/${jobModalState.scheduleMinutes}`;
       } else if (jobModalState.job?.interval === 'hours') {
         jobScheduleCron[2] = `*/${jobModalState.scheduleHours}`;
+      } else if (jobModalState.job?.interval === 'days') {
+        jobScheduleCron[2] = '1';
+        jobScheduleCron[3] = `*/${jobModalState.scheduleDays}`;
       } else {
         // jobs with interval: fixed should not be editable
         throw new Error();
       }
 
       setIsSaving(true);
-      const res = await fetch(
+      await axios.post(
         `/api/v1/settings/jobs/${jobModalState.job.id}/schedule`,
         {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            schedule: jobScheduleCron.join(' '),
-          }),
+          schedule: jobScheduleCron.join(' '),
         }
       );
-      if (!res.ok) throw new Error();
 
       addToast(intl.formatMessage(messages.jobScheduleEditSaved), {
         appearance: 'success',
@@ -283,6 +317,18 @@ const SettingsJobs = () => {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const formatAge = (milliseconds: number): string => {
+    const duration = intervalToDuration({
+      start: 0,
+      end: milliseconds,
+    });
+
+    return formatDuration(duration, {
+      format: ['minutes', 'seconds'],
+      zero: false,
+    });
   };
 
   return (
@@ -320,7 +366,7 @@ const SettingsJobs = () => {
                 <label className="text-label">
                   {intl.formatMessage(messages.editJobScheduleCurrent)}
                 </label>
-                <div className="form-input-area mt-2 mb-1">
+                <div className="form-input-area mb-1 mt-2">
                   <div>
                     {jobModalState.job &&
                       cronstrue.toString(jobModalState.job.cronSchedule, {
@@ -378,6 +424,29 @@ const SettingsJobs = () => {
                             messages.editJobScheduleSelectorMinutes,
                             {
                               jobScheduleMinutes: v,
+                            }
+                          )}
+                        </option>
+                      ))}
+                    </select>
+                  ) : jobModalState.job?.interval === 'days' ? (
+                    <select
+                      name="jobScheduleDays"
+                      className="inline"
+                      value={jobModalState.scheduleDays}
+                      onChange={(e) =>
+                        dispatch({
+                          type: 'set',
+                          days: Number(e.target.value),
+                        })
+                      }
+                    >
+                      {[1, 2, 3, 4, 5, 6, 7, 10, 14, 21].map((v) => (
+                        <option value={v} key={`jobScheduleDays-${v}`}>
+                          {intl.formatMessage(
+                            messages.editJobScheduleSelectorDays,
+                            {
+                              jobScheduleDays: v,
                             }
                           )}
                         </option>
@@ -544,6 +613,133 @@ const SettingsJobs = () => {
           </Table.TBody>
         </Table>
       </div>
+      {cacheData?.dnsCache != null && (
+        <>
+          <div>
+            <h3 className="heading">{intl.formatMessage(messages.dnsCache)}</h3>
+            <p className="description">
+              {intl.formatMessage(messages.dnsCacheDescription)}
+            </p>
+          </div>
+          <div className="section">
+            <Table>
+              <thead>
+                <tr>
+                  <Table.TH>
+                    {intl.formatMessage(messages.dnscachename)}
+                  </Table.TH>
+                  <Table.TH>
+                    {intl.formatMessage(messages.dnscacheactiveaddress)}
+                  </Table.TH>
+                  <Table.TH>
+                    {intl.formatMessage(messages.dnscachehits)}
+                  </Table.TH>
+                  <Table.TH>
+                    {intl.formatMessage(messages.dnscachemisses)}
+                  </Table.TH>
+                  <Table.TH>
+                    {intl.formatMessage(messages.dnscacheage)}
+                  </Table.TH>
+                  <Table.TH></Table.TH>
+                </tr>
+              </thead>
+              <Table.TBody>
+                {(() => {
+                  if (!cacheData) {
+                    return (
+                      <tr>
+                        <Table.TD colSpan={6} alignText="center">
+                          <LoadingSpinner />
+                        </Table.TD>
+                      </tr>
+                    );
+                  }
+
+                  const entries = Object.entries(
+                    cacheData.dnsCache?.entries ?? {}
+                  );
+
+                  if (entries.length === 0) {
+                    return (
+                      <tr>
+                        <Table.TD colSpan={6} alignText="center">
+                          {intl.formatMessage(messages.dnsNoCacheEntries)}
+                        </Table.TD>
+                      </tr>
+                    );
+                  }
+
+                  return entries.map(([hostname, data]) => (
+                    <tr key={`cache-list-${hostname}`}>
+                      <Table.TD>{hostname}</Table.TD>
+                      <Table.TD>{data.activeAddress}</Table.TD>
+                      <Table.TD>{intl.formatNumber(data.hits)}</Table.TD>
+                      <Table.TD>{intl.formatNumber(data.misses)}</Table.TD>
+                      <Table.TD>{formatAge(data.age)}</Table.TD>
+                      <Table.TD alignText="right">
+                        <Button
+                          buttonType="danger"
+                          onClick={() => flushDnsCache(hostname)}
+                        >
+                          <TrashIcon />
+                          <span>
+                            {intl.formatMessage(messages.flushdnscache)}
+                          </span>
+                        </Button>
+                      </Table.TD>
+                    </tr>
+                  ));
+                })()}
+              </Table.TBody>
+            </Table>
+          </div>
+          <div>
+            <h3 className="heading">
+              {intl.formatMessage(messages.dnsCacheGlobalStats)}
+            </h3>
+            <p className="description">
+              {intl.formatMessage(messages.dnsCacheGlobalStatsDescription)}
+            </p>
+          </div>
+          <div className="section">
+            {!cacheData ? (
+              <LoadingSpinner />
+            ) : (
+              <Table>
+                <thead>
+                  <tr>
+                    {Object.entries(cacheData.dnsCache?.stats ?? {})
+                      .filter(([statName]) => statName !== 'maxSize')
+                      .map(([statName]) => (
+                        <Table.TH key={`dns-stat-header-${statName}`}>
+                          {messages[statName]
+                            ? intl.formatMessage(messages[statName])
+                            : statName}
+                        </Table.TH>
+                      ))}
+                  </tr>
+                </thead>
+                <Table.TBody>
+                  <tr>
+                    {Object.entries(cacheData.dnsCache?.stats ?? {})
+                      .filter(([statName]) => statName !== 'maxSize')
+                      .map(([statName, statValue]) => (
+                        <Table.TD key={`dns-stat-${statName}`}>
+                          {statName === 'hitRate'
+                            ? intl.formatNumber(statValue, {
+                                style: 'percent',
+                                maximumFractionDigits: 2,
+                              })
+                            : intl.formatNumber(statValue)}
+                        </Table.TD>
+                      ))}
+                  </tr>
+                </Table.TBody>
+              </Table>
+            )}
+          </div>
+        </>
+      )}
       <div className="break-words">
         <h3 className="heading">{intl.formatMessage(messages.imagecache)}</h3>
         <p className="description">

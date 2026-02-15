@@ -7,6 +7,7 @@ import TitleCard from '@app/components/TitleCard';
 import globalMessages from '@app/i18n/globalMessages';
 import Error from '@app/pages/_error';
 import defineMessages from '@app/utils/defineMessages';
+import { CircleStackIcon } from '@heroicons/react/24/solid';
 import type { PersonCombinedCreditsResponse } from '@server/interfaces/api/personInterfaces';
 import type { PersonDetails as PersonDetailsType } from '@server/models/Person';
 import { groupBy } from 'lodash';
@@ -25,9 +26,12 @@ const messages = defineMessages('components.PersonDetails', {
   ascharacter: 'as {character}',
 });
 
+type MediaType = 'all' | 'movie' | 'tv';
+
 const PersonDetails = () => {
   const intl = useIntl();
   const router = useRouter();
+  const [currentMediaType, setCurrentMediaType] = useState<string>('all');
   const { data, error } = useSWR<PersonDetailsType>(
     `/api/v1/person/${router.query.personId}`
   );
@@ -39,7 +43,11 @@ const PersonDetails = () => {
     );
 
   const sortedCast = useMemo(() => {
-    const grouped = groupBy(combinedCredits?.cast ?? [], 'id');
+    const filtered = (combinedCredits?.cast ?? []).filter(
+      (media) =>
+        currentMediaType === 'all' || media.mediaType === currentMediaType
+    );
+    const grouped = groupBy(filtered, 'id');
 
     const reduced = Object.values(grouped).map((objs) => ({
       ...objs[0],
@@ -54,10 +62,14 @@ const PersonDetails = () => {
       }
       return 1;
     });
-  }, [combinedCredits]);
+  }, [combinedCredits, currentMediaType]);
 
   const sortedCrew = useMemo(() => {
-    const grouped = groupBy(combinedCredits?.crew ?? [], 'id');
+    const filtered = (combinedCredits?.crew ?? []).filter(
+      (media) =>
+        currentMediaType === 'all' || media.mediaType === currentMediaType
+    );
+    const grouped = groupBy(filtered, 'id');
 
     const reduced = Object.values(grouped).map((objs) => ({
       ...objs[0],
@@ -72,7 +84,7 @@ const PersonDetails = () => {
       }
       return 1;
     });
-  }, [combinedCredits]);
+  }, [combinedCredits, currentMediaType]);
 
   if (!data && !error) {
     return <LoadingSpinner />;
@@ -121,6 +133,29 @@ const PersonDetails = () => {
   }
 
   const isLoading = !combinedCredits && !errorCombinedCredits;
+
+  const mediaTypePicker = (
+    <div className="mb-2 flex flex-grow sm:mb-0 sm:mr-2 lg:flex-grow-0">
+      <span className="inline-flex cursor-default items-center rounded-l-md border border-r-0 border-gray-500 bg-gray-800 px-3 text-sm text-gray-100">
+        <CircleStackIcon className="h-6 w-6" />
+      </span>
+      <select
+        id="mediaType"
+        name="mediaType"
+        onChange={(e) => {
+          setCurrentMediaType(e.target.value as MediaType);
+        }}
+        value={currentMediaType}
+        className="rounded-r-only"
+      >
+        <option value="all">{intl.formatMessage(globalMessages.all)}</option>
+        <option value="movie">
+          {intl.formatMessage(globalMessages.movies)}
+        </option>
+        <option value="tv">{intl.formatMessage(globalMessages.tvshows)}</option>
+      </select>
+    </div>
+  );
 
   const cast = (sortedCast ?? []).length > 0 && (
     <>
@@ -206,7 +241,7 @@ const PersonDetails = () => {
     <>
       <PageTitle title={data.name} />
       {(sortedCrew || sortedCast) && (
-        <div className="absolute top-0 left-0 right-0 z-0 h-96">
+        <div className="absolute left-0 right-0 top-0 z-0 h-96">
           <ImageFader
             isDarker
             backgroundImages={[...(sortedCast ?? []), ...(sortedCrew ?? [])]
@@ -220,7 +255,7 @@ const PersonDetails = () => {
         </div>
       )}
       <div
-        className={`relative z-10 mt-4 mb-8 flex flex-col items-center lg:flex-row ${
+        className={`relative z-10 mb-8 mt-4 flex flex-col items-center lg:flex-row ${
           data.biography ? 'lg:items-start' : ''
         }`}
       >
@@ -235,9 +270,14 @@ const PersonDetails = () => {
             />
           </div>
         )}
-        <div className="text-center text-gray-300 lg:text-left">
-          <h1 className="text-3xl text-white lg:text-4xl">{data.name}</h1>
-          <div className="mt-1 mb-2 space-y-1 text-xs text-white sm:text-sm lg:text-base">
+        <div className="w-full text-center text-gray-300 lg:text-left">
+          <div className="flex w-full items-center justify-center lg:justify-between">
+            <h1 className="text-3xl text-white lg:text-4xl">{data.name}</h1>
+            <div className="hidden flex-shrink-0 lg:block">
+              {mediaTypePicker}
+            </div>
+          </div>
+          <div className="mb-2 mt-1 space-y-1 text-xs text-white sm:text-sm lg:text-base">
             <div>{personAttributes.join(' | ')}</div>
             {(data.alsoKnownAs ?? []).length > 0 && (
               <div>
@@ -252,6 +292,7 @@ const PersonDetails = () => {
               </div>
             )}
           </div>
+          <div className="lg:hidden">{mediaTypePicker}</div>
           {data.biography && (
             <div className="relative text-left">
               {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events */}

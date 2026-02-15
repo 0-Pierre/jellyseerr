@@ -3,6 +3,7 @@ import defineMessages from '@app/utils/defineMessages';
 const globalMessages = defineMessages('i18n', {
   available: 'Available',
   partiallyavailable: 'Partially Available',
+  deleted: 'Deleted',
   processing: 'Processing',
   unavailable: 'Unavailable',
   notrequested: 'Not Requested',
@@ -14,6 +15,7 @@ const globalMessages = defineMessages('i18n', {
   pending: 'Pending',
   declined: 'Declined',
   approved: 'Approved',
+  completed: 'Completed',
   movie: 'Movie',
   movies: 'Movies',
   collection: 'Collection',
@@ -55,16 +57,16 @@ const globalMessages = defineMessages('i18n', {
   noresults: 'No results.',
   open: 'Open',
   resolved: 'Resolved',
-  blacklist: 'Blacklist',
-  blacklisted: 'Blacklisted',
-  blacklistSuccess: '<strong>{title}</strong> was successfully blacklisted.',
-  blacklistError: 'Something went wrong. Please try again.',
-  blacklistDuplicateError:
-    '<strong>{title}</strong> has already been blacklisted.',
-  removeFromBlacklistSuccess:
-    '<strong>{title}</strong> was successfully removed from the Blacklist.',
-  addToBlacklist: 'Add to Blacklist',
-  removefromBlacklist: 'Remove from Blacklist',
+  blocklist: 'Blocklist',
+  blocklisted: 'Blocklisted',
+  blocklistSuccess: '<strong>{title}</strong> was successfully blocklisted.',
+  blocklistError: 'Something went wrong. Please try again.',
+  blocklistDuplicateError:
+    '<strong>{title}</strong> has already been blocklisted.',
+  removeFromBlocklistSuccess:
+    '<strong>{title}</strong> was successfully removed from the Blocklist.',
+  addToBlocklist: 'Add to Blocklist',
+  removefromBlocklist: 'Remove from Blocklist',
   specials: 'Specials',
 });
 

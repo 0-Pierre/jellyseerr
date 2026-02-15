@@ -1,4 +1,5 @@
 import { MediaServerType } from '@server/constants/server';
+import blocklistedTagsProcessor from '@server/job/blocklistedTagsProcessor';
 import availabilitySync from '@server/lib/availabilitySync';
 import downloadTracker from '@server/lib/downloadtracker';
 import ImageProxy from '@server/lib/imageproxy';
@@ -22,7 +23,7 @@ interface ScheduledJob {
   job: schedule.Job;
   name: string;
   type: 'process' | 'command';
-  interval: 'seconds' | 'minutes' | 'hours' | 'fixed';
+  interval: 'seconds' | 'minutes' | 'hours' | 'days' | 'fixed';
   cronSchedule: string;
   running?: () => boolean;
   cancelFn?: () => void;
@@ -250,6 +251,22 @@ export const startJobs = (): void => {
       });
       subscriptionsSync.run();
     }),
+  });
+
+  scheduledJobs.push({
+    id: 'process-blocklisted-tags',
+    name: 'Process Blocklisted Tags',
+    type: 'process',
+    interval: 'days',
+    cronSchedule: jobs['process-blocklisted-tags'].schedule,
+    job: schedule.scheduleJob(jobs['process-blocklisted-tags'].schedule, () => {
+      logger.info('Starting scheduled job: Process Blocklisted Tags', {
+        label: 'Jobs',
+      });
+      blocklistedTagsProcessor.run();
+    }),
+    running: () => blocklistedTagsProcessor.status().running,
+    cancelFn: () => blocklistedTagsProcessor.cancel(),
   });
 
   logger.info('Scheduled jobs loaded', { label: 'Jobs' });

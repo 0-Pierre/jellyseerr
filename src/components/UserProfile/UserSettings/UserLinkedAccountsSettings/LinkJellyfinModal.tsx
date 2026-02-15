@@ -5,6 +5,7 @@ import { useUser } from '@app/hooks/useUser';
 import defineMessages from '@app/utils/defineMessages';
 import { Transition } from '@headlessui/react';
 import { MediaServerType } from '@server/constants/server';
+import axios from 'axios';
 import { Field, Form, Formik } from 'formik';
 import { useState } from 'react';
 import { useIntl } from 'react-intl';
@@ -80,38 +81,28 @@ const LinkJellyfinModal: React.FC<LinkJellyfinModalProps> = ({
         onSubmit={async ({ username, password }) => {
           try {
             setError(null);
-            const res = await fetch(
+            await axios.post(
               `/api/v1/user/${user?.id}/settings/linked-accounts/jellyfin`,
               {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  username,
-                  password,
-                }),
+                username,
+                password,
               }
             );
-            if (!res.ok) {
-              if (res.status === 401) {
-                setError(
-                  intl.formatMessage(messages.errorUnauthorized, {
-                    mediaServerName,
-                  })
-                );
-              } else if (res.status === 422) {
-                setError(
-                  intl.formatMessage(messages.errorExists, { applicationName })
-                );
-              } else {
-                setError(intl.formatMessage(messages.errorUnknown));
-              }
-            } else {
-              onSave();
-            }
+            onSave();
           } catch (e) {
-            setError(intl.formatMessage(messages.errorUnknown));
+            if (e?.response?.status === 401) {
+              setError(
+                intl.formatMessage(messages.errorUnauthorized, {
+                  mediaServerName,
+                })
+              );
+            } else if (e?.response?.status === 422) {
+              setError(
+                intl.formatMessage(messages.errorExists, { applicationName })
+              );
+            } else {
+              setError(intl.formatMessage(messages.errorUnknown));
+            }
           }
         }}
       >
@@ -147,7 +138,7 @@ const LinkJellyfinModal: React.FC<LinkJellyfinModalProps> = ({
                 <label htmlFor="username" className="text-label">
                   {intl.formatMessage(messages.username)}
                 </label>
-                <div className="mt-1 mb-2 sm:col-span-2 sm:mt-0">
+                <div className="mb-2 mt-1 sm:col-span-2 sm:mt-0">
                   <div className="flex rounded-md shadow-sm">
                     <Field
                       id="username"
@@ -163,7 +154,7 @@ const LinkJellyfinModal: React.FC<LinkJellyfinModalProps> = ({
                 <label htmlFor="password" className="text-label">
                   {intl.formatMessage(messages.password)}
                 </label>
-                <div className="mt-1 mb-2 sm:col-span-2 sm:mt-0">
+                <div className="mb-2 mt-1 sm:col-span-2 sm:mt-0">
                   <div className="flex rounded-md shadow-sm">
                     <Field
                       id="password"

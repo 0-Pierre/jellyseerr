@@ -2,7 +2,8 @@ import { IssueStatus, IssueTypeName } from '@server/constants/issue';
 import type { NotificationAgentSlack } from '@server/lib/settings';
 import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
-import { hasNotificationType, Notification } from '..';
+import axios from 'axios';
+import { Notification, hasNotificationType } from '..';
 import type { NotificationAgent, NotificationPayload } from './agent';
 import { BaseAgent } from './agent';
 
@@ -62,7 +63,9 @@ class SlackAgent
     type: Notification,
     payload: NotificationPayload
   ): SlackBlockEmbed {
-    const { applicationUrl, applicationTitle } = getSettings().main;
+    const settings = getSettings();
+    const { applicationUrl, applicationTitle } = settings.main;
+    const { embedPoster } = settings.notifications.agents.slack;
 
     const fields: EmbedField[] = [];
 
@@ -158,13 +161,14 @@ class SlackAgent
           type: 'mrkdwn',
           text: payload.message,
         },
-        accessory: payload.image
-          ? {
-              type: 'image',
-              image_url: payload.image,
-              alt_text: payload.subject,
-            }
-          : undefined,
+        accessory:
+          embedPoster && payload.image
+            ? {
+                type: 'image',
+                image_url: payload.image,
+                alt_text: payload.subject,
+              }
+            : undefined,
       });
     }
 
@@ -179,8 +183,8 @@ class SlackAgent
       ? payload.issue
         ? `${applicationUrl}/issues/${payload.issue.id}`
         : payload.media
-        ? `${applicationUrl}/${payload.media.mediaType}/${payload.media.tmdbId}`
-        : undefined
+          ? `${applicationUrl}/${payload.media.mediaType}/${payload.media.tmdbId}`
+          : undefined
       : undefined;
 
     if (url) {
@@ -188,7 +192,7 @@ class SlackAgent
         type: 'actions',
         elements: [
           {
-            action_id: 'open-in-jellyseerr',
+            action_id: 'open-in-seerr',
             type: 'button',
             url,
             text: {
@@ -237,32 +241,19 @@ class SlackAgent
       subject: payload.subject,
     });
     try {
-      const response = await fetch(settings.options.webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(this.buildEmbed(type, payload)),
-      });
-      if (!response.ok) {
-        throw new Error(response.statusText, { cause: response });
-      }
+      await axios.post(
+        settings.options.webhookUrl,
+        this.buildEmbed(type, payload)
+      );
 
       return true;
     } catch (e) {
-      let errorData;
-      try {
-        errorData = await e.cause?.text();
-        errorData = JSON.parse(errorData);
-      } catch {
-        /* empty */
-      }
       logger.error('Error sending Slack notification', {
         label: 'Notifications',
         type: Notification[type],
         subject: payload.subject,
         errorMessage: e.message,
-        response: errorData,
+        response: e?.response?.data,
       });
 
       return false;

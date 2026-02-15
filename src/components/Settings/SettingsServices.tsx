@@ -17,6 +17,7 @@ import { PencilIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/solid';
 import type OverrideRule from '@server/entity/OverrideRule';
 import type { OverrideRuleResultsResponse } from '@server/interfaces/api/overrideRuleInterfaces';
 import type { RadarrSettings, SonarrSettings } from '@server/lib/settings';
+import axios from 'axios';
 import { Fragment, useState } from 'react';
 import { useIntl } from 'react-intl';
 import useSWR, { mutate } from 'swr';
@@ -248,14 +249,9 @@ const SettingsServices = () => {
   });
 
   const deleteServer = async () => {
-    const res = await fetch(
-      `/api/v1/settings/${deleteServerModal.type}/${deleteServerModal.serverId}`,
-      {
-        method: 'DELETE',
-      }
+    await axios.delete(
+      `/api/v1/settings/${deleteServerModal.type}/${deleteServerModal.serverId}`
     );
-    if (!res.ok) throw new Error();
-
     setDeleteServerModal({ open: false, serverId: null, type: 'radarr' });
     revalidateRadarr();
     revalidateSonarr();
@@ -401,7 +397,7 @@ const SettingsServices = () => {
                 <div className="flex h-full w-full items-center justify-center">
                   <Button
                     buttonType="ghost"
-                    className="mt-3 mb-3"
+                    className="mb-3 mt-3"
                     onClick={() =>
                       setEditRadarrModal({ open: true, radarr: null })
                     }
@@ -415,7 +411,7 @@ const SettingsServices = () => {
           </>
         )}
       </div>
-      <div className="mt-10 mb-6">
+      <div className="mb-6 mt-10">
         <h3 className="heading">
           {intl.formatMessage(messages.sonarrsettings)}
         </h3>
@@ -503,7 +499,7 @@ const SettingsServices = () => {
           </>
         )}
       </div>
-      <div className="mt-10 mb-6">
+      <div className="mb-6 mt-10">
         <h3 className="heading">
           {intl.formatMessage(messages.overrideRules)}
         </h3>

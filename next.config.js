@@ -4,7 +4,6 @@
 module.exports = {
   env: {
     commitTag: process.env.COMMIT_TAG || 'local',
-    forceIpv4First: process.env.FORCE_IPV4_FIRST === 'true' ? 'true' : 'false',
   },
   images: {
     remotePatterns: [
@@ -25,6 +24,6 @@ module.exports = {
   },
   experimental: {
     scrollRestoration: true,
-    largePageDataBytes: 256000,
+    largePageDataBytes: 512 * 1000,
   },
 };
