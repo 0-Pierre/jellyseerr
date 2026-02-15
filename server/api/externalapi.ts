@@ -101,6 +101,14 @@ class ExternalAPI {
     return response.data;
   }
 
+  protected async delete<T>(
+    endpoint: string,
+    config?: AxiosRequestConfig
+  ): Promise<T> {
+    const response = await this.axios.delete<T>(endpoint, config);
+    return response.data;
+  }
+
   protected async getRolling<T>(
     endpoint: string,
     config?: AxiosRequestConfig,
