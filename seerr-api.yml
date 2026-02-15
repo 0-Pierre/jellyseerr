@@ -4323,7 +4323,7 @@ paths:
   /user/jellyfinuser:
     post:
       summary: Create new Jellyfin user
-      description: Creates a new user in Jellyfin and imports them into Jellyseerr
+      description: Creates a new user in Jellyfin and imports them into Seerr
       tags:
         - users
       security:
@@ -4361,7 +4361,7 @@ paths:
                 properties:
                   jellyfin:
                     $ref: '#/components/schemas/JellyfinUser'
-                  jellyseerr:
+                  seerr:
                     $ref: '#/components/schemas/User'
         '400':
           description: Bad request

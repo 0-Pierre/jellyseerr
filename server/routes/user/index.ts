@@ -1045,7 +1045,7 @@ router.post(
         username: displayName,
         jellyfinUserId: jellyfinUser.Id,
         jellyfinDeviceId: Buffer.from(
-          `BOT_jellyseerr_${body.username}`
+          `BOT_seerr_${body.username}`
         ).toString('base64'),
         permissions: settings.main.defaultPermissions,
         avatar: `/avatarproxy/${jellyfinUser.Id}`,
