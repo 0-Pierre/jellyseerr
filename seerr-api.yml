@@ -4150,7 +4150,6 @@ paths:
                 displayname,
                 subscriptionStatus,
                 subscriptionExpirationDate,
-                suspiciousActivityCount,
               ]
             default: created
         - in: query

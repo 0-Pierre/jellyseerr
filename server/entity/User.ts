@@ -134,9 +134,6 @@ export class User {
   @Column({ default: false })
   public notifiedAboutExpiration: boolean;
 
-  @Column({ default: 0 })
-  public suspiciousActivityCount: number;
-
   @OneToOne(() => UserSettings, (settings) => settings.user, {
     cascade: true,
     eager: true,

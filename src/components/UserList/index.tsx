@@ -88,7 +88,6 @@ const messages = defineMessages('components.UserList', {
     'The <strong>Enable Local Sign-In</strong> setting is currently disabled.',
   subscriptionStatus: 'Subscription Status',
   subscriptionExpirationDate: 'Subscription Expiration Date',
-  suspiciousActivity: 'Suspicious Activity',
   expired: 'Expired',
   lifetime: 'Lifetime',
   active: 'Active',
@@ -105,8 +104,7 @@ type Sort =
   | 'requests'
   | 'displayname'
   | 'subscriptionStatus'
-  | 'subscriptionExpirationDate'
-  | 'suspiciousActivityCount';
+  | 'subscriptionExpirationDate';
 
 const UserList = () => {
   const intl = useIntl();
@@ -892,9 +890,6 @@ const UserList = () => {
               <option value="subscriptionExpirationDate">
                 {intl.formatMessage(messages.subscriptionExpirationDate)}
               </option>
-              <option value="suspiciousActivityCount">
-                {intl.formatMessage(messages.suspiciousActivity)}
-              </option>
             </select>
           </div>
         </div>
@@ -925,9 +920,6 @@ const UserList = () => {
             </Table.TH>
             <Table.TH>
               {intl.formatMessage(messages.subscriptionExpirationDate)}
-            </Table.TH>
-            <Table.TH>
-              {intl.formatMessage(messages.suspiciousActivity)}
             </Table.TH>
             <Table.TH className="text-right">
               {(data.results ?? []).length > 1 && (
@@ -1070,7 +1062,6 @@ const UserList = () => {
                     })
                   : 'N/A'}
               </Table.TD>
-              <Table.TD>{user.suspiciousActivityCount}</Table.TD>
               <Table.TD alignText="right">
                 <Button
                   buttonType="warning"
@@ -1100,7 +1091,7 @@ const UserList = () => {
             </tr>
           ))}
           <tr className="bg-gray-700">
-            <Table.TD colSpan={11} noPadding>
+            <Table.TD colSpan={10} noPadding>
               <nav
                 className="flex w-screen flex-col items-center space-x-4 space-y-3 px-6 py-3 sm:flex-row sm:space-y-0 lg:w-full"
                 aria-label="Pagination"

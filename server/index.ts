@@ -27,6 +27,7 @@ import { appDataPermissions } from '@server/utils/appDataVolume';
 import { getAppVersion } from '@server/utils/appVersion';
 import createCustomProxyAgent from '@server/utils/customProxyAgent';
 import { initializeDnsCache } from '@server/utils/dnsCache';
+import { ensureSubscriptionColumns } from '@server/utils/ensureSubscriptionColumns';
 import restartFlag from '@server/utils/restartFlag';
 import { getClientIp } from '@supercharge/request-ip';
 import axios from 'axios';
@@ -77,6 +78,9 @@ app
         await dbConnection.query('PRAGMA foreign_keys=ON');
       }
     }
+
+    // Protect against drifted sqlite schemas from legacy forks.
+    await ensureSubscriptionColumns(dbConnection);
 
     // Load Settings
     const settings = await getSettings().load();
