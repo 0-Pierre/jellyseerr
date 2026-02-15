@@ -3,6 +3,10 @@ import { getRepository } from '@server/datasource';
 import { User } from '@server/entity/User';
 import notificationManager, { Notification } from '@server/lib/notifications';
 import { getSettings } from '@server/lib/settings';
+import {
+  NON_SUBSCRIBED_PERMISSION,
+  SUBSCRIBED_PERMISSION,
+} from '@server/lib/subscriptionPermissions';
 import logger from '@server/logger';
 import { getHostname } from '@server/utils/getHostname';
 
@@ -34,7 +38,9 @@ const subscriptionsSync = {
           const oldStatus = user.subscriptionStatus;
 
           user.subscriptionStatus = 'expired';
-          user.permissions = 740343936;
+          if (user.id !== 1) {
+            user.permissions = NON_SUBSCRIBED_PERMISSION;
+          }
           user.notifiedAboutExpiration = false;
 
           if (user.jellyfinUserId) {
@@ -87,30 +93,38 @@ const subscriptionsSync = {
           logger.info(
             `User ${user.id} subscription expired, permissions updated`
           );
-        } else if (
-          user.subscriptionExpirationDate &&
-          new Date(user.subscriptionExpirationDate) <= oneWeekFromNow &&
-          new Date(user.subscriptionExpirationDate) > now &&
-          !user.notifiedAboutExpiration
-        ) {
-          user.notifiedAboutExpiration = true;
-          await userRepository.save(user);
+        } else {
+          if (user.id !== 1 && user.permissions !== SUBSCRIBED_PERMISSION) {
+            // Self-heal permissions if a subscribed user's value drifted.
+            user.permissions = SUBSCRIBED_PERMISSION;
+            await userRepository.save(user);
+          }
 
-          notificationManager.sendNotification(
-            Notification.SUBSCRIPTION_EXPIRING,
-            {
-              notifyUser: user,
-              subject: 'Subscription Expiring Soon',
-              message:
-                'Your subscription will expire soon. Please renew to avoid service interruption.',
-              notifyAdmin: false,
-              notifySystem: true,
-            }
-          );
+          if (
+            user.subscriptionExpirationDate &&
+            new Date(user.subscriptionExpirationDate) <= oneWeekFromNow &&
+            new Date(user.subscriptionExpirationDate) > now &&
+            !user.notifiedAboutExpiration
+          ) {
+            user.notifiedAboutExpiration = true;
+            await userRepository.save(user);
 
-          logger.info(
-            `Warning sent to user ${user.id} about subscription expiring on ${user.subscriptionExpirationDate}`
-          );
+            notificationManager.sendNotification(
+              Notification.SUBSCRIPTION_EXPIRING,
+              {
+                notifyUser: user,
+                subject: 'Subscription Expiring Soon',
+                message:
+                  'Your subscription will expire soon. Please renew to avoid service interruption.',
+                notifyAdmin: false,
+                notifySystem: true,
+              }
+            );
+
+            logger.info(
+              `Warning sent to user ${user.id} about subscription expiring on ${user.subscriptionExpirationDate}`
+            );
+          }
         }
       }
     } catch (error) {

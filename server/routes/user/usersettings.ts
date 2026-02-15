@@ -11,6 +11,11 @@ import type {
   UserSettingsNotificationsResponse,
 } from '@server/interfaces/api/userSettingsInterfaces';
 import { Permission } from '@server/lib/permissions';
+import {
+  NON_SUBSCRIBED_PERMISSION,
+  SUBSCRIBED_PERMISSION,
+  isSubscribedStatus,
+} from '@server/lib/subscriptionPermissions';
 import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
 import { isAuthenticated } from '@server/middleware/auth';
@@ -236,6 +241,13 @@ userSettingsRoutes.post<
     }
 
     user.subscriptionStatus = newSubscriptionStatus;
+
+    // Keep permissions aligned with subscription state for all non-owner users.
+    if (user.id !== 1) {
+      user.permissions = isSubscribedStatus(newSubscriptionStatus)
+        ? SUBSCRIBED_PERMISSION
+        : NON_SUBSCRIBED_PERMISSION;
+    }
 
     const savedUser = await userRepository.save(user);
 
